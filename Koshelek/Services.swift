@@ -235,7 +235,7 @@ final class Router: ObservableObject {
     func handle(url: URL) {
         switch url.host ?? "" {
         case "voice": tab = 0; show(.voice(auto: true))
-        case "scan": tab = 0; sheet = nil; scanRequest += 1
+        case "scan": sheet = nil; scanRequest += 1
         case "add": tab = 0; show(.newTx)
         case "debts": tab = 1; wallet = 1
         case "tasks": tab = 2; life = 0

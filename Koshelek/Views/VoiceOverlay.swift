@@ -56,47 +56,58 @@ struct VoiceOverlay: View {
     }
 
     private var panel: some View {
-        VStack(spacing: 18) {
-            Capsule().fill(Color.secondary.opacity(0.35)).frame(width: 38, height: 5)
-
-            Text(statusText)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(phase == .listening ? Theme.accent : Color.secondary)
-                .animation(.none, value: phase)
+        VStack(spacing: 16) {
+            HStack {
+                Button("Отмена") { close() }
+                    .foregroundStyle(.secondary)
+                    .disabled(phase == .thinking)
+                Spacer()
+                Text(statusText)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(phase == .listening ? Theme.accent : Color.secondary)
+                    .lineLimit(1)
+                Spacer()
+                Button("Готово") { speech.stop(); parse() }
+                    .fontWeight(.semibold)
+                    .disabled(phase == .thinking || speech.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .font(.body)
 
             transcriptView
-                .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+                .frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
 
             if let e = err ?? speech.error {
                 Text(e).font(.footnote).foregroundStyle(Theme.exp).frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Waveform(levels: levels, active: phase == .listening)
-                .frame(height: 36)
+                .frame(height: 28)
 
             HStack {
-                Button("Отмена") { close() }
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 90, alignment: .leading)
-                    .disabled(phase == .thinking)
+                SideButton(symbol: "camera", label: "Скан чека") { switchTo { router.scanRequest += 1 } }
                 Spacer()
                 micButton
                 Spacer()
-                Button("Готово") { speech.stop(); parse() }
-                    .font(.body.weight(.semibold))
-                    .frame(width: 90, alignment: .trailing)
-                    .disabled(phase == .thinking || speech.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                SideButton(symbol: "keyboard", label: "Вручную") { switchTo { router.show(.newTx) } }
             }
-
-            Text(phase == .listening ? "Замолчите — и я сам всё разберу" : "Нажмите на текст, чтобы поправить")
-                .font(.caption).foregroundStyle(.tertiary)
+            .padding(.horizontal, 12)
         }
-        .padding(.horizontal, 22).padding(.top, 10).padding(.bottom, 22)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .shadow(color: .black.opacity(0.15), radius: 30, y: -4)
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 18)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 34, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 34, style: .continuous).strokeBorder(Color.primary.opacity(0.06)))
+        .shadow(color: .black.opacity(0.18), radius: 30, y: 8)
+        .padding(.horizontal, 10)
+        .padding(.bottom, 10)
+    }
+
+    private func switchTo(_ action: @escaping () -> Void) {
+        speech.onAutoStop = nil
+        speech.stop()
+        appeared = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            router.voiceOn = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { action() }
+        }
     }
 
     private var statusText: String {
@@ -111,13 +122,13 @@ struct VoiceOverlay: View {
         if phase == .idle && !speech.transcript.isEmpty {
             TextField("", text: $speech.transcript, axis: .vertical)
                 .focused($editing)
-                .font(.system(size: 24, weight: .medium, design: .rounded))
+                .font(.system(size: 22, weight: .medium, design: .rounded))
                 .lineLimit(1...6)
         } else if speech.transcript.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Например").font(.footnote).foregroundStyle(.tertiary)
                 Text(Self.examples[exampleIndex])
-                    .font(.system(size: 24, weight: .medium, design: .rounded))
+                    .font(.system(size: 22, weight: .medium, design: .rounded))
                     .foregroundStyle(.tertiary)
                     .id(exampleIndex)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
@@ -125,7 +136,7 @@ struct VoiceOverlay: View {
         } else {
             ScrollView {
                 Text(speech.transcript)
-                    .font(.system(size: 24, weight: .medium, design: .rounded))
+                    .font(.system(size: 22, weight: .medium, design: .rounded))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .opacity(phase == .thinking ? 0.5 : 1)
             }
@@ -142,12 +153,12 @@ struct VoiceOverlay: View {
             ZStack {
                 Circle()
                     .fill((phase == .listening ? Theme.exp : Theme.accent).opacity(0.16))
-                    .frame(width: 84, height: 84)
+                    .frame(width: 76, height: 76)
                     .scaleEffect(phase == .listening ? 1 + CGFloat(speech.level) * 0.35 : 1)
                     .animation(.easeOut(duration: 0.12), value: speech.level)
                 Circle()
                     .fill(phase == .listening ? Theme.exp : Theme.accent)
-                    .frame(width: 64, height: 64)
+                    .frame(width: 58, height: 58)
                 if phase == .thinking {
                     ProgressView().tint(.white)
                 } else {
@@ -208,5 +219,22 @@ struct Waveform: View {
             }
         }
         .animation(.easeOut(duration: 0.1), value: levels)
+    }
+}
+
+struct SideButton: View {
+    let symbol: String
+    let label: String
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 46, height: 46)
+                .background(Theme.soft, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }

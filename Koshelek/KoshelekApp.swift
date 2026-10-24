@@ -27,22 +27,71 @@ struct RootView: View {
     var overdueCount: Int { allInstallments(debts).filter { $0.st == .overdue && $0.debt.isOut }.count }
     var pendingCount: Int { pendingRecurring(recs, txs: txs).count }
 
-    var body: some View {
-        TabView(selection: $router.tab) {
-            TodayView()
-                .tabItem { Label("Сегодня", systemImage: "sun.max.fill") }
-                .tag(0)
-            WalletView()
-                .tabItem { Label("Кошелёк", systemImage: "creditcard.fill") }
-                .badge(overdueCount + pendingCount)
-                .tag(1)
-            LifeView()
-                .tabItem { Label("Дела", systemImage: "checklist") }
-                .tag(2)
-            CardsView()
-                .tabItem { Label("Карты", systemImage: "wallet.pass.fill") }
-                .tag(3)
+    @State private var showScan = false
+
+    /// Выбор вкладки «Голос» не переключает экран, а открывает голосовую панель.
+    private var tabSelection: Binding<Int> {
+        Binding(get: { router.tab }, set: { v in
+            if v == 4 { UIImpactFeedbackGenerator(style: .medium).impactOccurred(); router.startVoice() }
+            else { router.tab = v }
+        })
+    }
+
+    @ViewBuilder private var tabs: some View {
+        if #available(iOS 18.0, *) {
+            TabView(selection: tabSelection) {
+                Tab("Сегодня", systemImage: "sun.max.fill", value: 0) { TodayView() }
+                Tab("Кошелёк", systemImage: "creditcard.fill", value: 1) { WalletView() }
+                    .badge(overdueCount + pendingCount)
+                Tab("Дела", systemImage: "checklist", value: 2) { LifeView() }
+                Tab("Карты", systemImage: "wallet.pass.fill", value: 3) { CardsView() }
+                Tab("Сказать", systemImage: "mic.fill", value: 4, role: .search) { Color.clear }
+            }
+        } else {
+            TabView(selection: $router.tab) {
+                TodayView().tabItem { Label("Сегодня", systemImage: "sun.max.fill") }.tag(0)
+                WalletView().tabItem { Label("Кошелёк", systemImage: "creditcard.fill") }.badge(overdueCount + pendingCount).tag(1)
+                LifeView().tabItem { Label("Дела", systemImage: "checklist") }.tag(2)
+                CardsView().tabItem { Label("Карты", systemImage: "wallet.pass.fill") }.tag(3)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                Button { router.startVoice() } label: {
+                    Image(systemName: "mic.fill").font(.title3.weight(.semibold)).foregroundStyle(Theme.onAccent)
+                        .frame(width: 56, height: 56).background(Theme.accent, in: Circle())
+                        .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
+                }
+                .padding(.trailing, 18).padding(.bottom, 64)
+            }
         }
+    }
+
+    private func startScan() {
+        guard Keychain.hasKey else {
+            router.say("Для скана нужен ключ Claude API")
+            router.show(.settings)
+            return
+        }
+        showScan = true
+    }
+
+    private func scan(_ imgs: [Data]) {
+        router.busy = imgs.count > 1 ? "Claude читает \(imgs.count) \(plural(imgs.count, "картинку", "картинки", "картинок"))…" : "Claude читает чек…"
+        Task {
+            defer { router.busy = nil }
+            do {
+                let items = try await Brain.parseReceipts(imgs, ctx: ctx)
+                if items.isEmpty { router.say("Не нашёл операций на изображении"); return }
+                router.show(.review(ReviewPayload(items: items, subtitle: "Найдено \(items.count) — проверьте перед добавлением")))
+            } catch {
+                router.say(error.localizedDescription)
+            }
+        }
+    }
+
+    var body: some View {
+        tabs
+        .scanFlow(isPresented: $showScan) { imgs in scan(imgs) }
+        .onChange(of: router.scanRequest) { _, _ in startScan() }
         .sheet(item: $router.sheet) { route in
             switch route {
             case .voice: EmptyView()

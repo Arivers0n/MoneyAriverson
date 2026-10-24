@@ -42,11 +42,6 @@ struct LifeView: View {
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemBackground))
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) {
-                if !shopFocus && !taskFocus {
-                    VoiceDock(onScan: { router.tab = 0; router.scanRequest += 1 }, onAdd: addAction)
-                }
-            }
             .sheet(item: $habitEdit) { t in HabitForm(habit: t.habit) }
             .sheet(item: $goalEdit) { t in LifeGoalForm(goal: t.goal) }
             .task { tasks.refresh() }

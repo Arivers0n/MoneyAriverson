@@ -38,8 +38,6 @@ struct BudgetView: View {
             .scrollIndicators(.hidden)
             .background(Color(.systemBackground))
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) { VoiceDock(onScan: startScan, onAdd: { router.show(.newTx) }) }
-            .scanFlow(isPresented: $showScan) { imgs in scan(imgs) }
             .onChange(of: month) { _, _ in catFilter = nil }
             .sheet(isPresented: $showBudget) { BudgetLimitSheet(budget: $budget) }
             .sheet(item: $accEdit) { t in AccountForm(account: t.account) }

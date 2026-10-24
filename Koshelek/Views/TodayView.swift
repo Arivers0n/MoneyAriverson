@@ -36,10 +36,7 @@ struct TodayView: View {
             .scrollIndicators(.hidden)
             .background(Color(.systemBackground))
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) { VoiceDock(onScan: startScan, onAdd: { router.show(.newTx) }) }
-            .scanFlow(isPresented: $showScan) { imgs in scan(imgs) }
             .sheet(isPresented: $showChat) { AdvisorChat() }
-            .onChange(of: router.scanRequest) { _, _ in startScan() }
             .task {
                 tasks.refresh()
                 await loadTip(force: false)
