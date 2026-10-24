@@ -11,11 +11,16 @@ struct ChartPoint: Identifiable {
 
 struct StatsView: View {
     @EnvironmentObject var router: Router
-    @Query(sort: \Tx.date, order: .reverse) private var txs: [Tx]
-    @Query(sort: \Account.created) private var accs: [Account]
-    @Query private var debts: [Debt]
-    @Query private var recs: [Recurring]
-    @Query private var goals: [Goal]
+    @Query(sort: \Tx.date, order: .reverse) private var qTxs: [Tx]
+    private var txs: [Tx] { qTxs.live }
+    @Query(sort: \Account.created) private var qAccs: [Account]
+    private var accs: [Account] { qAccs.live }
+    @Query private var qDebts: [Debt]
+    private var debts: [Debt] { qDebts.live }
+    @Query private var qRecs: [Recurring]
+    private var recs: [Recurring] { qRecs.live }
+    @Query private var qGoals: [Goal]
+    private var goals: [Goal] { qGoals.live }
     @AppStorage("budget") private var budget: Double = 0
 
     @State private var month = Date().startOfMonth
@@ -31,7 +36,6 @@ struct StatsView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     WalletHeader(title: "Анализ", onAdd: nil)
-                    SectionSwitcher(titles: WalletView.sections, selection: $router.wallet)
                     MonthSwitcher(month: $month)
                     chartCard
                     reviewCard

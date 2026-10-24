@@ -95,11 +95,10 @@ enum Advisor {
     // MARK: Контекст для Claude
 
     static func context(ctx: ModelContext) -> String {
-        let txs = (try? ctx.fetch(FetchDescriptor<Tx>())) ?? []
-        let debts = (try? ctx.fetch(FetchDescriptor<Debt>())) ?? []
-        let recs = (try? ctx.fetch(FetchDescriptor<Recurring>())) ?? []
-        let goals = (try? ctx.fetch(FetchDescriptor<Goal>())) ?? []
-        let habits = (try? ctx.fetch(FetchDescriptor<Habit>())) ?? []
+        let txs = ctx.live(Tx.self)
+        let debts = ctx.live(Debt.self)
+        let recs = ctx.live(Recurring.self)
+        let goals = ctx.live(Goal.self)
         let budget = UserDefaults.standard.double(forKey: "budget")
         let now = Date()
         var d: [String: Any] = [:]
@@ -127,13 +126,12 @@ enum Advisor {
         d["долги"] = ds
         d["регулярные"] = recs.map { "\($0.name): \(Int($0.amount)) ₽ \($0.yearly ? "в год" : "в месяц")" }
         d["копилки"] = goals.map { "\($0.name): \(Int($0.saved)) из \(Int($0.target))" }
-        d["привычки"] = habits.map { "\($0.name): серия \($0.streak) дн." }
         let js = (try? JSONSerialization.data(withJSONObject: d, options: [.sortedKeys])).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         return js
     }
 
     static let persona = """
-    Ты — личный советник в приложении «Лад»: помогаешь человеку с деньгами, долгами и делами. Пиши по-русски, на «ты», коротко и по делу, как умный друг, а не банк. \
+    Ты — личный финансовый советник в приложении «Копилка»: помогаешь человеку с бюджетом, накоплениями и долгами. Пиши по-русски, на «ты», коротко и по делу, как умный друг, а не банк. \
     Опирайся только на данные пользователя, не выдумывай цифр. Давай конкретику: суммы, сроки, порядок действий. \
     Если видишь проблему (лишние траты, просрочки, опасная долговая нагрузка, микрозаймы) — говори прямо, но без морали. \
     Не давай советов по инвестициям в конкретные активы. Без markdown-заголовков и звёздочек; списки — строками с «— ».
@@ -150,7 +148,7 @@ enum Advisor {
         if !force, let t = cachedTip() { return t }
         let prompt = """
         Данные пользователя: \(context(ctx: ctx))
-        Дай ОДИН самый полезный на сегодня совет или замечание (2–3 предложения, до 300 знаков): что заметил в тратах, долгах или привычках и что конкретно сделать. Если данных мало — посоветуй, с чего начать вести учёт. Без вступлений.
+        Дай ОДИН самый полезный на сегодня совет или замечание (2–3 предложения, до 300 знаков): что заметил в тратах, накоплениях или долгах и что конкретно сделать. Если данных мало — посоветуй, с чего начать вести учёт. Без вступлений.
         """
         let t = try await Claude.ask(persona + "\n\n" + prompt, model: Claude.fastModel, maxTokens: 800)
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -220,8 +218,8 @@ struct AdvisorChat: View {
                         if messages.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
                                 Image(systemName: "sparkles").font(.title).foregroundStyle(Theme.accent)
-                                Text("Спросите что угодно о своих деньгах и делах").font(.title3.weight(.semibold))
-                                Text("Советник видит ваши траты, долги, подписки, копилки и привычки — и отвечает с цифрами.")
+                                Text("Спросите что угодно о своих деньгах").font(.title3.weight(.semibold))
+                                Text("Советник видит ваши траты, долги, подписки и копилки — и отвечает с цифрами.")
                                     .font(.subheadline).foregroundStyle(.secondary)
                                 ForEach(suggestions, id: \.self) { s in
                                     Button { send(s) } label: {

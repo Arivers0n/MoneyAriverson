@@ -9,8 +9,10 @@ struct PayTarget: Identifiable {
 
 struct DebtsView: View {
     @EnvironmentObject var router: Router
-    @Query(sort: \Debt.created) private var debts: [Debt]
-    @Query private var txs: [Tx]
+    @Query(sort: \Debt.created) private var qDebts: [Debt]
+    private var debts: [Debt] { qDebts.live }
+    @Query private var qTxs: [Tx]
+    private var txs: [Tx] { qTxs.live }
     @State private var calMonth = Date().startOfMonth
     @State private var selDay: Date?
     @State private var showForm = false
@@ -24,12 +26,12 @@ struct DebtsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 14) {
-                    WalletHeader(title: "Долги") { showForm = true }
-                    SectionSwitcher(titles: WalletView.sections, selection: $router.wallet)
+                    WalletHeader(title: "Платежи") { showForm = true }
                     hero
                     overdueAlert
                     if !debts.isEmpty { tiles }
                     calendar
+                    RecurringCard()
                     lists
                     advice
                 }

@@ -35,12 +35,12 @@ final class SpeechRecognizer: ObservableObject {
             SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0) }
         }
         guard speech == .authorized else {
-            error = "Разрешите распознавание речи: Настройки → Лад → Распознавание речи."
+            error = "Разрешите распознавание речи: Настройки → Копилка → Распознавание речи."
             return
         }
         let mic = await AVAudioApplication.requestRecordPermission()
         guard mic else {
-            error = "Разрешите доступ к микрофону: Настройки → Лад → Микрофон."
+            error = "Разрешите доступ к микрофону: Настройки → Копилка → Микрофон."
             return
         }
         guard let recognizer, recognizer.isAvailable else {
@@ -143,8 +143,8 @@ enum Notifier {
         let center = UNUserNotificationCenter.current()
         center.removeAllPendingNotificationRequests()
         guard enabled else { return }
-        let debts = (try? ctx.fetch(FetchDescriptor<Debt>())) ?? []
-        let recs = (try? ctx.fetch(FetchDescriptor<Recurring>())) ?? []
+        let debts = ctx.live(Debt.self)
+        let recs = ctx.live(Recurring.self)
         let now = Date()
         var items: [(Date, String, String)] = []
 
@@ -153,14 +153,14 @@ enum Notifier {
             let sameDay = cal.date(bySettingHour: 9, minute: 0, second: 0, of: x.due) ?? x.due
             let verb = x.debt.isOut ? "Платёж" : "Вам должны вернуть"
             if dayBefore > now { items.append((dayBefore, "Завтра платёж: \(x.debt.name)", "\(verb) \(Fmt.rubU(x.amount)) — \(DF.short(x.due)).")) }
-            if sameDay > now { items.append((sameDay, "Сегодня платёж: \(x.debt.name)", "\(Fmt.rubU(x.amount)). Не забудьте отметить оплату в Ладе.")) }
+            if sameDay > now { items.append((sameDay, "Сегодня платёж: \(x.debt.name)", "\(Fmt.rubU(x.amount)). Не забудьте отметить оплату в Копилке.")) }
         }
         for r in recs {
             for k in 0..<3 {
                 let m = now.addingMonths(k)
                 guard let d = r.due(in: m) else { continue }
                 let at = cal.date(bySettingHour: 10, minute: 0, second: 0, of: d) ?? d
-                if at > now { items.append((at, r.name, "\(r.kind == .inc ? "Поступление" : "Списание") \(Fmt.rubU(r.amount)). Запишите в Лад одним касанием.")) }
+                if at > now { items.append((at, r.name, "\(r.kind == .inc ? "Поступление" : "Списание") \(Fmt.rubU(r.amount)). Запишите в Копилку одним касанием.")) }
             }
         }
         for (i, it) in items.sorted(by: { $0.0 < $1.0 }).prefix(60).enumerated() {
@@ -237,9 +237,9 @@ final class Router: ObservableObject {
         case "voice": tab = 0; show(.voice(auto: true))
         case "scan": sheet = nil; scanRequest += 1
         case "add": tab = 0; show(.newTx)
-        case "debts": tab = 1; wallet = 1
-        case "tasks": tab = 2; life = 0
-        case "cards": tab = 3
+        case "debts": tab = 2
+        case "goals", "cards": tab = 1
+        case "stats": tab = 3
         default: break
         }
     }

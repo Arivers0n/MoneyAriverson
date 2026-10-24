@@ -50,7 +50,7 @@ enum CSV {
     static func importCSV(_ text: String, ctx: ModelContext) -> Int {
         let rows = parse(text)
         guard rows.count > 1 else { return 0 }
-        var accs = (try? ctx.fetch(FetchDescriptor<Account>())) ?? []
+        var accs = ctx.live(Account.self)
         func acc(_ n: String) -> UUID? {
             let n = n.trimmingCharacters(in: .whitespaces)
             guard !n.isEmpty else { return nil }
@@ -69,7 +69,7 @@ enum CSV {
             ctx.insert(t)
             count += 1
         }
-        try? ctx.save()
+        ctx.commit()
         return count
     }
 }

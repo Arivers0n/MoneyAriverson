@@ -1,0 +1,134 @@
+/// <reference path="../pb_data/types.d.ts" />
+// Маршруты синхронизации Копилки. Все требуют вход пользователя (коллекция users).
+
+// Список пространств пользователя; личное создаётся автоматически.
+routerAdd("POST", "/api/kp/spaces", (e) => {
+    const u = require(`${__hooks}/kp_utils.js`)
+    const uid = e.auth.id
+    let list = u.userSpaces(e.app, uid)
+    if (!list.some((r) => r.getBool("personal") && r.getString("owner") === uid)) {
+        const col = e.app.findCollectionByNameOrId("kp_spaces")
+        const rec = new Record(col)
+        rec.set("name", "Личное")
+        rec.set("owner", uid)
+        rec.set("members", [uid])
+        rec.set("personal", true)
+        rec.set("code", u.newCode())
+        e.app.save(rec)
+        list = u.userSpaces(e.app, uid)
+    }
+    return e.json(200, { spaces: list.map((r) => u.spaceJSON(e.app, r)) })
+}, $apis.requireAuth("users"))
+
+// Создать общее пространство (например, «Семья»).
+routerAdd("POST", "/api/kp/space/create", (e) => {
+    const u = require(`${__hooks}/kp_utils.js`)
+    const body = e.requestInfo().body || {}
+    const name = String(body.name || "Семья").trim().slice(0, 80) || "Семья"
+    const col = e.app.findCollectionByNameOrId("kp_spaces")
+    const rec = new Record(col)
+    rec.set("name", name)
+    rec.set("owner", e.auth.id)
+    rec.set("members", [e.auth.id])
+    rec.set("personal", false)
+    rec.set("code", u.newCode())
+    e.app.save(rec)
+    return e.json(200, { space: u.spaceJSON(e.app, rec) })
+}, $apis.requireAuth("users"))
+
+// Вступить по коду приглашения.
+routerAdd("POST", "/api/kp/space/join", (e) => {
+    const u = require(`${__hooks}/kp_utils.js`)
+    const body = e.requestInfo().body || {}
+    const code = String(body.code || "").trim().toUpperCase()
+    if (code.length < 4) throw new BadRequestError("Введите код приглашения")
+    let rec
+    try { rec = e.app.findFirstRecordByFilter("kp_spaces", "code = {:c} && personal = false", { c: code }) }
+    catch (_) { throw new NotFoundError("Код не найден. Проверьте его у владельца бюджета.") }
+    const m = u.members(rec)
+    if (m.indexOf(e.auth.id) < 0) { m.push(e.auth.id); rec.set("members", m); e.app.save(rec) }
+    return e.json(200, { space: u.spaceJSON(e.app, rec) })
+}, $apis.requireAuth("users"))
+
+// Выйти из общего пространства (владелец передаёт права следующему участнику).
+routerAdd("POST", "/api/kp/space/leave", (e) => {
+    const u = require(`${__hooks}/kp_utils.js`)
+    const body = e.requestInfo().body || {}
+    const rec = u.requireSpace(e.app, String(body.space || ""), e.auth.id)
+    if (rec.getBool("personal")) throw new BadRequestError("Из личного пространства выйти нельзя")
+    const m = u.members(rec).filter((x) => x !== e.auth.id)
+    rec.set("members", m)
+    if (rec.getString("owner") === e.auth.id && m.length > 0) rec.set("owner", m[0])
+    e.app.save(rec)
+    return e.json(200, { ok: true })
+}, $apis.requireAuth("users"))
+
+// Переименовать, обновить код или удалить участника (только владелец).
+routerAdd("POST", "/api/kp/space/update", (e) => {
+    const u = require(`${__hooks}/kp_utils.js`)
+    const body = e.requestInfo().body || {}
+    const rec = u.requireSpace(e.app, String(body.space || ""), e.auth.id)
+    if (rec.getString("owner") !== e.auth.id) throw new ForbiddenError("Это может только владелец")
+    if (body.name) rec.set("name", String(body.name).trim().slice(0, 80))
+    if (body.newCode) rec.set("code", u.newCode())
+    if (body.kick && body.kick !== e.auth.id) rec.set("members", u.members(rec).filter((x) => x !== body.kick))
+    e.app.save(rec)
+    return e.json(200, { space: u.spaceJSON(e.app, rec) })
+}, $apis.requireAuth("users"))
+
+// Забрать изменения после курсора since (серверное время записи).
+routerAdd("POST", "/api/kp/pull", (e) => {
+    const u = require(`${__hooks}/kp_utils.js`)
+    const body = e.requestInfo().body || {}
+    const space = String(body.space || "")
+    u.requireSpace(e.app, space, e.auth.id)
+    const since = Number(body.since || 0)
+    const limit = 500
+    const recs = e.app.findRecordsByFilter("kp_docs", "space = {:s} && srv > {:since}", "srv", limit + 1, 0, { s: space, since: since })
+    const more = recs.length > limit
+    const out = []
+    let cursor = since
+    for (const r of recs.slice(0, limit)) {
+        let data = {}
+        try { data = JSON.parse(r.getString("data") || "{}") } catch (_) {}
+        out.push({ cid: r.getString("cid"), kind: r.getString("kind"), data: data, deleted: r.getBool("deleted"),
+                   cts: r.getFloat("cts"), srv: r.getFloat("srv"), author: r.getString("author") })
+        cursor = r.getFloat("srv")
+    }
+    return e.json(200, { docs: out, cursor: cursor, more: more })
+}, $apis.requireAuth("users"))
+
+// Отправить изменения. Побеждает более свежая правка (по времени клиента).
+routerAdd("POST", "/api/kp/push", (e) => {
+    const u = require(`${__hooks}/kp_utils.js`)
+    const body = e.requestInfo().body || {}
+    const space = String(body.space || "")
+    u.requireSpace(e.app, space, e.auth.id)
+    const docs = Array.isArray(body.docs) ? body.docs.slice(0, 500) : []
+    const col = e.app.findCollectionByNameOrId("kp_docs")
+    const base = Date.now() * 1000
+    let i = 0, saved = 0, skipped = 0
+    for (const d of docs) {
+        const cid = String(d.cid || "")
+        if (!cid) continue
+        let rec = null
+        try { rec = e.app.findFirstRecordByFilter("kp_docs", "space = {:s} && cid = {:c}", { s: space, c: cid }) } catch (_) {}
+        const cts = Number(d.cts || 0)
+        if (rec && rec.getFloat("cts") > cts) { skipped++; continue }
+        if (!rec) { rec = new Record(col); rec.set("space", space); rec.set("cid", cid) }
+        rec.set("kind", String(d.kind || ""))
+        rec.set("data", d.data || {})
+        rec.set("deleted", !!d.deleted)
+        rec.set("cts", cts)
+        rec.set("srv", base + (i++))
+        rec.set("author", d.author ? String(d.author) : e.auth.id)
+        e.app.save(rec)
+        saved++
+    }
+    return e.json(200, { saved: saved, skipped: skipped })
+}, $apis.requireAuth("users"))
+
+// Проверка, что сервер живой (для экрана настроек).
+routerAdd("GET", "/api/kp/ping", (e) => {
+    return e.json(200, { ok: true, app: "kopilka", version: 1 })
+})

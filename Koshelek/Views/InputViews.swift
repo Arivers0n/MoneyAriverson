@@ -8,7 +8,8 @@ struct TxForm: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var router: Router
-    @Query(sort: \Account.created) private var accs: [Account]
+    @Query(sort: \Account.created) private var qAccs: [Account]
+    private var accs: [Account] { qAccs.live }
     @AppStorage("lastAcc") private var lastAcc = ""
 
     @State private var kind: TxKind = .exp
@@ -78,7 +79,7 @@ struct TxForm: View {
             }
             .confirmationDialog("Удалить операцию?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Удалить", role: .destructive) {
-                    if let tx { ctx.delete(tx); try? ctx.save() }
+                    if let tx { tx.softDelete(); ctx.commit() }
                     dismiss()
                 }
             }
@@ -105,7 +106,7 @@ struct TxForm: View {
             ctx.insert(Tx(kind: kind, amount: v, cat: kind == .tr ? "" : cat, note: note, date: date, accID: acc, toID: kind == .tr ? to : nil))
         }
         if let acc { lastAcc = acc.uuidString }
-        try? ctx.save()
+        ctx.commit()
         dismiss()
         router.say(tx == nil ? "Добавлено" : "Сохранено")
     }
@@ -117,7 +118,8 @@ struct AccountForm: View {
     let account: Account?
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var dismiss
-    @Query private var accs: [Account]
+    @Query private var qAccs: [Account]
+    private var accs: [Account] { qAccs.live }
     @State private var name = ""
     @State private var start = ""
     @State private var confirmDelete = false
@@ -154,7 +156,7 @@ struct AccountForm: View {
                         let s = parseAmount(start) ?? 0
                         if let a = account { a.name = n; a.start = s }
                         else { ctx.insert(Account(name: n, start: s, hex: Theme.palette[accs.count % Theme.palette.count])) }
-                        try? ctx.save()
+                        ctx.commit()
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -162,7 +164,7 @@ struct AccountForm: View {
             }
             .confirmationDialog("Операции останутся, но без счёта. Удалить?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Удалить", role: .destructive) {
-                    if let a = account { ctx.delete(a); try? ctx.save() }
+                    if let a = account { a.softDelete(); ctx.commit() }
                     dismiss()
                 }
             }
@@ -181,9 +183,12 @@ struct ReviewSheet: View {
     @EnvironmentObject var router: Router
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Account.created) private var accs: [Account]
-    @Query private var debts: [Debt]
-    @Query private var goals: [Goal]
+    @Query(sort: \Account.created) private var qAccs: [Account]
+    private var accs: [Account] { qAccs.live }
+    @Query private var qDebts: [Debt]
+    private var debts: [Debt] { qDebts.live }
+    @Query private var qGoals: [Goal]
+    private var goals: [Goal] { qGoals.live }
     @AppStorage("lastAcc") private var lastAcc = ""
     @State private var items: [ParsedItem] = []
     @State private var acc: UUID?
@@ -235,7 +240,6 @@ struct ReviewSheet: View {
     private func save() {
         for i in items.indices where items[i].isMoney { items[i].amount = parseAmount(items[i].amountText) ?? 0 }
         Task {
-            if items.contains(where: { $0.on && $0.kind == .task }) { await TaskStore.shared.requestAccess() }
             let res = Saver.apply(items, account: acc, ctx: ctx)
             if let acc { lastAcc = acc.uuidString }
             router.finishSave(res)

@@ -26,7 +26,7 @@ targets:
     info:
       path: Koshelek/Info.plist
       properties:
-        CFBundleDisplayName: Лад
+        CFBundleDisplayName: Копилка
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDevelopmentRegion: ru
@@ -38,9 +38,10 @@ targets:
         NSMicrophoneUsageDescription: Микрофон нужен, чтобы записывать траты голосом.
         NSSpeechRecognitionUsageDescription: Распознавание речи превращает ваш рассказ в текст, чтобы записать траты.
         NSCameraUsageDescription: Камера нужна, чтобы сфотографировать чек или график платежей.
-        NSRemindersFullAccessUsageDescription: Лад показывает ваши задачи из «Напоминаний» и добавляет туда новые, сказанные голосом.
-        NSRemindersUsageDescription: Лад показывает ваши задачи из «Напоминаний» и добавляет туда новые, сказанные голосом.
         NSPhotoLibraryUsageDescription: Доступ к фото нужен, чтобы выбрать скриншот чека или графика платежей.
+        INAlternativeAppNames:
+          - INAlternativeAppName: Копилку
+          - INAlternativeAppName: Копилке
         CFBundleURLTypes:
           - CFBundleURLName: ru.koshelek.app
             CFBundleURLSchemes: [koshelek]
@@ -60,7 +61,7 @@ targets:
     info:
       path: KoshelekWidget/Info.plist
       properties:
-        CFBundleDisplayName: Лад
+        CFBundleDisplayName: Копилка
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:

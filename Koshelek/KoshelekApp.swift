@@ -4,11 +4,13 @@ import SwiftData
 @main
 struct KoshelekApp: App {
     @StateObject private var router = Router.shared
+    @StateObject private var sync = SyncEngine.shared
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(router)
+                .environmentObject(sync)
                 .onOpenURL { router.handle(url: $0) }
                 .tint(Theme.accent)
         }
@@ -18,11 +20,15 @@ struct KoshelekApp: App {
 
 struct RootView: View {
     @EnvironmentObject var router: Router
+    @EnvironmentObject var sync: SyncEngine
     @Environment(\.modelContext) private var ctx
     @Environment(\.scenePhase) private var phase
-    @Query private var debts: [Debt]
-    @Query private var txs: [Tx]
-    @Query private var recs: [Recurring]
+    @Query private var qDebts: [Debt]
+    private var debts: [Debt] { qDebts.live }
+    @Query private var qTxs: [Tx]
+    private var txs: [Tx] { qTxs.live }
+    @Query private var qRecs: [Recurring]
+    private var recs: [Recurring] { qRecs.live }
 
     var overdueCount: Int { allInstallments(debts).filter { $0.st == .overdue && $0.debt.isOut }.count }
     var pendingCount: Int { pendingRecurring(recs, txs: txs).count }
@@ -40,19 +46,19 @@ struct RootView: View {
     @ViewBuilder private var tabs: some View {
         if #available(iOS 18.0, *) {
             TabView(selection: tabSelection) {
-                Tab("Сегодня", systemImage: "sun.max.fill", value: 0) { TodayView() }
-                Tab("Кошелёк", systemImage: "creditcard.fill", value: 1) { WalletView() }
+                Tab("Главная", systemImage: "house.fill", value: 0) { BudgetView() }
+                Tab("Копилки", systemImage: "banknote.fill", value: 1) { SavingsView() }
+                Tab("Платежи", systemImage: "calendar", value: 2) { DebtsView() }
                     .badge(overdueCount + pendingCount)
-                Tab("Дела", systemImage: "checklist", value: 2) { LifeView() }
-                Tab("Карты", systemImage: "wallet.pass.fill", value: 3) { CardsView() }
+                Tab("Анализ", systemImage: "chart.bar.fill", value: 3) { StatsView() }
                 Tab("Сказать", systemImage: "mic.fill", value: 4, role: .search) { Color.clear }
             }
         } else {
             TabView(selection: $router.tab) {
-                TodayView().tabItem { Label("Сегодня", systemImage: "sun.max.fill") }.tag(0)
-                WalletView().tabItem { Label("Кошелёк", systemImage: "creditcard.fill") }.badge(overdueCount + pendingCount).tag(1)
-                LifeView().tabItem { Label("Дела", systemImage: "checklist") }.tag(2)
-                CardsView().tabItem { Label("Карты", systemImage: "wallet.pass.fill") }.tag(3)
+                BudgetView().tabItem { Label("Главная", systemImage: "house.fill") }.tag(0)
+                SavingsView().tabItem { Label("Копилки", systemImage: "banknote.fill") }.tag(1)
+                DebtsView().tabItem { Label("Платежи", systemImage: "calendar") }.badge(overdueCount + pendingCount).tag(2)
+                StatsView().tabItem { Label("Анализ", systemImage: "chart.bar.fill") }.tag(3)
             }
             .overlay(alignment: .bottomTrailing) {
                 Button { router.startVoice() } label: {
@@ -90,6 +96,7 @@ struct RootView: View {
 
     var body: some View {
         tabs
+        .id(sync.spaceVersion)
         .scanFlow(isPresented: $showScan) { imgs in scan(imgs) }
         .onChange(of: router.scanRequest) { _, _ in startScan() }
         .sheet(item: $router.sheet) { route in
@@ -149,11 +156,21 @@ struct RootView: View {
         }
         .animation(.spring(duration: 0.3), value: router.toast)
         .onChange(of: phase) { _, p in
-            if p == .active { Notifier.reschedule(ctx: ctx) }
+            if p == .active {
+                Notifier.reschedule(ctx: ctx)
+                Task { await sync.sync(ctx: ctx) }
+            } else if p == .background {
+                ctx.commitIfNeeded()
+            }
         }
         .task {
             if Notifier.enabled { _ = await Notifier.requestPermission() }
             Notifier.reschedule(ctx: ctx)
+            // Пока приложение открыто — подтягиваем изменения семьи раз в 20 секунд
+            while !Task.isCancelled {
+                await sync.sync(ctx: ctx)
+                try? await Task.sleep(nanoseconds: 20_000_000_000)
+            }
         }
     }
 }

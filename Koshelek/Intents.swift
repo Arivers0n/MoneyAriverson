@@ -4,8 +4,8 @@ import Foundation
 
 /// «Привет, Siri, запиши в Кошелёк» → Siri спрашивает «Что записать?» → сохраняем без открытия приложения.
 struct RecordMoneyIntent: AppIntent {
-    static var title: LocalizedStringResource = "Записать в Лад"
-    static var description = IntentDescription("Записывает траты, доходы, платежи по кредитам, задачи, покупки и привычки, сказанные своими словами.")
+    static var title: LocalizedStringResource = "Записать в Копилку"
+    static var description = IntentDescription("Записывает траты, доходы, платежи по кредитам и пополнения копилок, сказанные своими словами.")
     static var openAppWhenRun: Bool = false
 
     @Parameter(title: "Что записать", requestValueDialog: "Что записать?")
@@ -20,7 +20,7 @@ struct RecordMoneyIntent: AppIntent {
         guard !items.isEmpty else {
             return .result(dialog: "Не нашёл суммы. Скажите, например: кофе двести пятьдесят.")
         }
-        let accs = (try? ctx.fetch(FetchDescriptor<Account>(sortBy: [SortDescriptor(\.created)]))) ?? []
+        let accs = ctx.live(Account.self).sorted { $0.created < $1.created }
         let last = UserDefaults.standard.string(forKey: "lastAcc") ?? ""
         let acc = accs.first { $0.uid.uuidString == last }?.uid ?? accs.first?.uid
         let res = Saver.apply(items, account: acc, ctx: ctx)
@@ -33,8 +33,8 @@ struct RecordMoneyIntent: AppIntent {
 
 /// Открывает экран голосового ввода и сразу включает микрофон.
 struct OpenVoiceIntent: AppIntent {
-    static var title: LocalizedStringResource = "Голосовой ввод в Ладе"
-    static var description = IntentDescription("Открывает Лад и сразу начинает слушать.")
+    static var title: LocalizedStringResource = "Голосовой ввод в Копилке"
+    static var description = IntentDescription("Открывает Копилку и сразу начинает слушать.")
     static var openAppWhenRun: Bool = true
 
     @MainActor
@@ -46,8 +46,8 @@ struct OpenVoiceIntent: AppIntent {
 }
 
 struct OpenScanIntent: AppIntent {
-    static var title: LocalizedStringResource = "Скан чека в Ладе"
-    static var description = IntentDescription("Открывает Лад для скана чека или скриншота.")
+    static var title: LocalizedStringResource = "Скан чека в Копилке"
+    static var description = IntentDescription("Открывает Копилку для скана чека или скриншота.")
     static var openAppWhenRun: Bool = true
 
     @MainActor
@@ -60,7 +60,7 @@ struct OpenScanIntent: AppIntent {
 struct KoshelekShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: RecordMoneyIntent(),
-                    phrases: ["Запиши в \(.applicationName)", "Записать в \(.applicationName)", "Добавь в \(.applicationName)", "Запиши трату в \(.applicationName)", "Добавь задачу в \(.applicationName)"],
+                    phrases: ["Запиши в \(.applicationName)", "Записать в \(.applicationName)", "Добавь в \(.applicationName)", "Запиши трату в \(.applicationName)"],
                     shortTitle: "Записать",
                     systemImageName: "mic.fill")
         AppShortcut(intent: OpenVoiceIntent(),

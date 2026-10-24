@@ -4,6 +4,11 @@ import SwiftData
 @Model
 final class Tx {
     var uid: UUID = UUID()
+    var space: String = ""
+    var updatedAt: Date = Date.distantPast
+    var dirty: Bool = true
+    var removed: Bool = false
+    var author: String = ""
     var kindRaw: String = "exp"
     var amount: Double = 0
     var cat: String = "other"
@@ -45,6 +50,11 @@ final class Tx {
 @Model
 final class Account {
     var uid: UUID = UUID()
+    var space: String = ""
+    var updatedAt: Date = Date.distantPast
+    var dirty: Bool = true
+    var removed: Bool = false
+    var author: String = ""
     var name: String = ""
     var start: Double = 0
     var hex: String = "2B47C9"
@@ -73,6 +83,11 @@ struct ExtraPay: Codable, Hashable {
 @Model
 final class Debt {
     var uid: UUID = UUID()
+    var space: String = ""
+    var updatedAt: Date = Date.distantPast
+    var dirty: Bool = true
+    var removed: Bool = false
+    var author: String = ""
     var typeRaw: String = "credit"
     var dirIn: Bool = false
     var name: String = ""
@@ -119,6 +134,11 @@ final class Debt {
 @Model
 final class Recurring {
     var uid: UUID = UUID()
+    var space: String = ""
+    var updatedAt: Date = Date.distantPast
+    var dirty: Bool = true
+    var removed: Bool = false
+    var author: String = ""
     var name: String = ""
     var amount: Double = 0
     var kindRaw: String = "exp"
@@ -153,12 +173,22 @@ struct GoalEntry: Codable, Hashable {
 @Model
 final class Goal {
     var uid: UUID = UUID()
+    var space: String = ""
+    var updatedAt: Date = Date.distantPast
+    var dirty: Bool = true
+    var removed: Bool = false
+    var author: String = ""
     var name: String = ""
     var target: Double = 0
     var deadline: Date? = nil
     var hex: String = "2B47C9"
     var logData: Data = Data()
     var created: Date = Date()
+    /// Сколько процентов от каждого дохода откладывать сюда автоматически
+    var autoPercent: Double = 0
+    /// Округлять траты до этой суммы и откладывать разницу (0 — выключено)
+    var roundUp: Int = 0
+    var symbol: String = "banknote.fill"
 
     init(name: String, target: Double, deadline: Date?, hex: String) {
         self.uid = UUID()

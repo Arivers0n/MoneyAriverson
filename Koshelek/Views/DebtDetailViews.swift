@@ -158,7 +158,7 @@ struct DebtForm: View {
         } else {
             ctx.insert(Debt(type: type, dirIn: type == .person ? dirIn : false, name: finalName, lender: lender, total: t, payment: pay, n: n, first: first, rate: max(0, r)))
         }
-        try? ctx.save()
+        ctx.commit()
         Notifier.reschedule(ctx: ctx)
         dismiss()
         router.say(debt == nil ? "Долг добавлен, график построен" : "Сохранено")
@@ -242,7 +242,7 @@ struct DebtDetail: View {
                                     var ex = debt.extras
                                     ex.remove(at: j)
                                     debt.extras = ex
-                                    try? ctx.save()
+                                    ctx.commit()
                                 }
                                 .font(.subheadline)
                             }
@@ -263,8 +263,8 @@ struct DebtDetail: View {
         .sheet(isPresented: $edit) { DebtForm(debt: debt) }
         .confirmationDialog("Удалить «\(debt.name)» вместе с графиком?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Удалить", role: .destructive) {
-                ctx.delete(debt)
-                try? ctx.save()
+                debt.softDelete()
+                ctx.commit()
                 Notifier.reschedule(ctx: ctx)
                 dismiss()
             }
@@ -323,7 +323,8 @@ struct PaySheet: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var router: Router
-    @Query(sort: \Account.created) private var accs: [Account]
+    @Query(sort: \Account.created) private var qAccs: [Account]
+    private var accs: [Account] { qAccs.live }
     @AppStorage("lastAcc") private var lastAcc = ""
 
     @State private var amount = ""
@@ -402,7 +403,7 @@ struct PaySheet: View {
             ctx.insert(Tx(kind: debt.isOut ? .exp : .inc, amount: v, cat: debt.isOut ? "loans" : "debtback",
                           note: debt.name + (isExtra ? " · досрочно" : ""), date: date, accID: acc))
         }
-        try? ctx.save()
+        ctx.commit()
         Notifier.reschedule(ctx: ctx)
         dismiss()
         if before > 0 && debt.remaining <= 0 {
@@ -416,7 +417,7 @@ struct PaySheet: View {
         var p = debt.payments
         p.removeValue(forKey: index)
         debt.payments = p
-        try? ctx.save()
+        ctx.commit()
         Notifier.reschedule(ctx: ctx)
         dismiss()
     }

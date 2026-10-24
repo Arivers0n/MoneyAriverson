@@ -6,8 +6,10 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var router: Router
-    @Query(sort: \Tx.date) private var txs: [Tx]
-    @Query(sort: \Account.created) private var accs: [Account]
+    @Query(sort: \Tx.date) private var qTxs: [Tx]
+    private var txs: [Tx] { qTxs.live }
+    @Query(sort: \Account.created) private var qAccs: [Account]
+    private var accs: [Account] { qAccs.live }
     @AppStorage("budget") private var budget: Double = 0
 
     @State private var key = Keychain.apiKey ?? ""
@@ -21,6 +23,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                SyncSettingsSection()
+
                 Section {
                     SecureField("sk-ant-…", text: $key)
                         .textInputAutocapitalization(.never)
@@ -54,18 +58,18 @@ struct SettingsView: View {
 
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("«Привет, Siri, запиши в Лад»").font(.body.weight(.semibold))
+                        Text("«Привет, Siri, запиши в Копилку»").font(.body.weight(.semibold))
                         Text("Siri спросит, что записать, — скажите своими словами: «кофе двести пятьдесят, такси четыреста». Всё сохранится без открытия приложения.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Виджет и экран блокировки").font(.body.weight(.semibold))
-                        Text("Добавьте виджет «Лад»: кнопки «Голосом», «Скан» и «Вручную» открывают нужный экран сразу. На экране блокировки — круглая кнопка микрофона.")
+                        Text("Добавьте виджет «Копилка»: кнопки «Голосом», «Скан» и «Вручную» открывают нужный экран сразу. На экране блокировки — круглая кнопка микрофона.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Кнопка «Действие»").font(.body.weight(.semibold))
-                        Text("Настройки → Кнопка «Действие» → Быстрая команда → «Записать в Лад». Зажали кнопку — и говорите.")
+                        Text("Настройки → Кнопка «Действие» → Быстрая команда → «Записать в Копилку». Зажали кнопку — и говорите.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 } header: { Text("Без открытия приложения") }

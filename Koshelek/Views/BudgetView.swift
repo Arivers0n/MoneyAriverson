@@ -4,10 +4,14 @@ import SwiftData
 struct BudgetView: View {
     @EnvironmentObject var router: Router
     @Environment(\.modelContext) private var ctx
-    @Query(sort: \Tx.date, order: .reverse) private var txs: [Tx]
-    @Query(sort: \Account.created) private var accs: [Account]
-    @Query private var recs: [Recurring]
-    @Query private var debts: [Debt]
+    @Query(sort: \Tx.date, order: .reverse) private var qTxs: [Tx]
+    private var txs: [Tx] { qTxs.live }
+    @Query(sort: \Account.created) private var qAccs: [Account]
+    private var accs: [Account] { qAccs.live }
+    @Query private var qRecs: [Recurring]
+    private var recs: [Recurring] { qRecs.live }
+    @Query private var qDebts: [Debt]
+    private var debts: [Debt] { qDebts.live }
     @AppStorage("budget") private var budget: Double = 0
 
     @State private var month = Date().startOfMonth
@@ -15,6 +19,8 @@ struct BudgetView: View {
     @State private var showScan = false
     @State private var showBudget = false
     @State private var accEdit: AccountEditTarget?
+    @State private var tip: String? = Advisor.cachedTip()
+    @State private var showChat = false
 
     var monthTxs: [Tx] { txs.filter { $0.date.sameMonth(month) } }
     var shownTxs: [Tx] { catFilter.map { c in monthTxs.filter { $0.cat == c } } ?? monthTxs }
@@ -24,8 +30,8 @@ struct BudgetView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
                     header
-                    SectionSwitcher(titles: WalletView.sections, selection: $router.wallet)
                     hero
+                    advisor
                     alerts
                     if !byCategory(monthTxs).isEmpty { categoryStrip }
                     accountsStrip
@@ -40,6 +46,13 @@ struct BudgetView: View {
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: month) { _, _ in catFilter = nil }
             .sheet(isPresented: $showBudget) { BudgetLimitSheet(budget: $budget) }
+            .sheet(isPresented: $showChat) { AdvisorChat() }
+            .task {
+                if tip == nil && Keychain.hasKey { tip = try? await Advisor.dailyTip(ctx: ctx) }
+            }
+            .refreshable {
+                await SyncEngine.shared.sync(ctx: ctx)
+            }
             .sheet(item: $accEdit) { t in AccountForm(account: t.account) }
         }
     }
@@ -112,6 +125,37 @@ struct BudgetView: View {
         return s
     }
 
+    // MARK: Советник
+
+    @ViewBuilder private var advisor: some View {
+        let local = Advisor.insights(txs: txs, debts: debts, recs: recs, budget: budget)
+        let first = local.first(where: { $0.tone == .bad || $0.tone == .warn }) ?? local.first
+        if tip != nil || first != nil || Keychain.hasKey {
+            Button { showChat = true } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: first.map { $0.symbol } ?? "sparkles")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(first?.color ?? Theme.accent)
+                        .frame(width: 34, height: 34)
+                        .background((first?.color ?? Theme.accent).opacity(0.12), in: Circle())
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(first?.text ?? tip ?? "Спросите советника, как быстрее накопить или закрыть долги")
+                            .font(.subheadline).foregroundStyle(.primary).multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if first != nil, let tip {
+                            Text(tip).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.leading).lineLimit(3)
+                        }
+                        Text("Спросить советника →").font(.footnote.weight(.semibold)).foregroundStyle(Theme.accent)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(14)
+                .background(Theme.soft, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
     // MARK: Напоминания
 
     @ViewBuilder private var alerts: some View {
@@ -129,7 +173,7 @@ struct BudgetView: View {
                 if let x = soon.first {
                     QuietAlert(color: x.st == .overdue ? Theme.exp : Theme.warn,
                                text: "\(x.debt.name) · \(Fmt.rubU(x.amount)) · \(relDays(x.due).text)",
-                               action: "Открыть") { router.wallet = 1 }
+                               action: "Открыть") { router.tab = 2 }
                 }
             }
         }
@@ -422,7 +466,7 @@ struct TxGroupedList: View {
                 SoftIcon(symbol: c.symbol, color: c.color)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(t.note.isEmpty ? c.name : t.note).font(.body).lineLimit(1)
-                    let sub = [t.note.isEmpty ? "" : c.name, accounts.count > 1 ? accName(t.accID) : ""].filter { !$0.isEmpty }.joined(separator: " · ")
+                    let sub = [t.note.isEmpty ? "" : c.name, accounts.count > 1 ? accName(t.accID) : "", SyncEngine.shared.memberName(t.author) ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
                     if !sub.isEmpty { Text(sub).font(.footnote).foregroundStyle(.secondary).lineLimit(1) }
                 }
                 Spacer()
@@ -465,7 +509,11 @@ struct BudgetLimitSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Отмена") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Готово") { budget = max(0, parseAmount(text) ?? 0); dismiss() }
+                    Button("Готово") {
+                        budget = max(0, parseAmount(text) ?? 0)
+                        SyncEngine.shared.setBudget(budget)
+                        dismiss()
+                    }
                 }
             }
             .onAppear { text = Fmt.input(budget) }

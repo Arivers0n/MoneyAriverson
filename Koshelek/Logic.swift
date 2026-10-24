@@ -218,30 +218,13 @@ struct SaveResult {
 enum Saver {
     static func apply(_ items: [ParsedItem], account: UUID?, ctx: ModelContext) -> SaveResult {
         var res = SaveResult()
-        let debts = (try? ctx.fetch(FetchDescriptor<Debt>())) ?? []
-        let goals = (try? ctx.fetch(FetchDescriptor<Goal>())) ?? []
-        let habits = (try? ctx.fetch(FetchDescriptor<Habit>())) ?? []
+        let debts = ctx.live(Debt.self)
+        let goals = ctx.live(Goal.self)
         for x in items where x.on && (x.amount > 0 || !x.isMoney) {
             let acc = x.accID ?? account
             switch x.kind {
-            case .task:
-                let title = x.note.trimmingCharacters(in: .whitespaces)
-                guard !title.isEmpty else { continue }
-                if TaskStore.shared.add(title: title, due: x.hasDue ? x.date : nil, hasTime: x.hasDue && x.dueTime) {
-                    res.summary.append("задача «\(title)»")
-                } else {
-                    res.summary.append("задача «\(title)» не сохранена — нет доступа к Напоминаниям")
-                    continue
-                }
-            case .shop:
-                let name = x.note.trimmingCharacters(in: .whitespaces)
-                guard !name.isEmpty else { continue }
-                ctx.insert(ShopItem(name: name))
-                res.summary.append("в покупки «\(name)»")
-            case .habit:
-                guard let id = x.habitID, let h = habits.first(where: { $0.uid == id }) else { continue }
-                if !h.isDone(x.date) { h.toggle(x.date) }
-                res.summary.append("привычка «\(h.name)» ✓")
+            case .task, .shop, .habit:
+                continue
             case .rec:
                 let name = x.note.trimmingCharacters(in: .whitespaces).isEmpty ? Catalog.cat(x.cat).name : x.note
                 ctx.insert(Recurring(name: name, amount: x.amount, kind: x.type, cat: Catalog.valid(x.cat, for: x.type),
@@ -279,7 +262,7 @@ enum Saver {
             }
             res.count += 1
         }
-        try? ctx.save()
+        ctx.commit()
         Notifier.reschedule(ctx: ctx)
         return res
     }
