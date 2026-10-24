@@ -196,7 +196,7 @@ struct ReviewSheet: View {
                 if !payload.subtitle.isEmpty {
                     Section { Text(payload.subtitle).font(.subheadline).foregroundStyle(.secondary) }
                 }
-                if !accs.isEmpty {
+                if !accs.isEmpty && items.contains(where: { $0.isMoney }) {
                     Section("Счёт") {
                         FlowLayout {
                             ForEach(accs) { a in Chip(title: a.name, color: Color(hex: a.hex), selected: acc == a.uid) { acc = a.uid } }
@@ -233,10 +233,13 @@ struct ReviewSheet: View {
     }
 
     private func save() {
-        for i in items.indices { items[i].amount = parseAmount(items[i].amountText) ?? 0 }
-        let res = Saver.apply(items, account: acc, ctx: ctx)
-        if let acc { lastAcc = acc.uuidString }
-        router.finishSave(res)
+        for i in items.indices where items[i].isMoney { items[i].amount = parseAmount(items[i].amountText) ?? 0 }
+        Task {
+            if items.contains(where: { $0.on && $0.kind == .task }) { await TaskStore.shared.requestAccess() }
+            let res = Saver.apply(items, account: acc, ctx: ctx)
+            if let acc { lastAcc = acc.uuidString }
+            router.finishSave(res)
+        }
     }
 }
 
@@ -259,16 +262,32 @@ struct ReviewRow: View {
                 case .goal: goalHeader
                 case .tx: categoryMenu
                 case .rec: recHeader
+                case .task: lifeHeader(symbol: "checklist", color: Theme.accent, title: "Задача")
+                case .shop: lifeHeader(symbol: "cart", color: Theme.inc, title: "В список покупок")
+                case .habit: lifeHeader(symbol: "flame.fill", color: Theme.warn, title: "Привычка выполнена")
                 }
-                HStack {
-                    DatePicker("", selection: $item.date, displayedComponents: .date).labelsHidden()
-                    Spacer()
-                    TextField("0", text: $item.amountText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .font(.headline)
-                        .frame(maxWidth: 120)
-                    Text("₽").foregroundStyle(.secondary)
+                if item.isMoney {
+                    HStack {
+                        DatePicker("", selection: $item.date, displayedComponents: .date).labelsHidden()
+                        Spacer()
+                        TextField("0", text: $item.amountText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .font(.headline)
+                            .frame(maxWidth: 120)
+                        Text("₽").foregroundStyle(.secondary)
+                    }
+                } else if item.kind == .task {
+                    TextField("Что сделать", text: $item.note).font(.body)
+                    Toggle("Срок", isOn: $item.hasDue).font(.subheadline)
+                    if item.hasDue {
+                        DatePicker("", selection: $item.date, displayedComponents: item.dueTime ? [.date, .hourAndMinute] : [.date])
+                            .labelsHidden()
+                    }
+                } else if item.kind == .shop {
+                    TextField("Товар", text: $item.note).font(.body)
+                } else {
+                    Text(item.note).font(.body)
                 }
                 if item.kind == .tx || item.kind == .rec {
                     TextField(item.kind == .rec ? "Название" : "Заметка", text: $item.note).font(.subheadline)
@@ -311,6 +330,13 @@ struct ReviewRow: View {
                 Text("Отметится платёж \(ni.i + 1) из \(ni.n) (срок \(DF.short(ni.due))) и попадёт в \(d.isOut ? "расходы" : "доходы")")
                     .font(.caption).foregroundStyle(.secondary)
             }
+        }
+    }
+
+    private func lifeHeader(symbol: String, color: Color, title: String) -> some View {
+        HStack(spacing: 8) {
+            SoftIcon(symbol: symbol, color: color, size: 28)
+            Text(title).font(.body.weight(.semibold))
         }
     }
 

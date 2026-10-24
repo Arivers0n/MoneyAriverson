@@ -125,7 +125,14 @@ enum ImagePrep {
 @MainActor
 enum Brain {
     static var todayLine: String {
-        "Сегодня \(DF.iso(Date())) (\(DF.s(Date(), "EEEE")))."
+        "Сегодня \(DF.iso(Date())) (\(DF.s(Date(), "EEEE"))), сейчас \(DF.s(Date(), "HH:mm"))."
+    }
+
+    static func parseDateTime(_ s: String) -> Date? {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        return f.date(from: String(s.prefix(16)))
     }
 
     static func contextLines(ctx: ModelContext) -> String {
@@ -138,6 +145,14 @@ enum Brain {
             let js = (try? JSONSerialization.data(withJSONObject: arr)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
             t += "\nСчета пользователя: \(js)\nЕсли человек назвал, откуда платил или куда пришли деньги («с карты», «наличкой», «на Сбер»), добавь к операции \"acc\":\"<id>\" подходящего счёта. Если не назвал — не добавляй."
         }
+        let habits = (try? ctx.fetch(FetchDescriptor<Habit>())) ?? []
+        if !habits.isEmpty {
+            let arr = habits.map { ["id": $0.uid.uuidString, "название": $0.name] }
+            let js = (try? JSONSerialization.data(withJSONObject: arr)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+            t += "\nПривычки пользователя: \(js)\nЕсли человек говорит, что выполнил привычку («сходил в зал», «выпил воду», «почитал») — верни {\"kind\":\"habit\",\"habit\":\"<id>\",\"date\":\"YYYY-MM-DD\"}."
+        }
+        t += "\nЗадачи и дела («позвонить», «записаться», «не забыть», «напомни») — {\"kind\":\"task\",\"note\":\"коротко, с большой буквы\",\"due\":\"YYYY-MM-DD\" или \"YYYY-MM-DDTHH:MM\" или null}. Сумма для задач не нужна."
+        t += "\nСписок покупок («купить молоко и хлеб», «добавь в покупки») — по одному {\"kind\":\"shop\",\"note\":\"Молоко\"} на каждый товар. Это не траты: деньги ещё не потрачены."
         t += "\nЕсли человек говорит о регулярном платеже или подписке («каждый месяц», «ежемесячно», «раз в год», «подписка ... списывается 15-го») — добавь {\"kind\":\"rec\",\"type\":\"exp\"|\"inc\",\"amount\":число,\"cat\":\"id\",\"note\":\"название\",\"day\":число месяца,\"yearly\":false,\"month\":номер месяца для годовых}. Если при этом он сказал, что уже заплатил сейчас, — добавь ещё и обычную операцию."
         if !debts.isEmpty {
             let arr: [[String: Any]] = debts.map { d in
@@ -171,7 +186,32 @@ enum Brain {
             if let s = v as? String { return parseAmount(s) ?? 0 }
             return 0
         }
+        let habits = (try? ctx.fetch(FetchDescriptor<Habit>())) ?? []
         return arr.compactMap { x -> ParsedItem? in
+            let kind = (x["kind"] as? String) ?? "tx"
+            if kind == "task" {
+                let title = String(((x["note"] as? String) ?? "").prefix(120))
+                guard !title.isEmpty else { return nil }
+                var it = ParsedItem(note: title)
+                it.kind = .task
+                if let due = x["due"] as? String {
+                    if due.count >= 16, let d = Self.parseDateTime(due) { it.date = d; it.hasDue = true; it.dueTime = true }
+                    else if let d = DF.parseISO(String(due.prefix(10))) { it.date = d; it.hasDue = true }
+                }
+                return it
+            }
+            if kind == "shop" {
+                let name = String(((x["note"] as? String) ?? "").prefix(80))
+                guard !name.isEmpty else { return nil }
+                var it = ParsedItem(note: name)
+                it.kind = .shop
+                return it
+            }
+            if kind == "habit", let s = x["habit"] as? String, let h = habits.first(where: { $0.uid.uuidString == s }) {
+                var it = ParsedItem(date: (x["date"] as? String).flatMap { DF.parseISO($0) } ?? Date().noon, note: h.name)
+                it.kind = .habit; it.habitID = h.uid
+                return it
+            }
             let raw = num(x["amount"])
             let amount = (abs(raw) * 100).rounded() / 100
             guard amount > 0 else { return nil }
@@ -203,17 +243,17 @@ enum Brain {
     static func parseSpeech(_ text: String, ctx: ModelContext) async throws -> [ParsedItem] {
         guard Keychain.hasKey else { return LocalParser.parse(text) }
         let prompt = """
-        Ты помогаешь вести личный бюджет в рублях. \(todayLine)
+        Ты помощник в приложении для жизни: деньги (в рублях), задачи, покупки, привычки. \(todayLine)
         Пользователь рассказал (голосовая диктовка или быстрая запись — разговорная речь, с паразитами, ошибками распознавания и оговорками):
         «\(text)»
         \(Catalog.describe())\(contextLines(ctx: ctx))
         Правила:
-        - Выдели каждую реально совершённую денежную операцию. То, что человек только планирует или хочет, не добавляй.
+        - Выдели каждую реально совершённую денежную операцию, а также задачи, покупки и привычки по правилам выше. Траты, которые человек только планирует, не добавляй как траты (это может быть задача или покупка).
         - Если человек поправился («ой нет, не пятьсот, а шестьсот») — бери исправленное.
         - Числа словами и сленг: «полторы тыщи»=1500, «тыща», «штука», «косарь»=1000, «пятихатка»=500, «полтос»=50, «сотка»=100, «пятёрка» в контексте тысяч=5000, «восемь пятьсот», «восемь с половиной» (о тысячах)=8500, «к» и «тыс»=×1000. «где-то», «примерно», «около» — бери названное число.
         - Даты: «вчера», «позавчера», «в пятницу», «на выходных» переведи в YYYY-MM-DD, не позже сегодня. Если не сказано — сегодня.
         - Обычные операции: {"kind":"tx","type":"exp"|"inc","amount":число,"cat":"id","date":"YYYY-MM-DD","note":"коротко, с большой буквы, до 40 символов"}. Магазин или место — в note.
-        Ответь только JSON-массивом операций. Если денежных операций нет — [].
+        Ответь только JSON-массивом записей. Если ничего не нашлось — [].
         """
         let raw = try await Claude.json(prompt)
         let items = clean(raw, ctx: ctx)

@@ -52,15 +52,15 @@ struct QuickWidgetView: View {
             HStack(spacing: 8) {
                 Image(systemName: "mic.fill").font(.title3)
                 VStack(alignment: .leading) {
-                    Text("Кошелёк").font(.headline)
-                    Text("Записать голосом").font(.caption)
+                    Text("Лад").font(.headline)
+                    Text("Сказать голосом").font(.caption)
                 }
             }
             .widgetURL(URL(string: "koshelek://voice"))
             .containerBackground(for: .widget) { Color.clear }
         case .systemSmall:
             VStack(alignment: .leading, spacing: 8) {
-                Text("Кошелёк").font(.caption.weight(.bold)).foregroundStyle(.secondary)
+                Text("Лад").font(.caption.weight(.bold)).foregroundStyle(.secondary)
                 Link(destination: URL(string: "koshelek://voice")!) {
                     VStack(spacing: 6) {
                         Image(systemName: "mic.fill").font(.system(size: 30, weight: .semibold)).foregroundStyle(.white)
@@ -73,11 +73,11 @@ struct QuickWidgetView: View {
             .containerBackground(for: .widget) { Color(.systemBackground) }
         default:
             VStack(alignment: .leading, spacing: 8) {
-                Text("Кошелёк · быстрая запись").font(.caption.weight(.bold)).foregroundStyle(.secondary)
+                Text("Лад · быстрая запись").font(.caption.weight(.bold)).foregroundStyle(.secondary)
                 HStack(spacing: 10) {
                     QuickButton(url: "koshelek://voice", symbol: "mic.fill", title: "Голосом", color: accent)
                     QuickButton(url: "koshelek://scan", symbol: "camera.fill", title: "Скан чека", color: green)
-                    QuickButton(url: "koshelek://add", symbol: "plus", title: "Вручную", color: .gray)
+                    QuickButton(url: "koshelek://cards", symbol: "wallet.pass.fill", title: "Карты", color: Color(red: 0x8A / 255, green: 0x4F / 255, blue: 0xD0 / 255))
                 }
             }
             .containerBackground(for: .widget) { Color(.systemBackground) }
@@ -92,7 +92,7 @@ struct QuickWidget: Widget {
             QuickWidgetView(entry: entry)
         }
         .configurationDisplayName("Быстрая запись")
-        .description("Голосом, скан чека или вручную — в одно касание.")
+        .description("Голосом, скан чека или бонусная карта — в одно касание.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
     }
 }

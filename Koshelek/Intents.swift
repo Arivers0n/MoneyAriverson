@@ -4,8 +4,8 @@ import Foundation
 
 /// «Привет, Siri, запиши в Кошелёк» → Siri спрашивает «Что записать?» → сохраняем без открытия приложения.
 struct RecordMoneyIntent: AppIntent {
-    static var title: LocalizedStringResource = "Записать в Кошелёк"
-    static var description = IntentDescription("Записывает траты, доходы, платежи по кредитам и пополнения копилок, сказанные своими словами.")
+    static var title: LocalizedStringResource = "Записать в Лад"
+    static var description = IntentDescription("Записывает траты, доходы, платежи по кредитам, задачи, покупки и привычки, сказанные своими словами.")
     static var openAppWhenRun: Bool = false
 
     @Parameter(title: "Что записать", requestValueDialog: "Что записать?")
@@ -33,8 +33,8 @@ struct RecordMoneyIntent: AppIntent {
 
 /// Открывает экран голосового ввода и сразу включает микрофон.
 struct OpenVoiceIntent: AppIntent {
-    static var title: LocalizedStringResource = "Голосовой ввод в Кошельке"
-    static var description = IntentDescription("Открывает Кошелёк и сразу начинает слушать.")
+    static var title: LocalizedStringResource = "Голосовой ввод в Ладе"
+    static var description = IntentDescription("Открывает Лад и сразу начинает слушать.")
     static var openAppWhenRun: Bool = true
 
     @MainActor
@@ -46,8 +46,8 @@ struct OpenVoiceIntent: AppIntent {
 }
 
 struct OpenScanIntent: AppIntent {
-    static var title: LocalizedStringResource = "Скан чека в Кошельке"
-    static var description = IntentDescription("Открывает Кошелёк для скана чека или скриншота.")
+    static var title: LocalizedStringResource = "Скан чека в Ладе"
+    static var description = IntentDescription("Открывает Лад для скана чека или скриншота.")
     static var openAppWhenRun: Bool = true
 
     @MainActor
@@ -60,7 +60,7 @@ struct OpenScanIntent: AppIntent {
 struct KoshelekShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: RecordMoneyIntent(),
-                    phrases: ["Запиши в \(.applicationName)", "Записать в \(.applicationName)", "Добавь трату в \(.applicationName)", "Запиши трату в \(.applicationName)"],
+                    phrases: ["Запиши в \(.applicationName)", "Записать в \(.applicationName)", "Добавь в \(.applicationName)", "Запиши трату в \(.applicationName)", "Добавь задачу в \(.applicationName)"],
                     shortTitle: "Записать",
                     systemImageName: "mic.fill")
         AppShortcut(intent: OpenVoiceIntent(),

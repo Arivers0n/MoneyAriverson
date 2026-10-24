@@ -175,9 +175,114 @@ final class Goal {
     var saved: Double { log.reduce(0) { $0 + $1.amount } }
 }
 
+// MARK: - Жизнь
+
+@Model
+final class ShopItem {
+    var uid: UUID = UUID()
+    var name: String = ""
+    var done: Bool = false
+    var created: Date = Date()
+    init(name: String) {
+        self.uid = UUID()
+        self.name = name
+        self.created = Date()
+    }
+}
+
+@Model
+final class Habit {
+    var uid: UUID = UUID()
+    var name: String = ""
+    var symbol: String = "star.fill"
+    var hex: String = "2B47C9"
+    var daysData: Data = Data()
+    var created: Date = Date()
+    init(name: String, symbol: String, hex: String) {
+        self.uid = UUID()
+        self.name = name
+        self.symbol = symbol
+        self.hex = hex
+        self.created = Date()
+    }
+    /// Дни, когда привычка выполнена, в формате yyyy-MM-dd
+    var days: Set<String> {
+        get { Set((try? JSONDecoder().decode([String].self, from: daysData)) ?? []) }
+        set { daysData = (try? JSONEncoder().encode(Array(newValue).sorted())) ?? Data() }
+    }
+    func isDone(_ d: Date) -> Bool { days.contains(DF.iso(d)) }
+    func toggle(_ d: Date) {
+        var s = days
+        let k = DF.iso(d)
+        if s.contains(k) { s.remove(k) } else { s.insert(k) }
+        days = s
+    }
+    var streak: Int {
+        let s = days
+        var n = 0
+        var d = Date()
+        if !s.contains(DF.iso(d)) { d = d.addingDays(-1) }
+        while s.contains(DF.iso(d)) { n += 1; d = d.addingDays(-1) }
+        return n
+    }
+}
+
+struct GoalStep: Codable, Hashable, Identifiable {
+    var id = UUID()
+    var title: String
+    var done: Bool = false
+}
+
+@Model
+final class LifeGoal {
+    var uid: UUID = UUID()
+    var name: String = ""
+    var note: String = ""
+    var deadline: Date? = nil
+    var stepsData: Data = Data()
+    var hex: String = "2B47C9"
+    var created: Date = Date()
+    init(name: String, deadline: Date?, hex: String) {
+        self.uid = UUID()
+        self.name = name
+        self.deadline = deadline
+        self.hex = hex
+        self.created = Date()
+    }
+    var steps: [GoalStep] {
+        get { (try? JSONDecoder().decode([GoalStep].self, from: stepsData)) ?? [] }
+        set { stepsData = (try? JSONEncoder().encode(newValue)) ?? Data() }
+    }
+    var progress: Double {
+        let s = steps
+        return s.isEmpty ? 0 : Double(s.filter { $0.done }.count) / Double(s.count)
+    }
+}
+
+@Model
+final class LoyaltyCard {
+    var uid: UUID = UUID()
+    var name: String = ""
+    var code: String = ""
+    var format: String = "code128"
+    var hex: String = "2B47C9"
+    var note: String = ""
+    var uses: Int = 0
+    var created: Date = Date()
+    init(name: String, code: String, format: String, hex: String) {
+        self.uid = UUID()
+        self.name = name
+        self.code = code
+        self.format = format
+        self.hex = hex
+        self.created = Date()
+    }
+}
+
 enum Store {
     static let container: ModelContainer = {
-        let schema = Schema([Tx.self, Account.self, Debt.self, Recurring.self, Goal.self])
+        let schema = Schema([Tx.self, Account.self, Debt.self, Recurring.self, Goal.self,
+                             ShopItem.self, Habit.self, LifeGoal.self, LoyaltyCard.self])
         let config = ModelConfiguration("Koshelek", schema: schema)
         do {
             return try ModelContainer(for: schema, configurations: [config])

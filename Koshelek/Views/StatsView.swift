@@ -30,6 +30,8 @@ struct StatsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 14) {
+                    WalletHeader(title: "Анализ", onAdd: nil)
+                    SectionSwitcher(titles: WalletView.sections, selection: $router.wallet)
                     MonthSwitcher(month: $month)
                     chartCard
                     reviewCard
@@ -40,7 +42,7 @@ struct StatsView: View {
                 .padding(.bottom, 24)
             }
             .background(Theme.bg)
-            .navigationTitle("Анализ")
+            .toolbar(.hidden, for: .navigationBar)
             .onChange(of: month) { _, _ in review = ""; reviewErr = nil }
         }
     }

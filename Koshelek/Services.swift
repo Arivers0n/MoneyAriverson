@@ -35,12 +35,12 @@ final class SpeechRecognizer: ObservableObject {
             SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0) }
         }
         guard speech == .authorized else {
-            error = "Разрешите распознавание речи: Настройки → Кошелёк → Распознавание речи."
+            error = "Разрешите распознавание речи: Настройки → Лад → Распознавание речи."
             return
         }
         let mic = await AVAudioApplication.requestRecordPermission()
         guard mic else {
-            error = "Разрешите доступ к микрофону: Настройки → Кошелёк → Микрофон."
+            error = "Разрешите доступ к микрофону: Настройки → Лад → Микрофон."
             return
         }
         guard let recognizer, recognizer.isAvailable else {
@@ -153,14 +153,14 @@ enum Notifier {
             let sameDay = cal.date(bySettingHour: 9, minute: 0, second: 0, of: x.due) ?? x.due
             let verb = x.debt.isOut ? "Платёж" : "Вам должны вернуть"
             if dayBefore > now { items.append((dayBefore, "Завтра платёж: \(x.debt.name)", "\(verb) \(Fmt.rubU(x.amount)) — \(DF.short(x.due)).")) }
-            if sameDay > now { items.append((sameDay, "Сегодня платёж: \(x.debt.name)", "\(Fmt.rubU(x.amount)). Не забудьте отметить оплату в Кошельке.")) }
+            if sameDay > now { items.append((sameDay, "Сегодня платёж: \(x.debt.name)", "\(Fmt.rubU(x.amount)). Не забудьте отметить оплату в Ладе.")) }
         }
         for r in recs {
             for k in 0..<3 {
                 let m = now.addingMonths(k)
                 guard let d = r.due(in: m) else { continue }
                 let at = cal.date(bySettingHour: 10, minute: 0, second: 0, of: d) ?? d
-                if at > now { items.append((at, r.name, "\(r.kind == .inc ? "Поступление" : "Списание") \(Fmt.rubU(r.amount)). Запишите в Кошелёк одним касанием.")) }
+                if at > now { items.append((at, r.name, "\(r.kind == .inc ? "Поступление" : "Списание") \(Fmt.rubU(r.amount)). Запишите в Лад одним касанием.")) }
             }
         }
         for (i, it) in items.sorted(by: { $0.0 < $1.0 }).prefix(60).enumerated() {
@@ -212,9 +212,11 @@ final class Router: ObservableObject {
     @Published var voiceOn = false
     @Published var voiceRelease = 0
 
+    @Published var wallet = 0
+    @Published var life = 0
+
     func startVoice() {
         sheet = nil
-        tab = 0
         voiceOn = true
     }
 
@@ -235,7 +237,9 @@ final class Router: ObservableObject {
         case "voice": tab = 0; show(.voice(auto: true))
         case "scan": tab = 0; sheet = nil; scanRequest += 1
         case "add": tab = 0; show(.newTx)
-        case "debts": tab = 1
+        case "debts": tab = 1; wallet = 1
+        case "tasks": tab = 2; life = 0
+        case "cards": tab = 3
         default: break
         }
     }

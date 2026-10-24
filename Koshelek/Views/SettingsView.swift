@@ -54,18 +54,18 @@ struct SettingsView: View {
 
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("«Привет, Siri, запиши в Кошелёк»").font(.body.weight(.semibold))
+                        Text("«Привет, Siri, запиши в Лад»").font(.body.weight(.semibold))
                         Text("Siri спросит, что записать, — скажите своими словами: «кофе двести пятьдесят, такси четыреста». Всё сохранится без открытия приложения.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Виджет и экран блокировки").font(.body.weight(.semibold))
-                        Text("Добавьте виджет «Кошелёк»: кнопки «Голосом», «Скан» и «Вручную» открывают нужный экран сразу. На экране блокировки — круглая кнопка микрофона.")
+                        Text("Добавьте виджет «Лад»: кнопки «Голосом», «Скан» и «Вручную» открывают нужный экран сразу. На экране блокировки — круглая кнопка микрофона.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Кнопка «Действие»").font(.body.weight(.semibold))
-                        Text("Настройки → Кнопка «Действие» → Быстрая команда → «Записать в Кошелёк». Зажали кнопку — и говорите.")
+                        Text("Настройки → Кнопка «Действие» → Быстрая команда → «Записать в Лад». Зажали кнопку — и говорите.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 } header: { Text("Без открытия приложения") }
@@ -77,7 +77,7 @@ struct SettingsView: View {
                     }
                     if let importMsg { Text(importMsg).font(.footnote).foregroundStyle(.secondary) }
                 } header: { Text("Данные") } footer: {
-                    Text("Чтобы перенести операции из веб-версии Кошелька: там во вкладке «Анализ» нажмите «Скачать CSV», а здесь — «Импортировать».")
+                    Text("Чтобы перенести операции из веб-версии Кошелька (claude.ai): там во вкладке «Анализ» нажмите «Скачать CSV», а здесь — «Импортировать».")
                 }
             }
             .navigationTitle("Настройки")

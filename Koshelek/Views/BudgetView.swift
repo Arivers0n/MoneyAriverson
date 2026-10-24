@@ -24,6 +24,7 @@ struct BudgetView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
                     header
+                    SectionSwitcher(titles: WalletView.sections, selection: $router.wallet)
                     hero
                     alerts
                     if !byCategory(monthTxs).isEmpty { categoryStrip }
@@ -39,7 +40,6 @@ struct BudgetView: View {
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .bottom) { VoiceDock(onScan: startScan, onAdd: { router.show(.newTx) }) }
             .scanFlow(isPresented: $showScan) { imgs in scan(imgs) }
-            .onChange(of: router.scanRequest) { _, _ in startScan() }
             .onChange(of: month) { _, _ in catFilter = nil }
             .sheet(isPresented: $showBudget) { BudgetLimitSheet(budget: $budget) }
             .sheet(item: $accEdit) { t in AccountForm(account: t.account) }
@@ -131,7 +131,7 @@ struct BudgetView: View {
                 if let x = soon.first {
                     QuietAlert(color: x.st == .overdue ? Theme.exp : Theme.warn,
                                text: "\(x.debt.name) · \(Fmt.rubU(x.amount)) · \(relDays(x.due).text)",
-                               action: "Открыть") { router.tab = 1 }
+                               action: "Открыть") { router.wallet = 1 }
                 }
             }
         }

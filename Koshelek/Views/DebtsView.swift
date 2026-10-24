@@ -24,6 +24,8 @@ struct DebtsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 14) {
+                    WalletHeader(title: "Долги") { showForm = true }
+                    SectionSwitcher(titles: WalletView.sections, selection: $router.wallet)
                     hero
                     overdueAlert
                     if !debts.isEmpty { tiles }
@@ -35,7 +37,7 @@ struct DebtsView: View {
                 .padding(.bottom, 24)
             }
             .background(Theme.bg)
-            .navigationTitle("Долги")
+            .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { id in
                 if let d = debts.first(where: { $0.uid == id }) { DebtDetail(debt: d) }
             }

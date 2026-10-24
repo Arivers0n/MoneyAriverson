@@ -29,19 +29,18 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $router.tab) {
-            BudgetView()
-                .tabItem { Label("Бюджет", systemImage: "creditcard.fill") }
+            TodayView()
+                .tabItem { Label("Сегодня", systemImage: "sun.max.fill") }
                 .tag(0)
-            DebtsView()
-                .tabItem { Label("Долги", systemImage: "calendar") }
-                .badge(overdueCount)
+            WalletView()
+                .tabItem { Label("Кошелёк", systemImage: "creditcard.fill") }
+                .badge(overdueCount + pendingCount)
                 .tag(1)
-            PlansView()
-                .tabItem { Label("Планы", systemImage: "target") }
-                .badge(pendingCount)
+            LifeView()
+                .tabItem { Label("Дела", systemImage: "checklist") }
                 .tag(2)
-            StatsView()
-                .tabItem { Label("Анализ", systemImage: "chart.bar.fill") }
+            CardsView()
+                .tabItem { Label("Карты", systemImage: "wallet.pass.fill") }
                 .tag(3)
         }
         .sheet(item: $router.sheet) { route in
@@ -116,6 +115,7 @@ extension Router {
         sheet = nil
         if let d = res.closedDebt { celebrate = ("«\(d)» закрыт!", "Долг полностью погашен. Так держать.") }
         else if let g = res.goalDone { celebrate = ("Цель «\(g)» достигнута!", "Копилка полная. Время тратить с удовольствием.") }
+        else if res.summary.contains(where: { $0.contains("нет доступа") }) { say("Задачи не сохранены: разрешите доступ к Напоминаниям") }
         else { say("Добавлено: \(res.count)") }
     }
 }

@@ -17,6 +17,8 @@ struct PlansView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 14) {
+                    WalletHeader(title: "Планы", onAdd: nil)
+                    SectionSwitcher(titles: WalletView.sections, selection: $router.wallet)
                     goalsCard
                     recsCard
                 }
@@ -24,7 +26,7 @@ struct PlansView: View {
                 .padding(.bottom, 24)
             }
             .background(Theme.bg)
-            .navigationTitle("Планы")
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $goalEdit) { t in GoalForm(goal: t.goal) }
             .sheet(item: $goalAdd) { g in GoalAddSheet(goal: g) }
             .sheet(item: $recEdit) { t in RecurringForm(rec: t.rec) }
