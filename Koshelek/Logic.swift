@@ -182,7 +182,7 @@ func onTimeStreak(_ debts: [Debt]) -> Int {
 // MARK: - Распознанные записи и сохранение
 
 struct ParsedItem: Identifiable {
-    enum Kind { case tx, debt, goal }
+    enum Kind { case tx, debt, goal, rec }
     var id = UUID()
     var kind: Kind = .tx
     var type: TxKind = .exp
@@ -196,6 +196,10 @@ struct ParsedItem: Identifiable {
     var sign: Double = 1
     var recID: UUID? = nil
     var on: Bool = true
+    var accID: UUID? = nil
+    var recDay: Int = 1
+    var recYearly: Bool = false
+    var recMonth: Int = 1
 }
 
 struct SaveResult {
@@ -213,7 +217,13 @@ enum Saver {
         let debts = (try? ctx.fetch(FetchDescriptor<Debt>())) ?? []
         let goals = (try? ctx.fetch(FetchDescriptor<Goal>())) ?? []
         for x in items where x.on && x.amount > 0 {
+            let acc = x.accID ?? account
             switch x.kind {
+            case .rec:
+                let name = x.note.trimmingCharacters(in: .whitespaces).isEmpty ? Catalog.cat(x.cat).name : x.note
+                ctx.insert(Recurring(name: name, amount: x.amount, kind: x.type, cat: Catalog.valid(x.cat, for: x.type),
+                                     day: min(31, max(1, x.recDay)), yearly: x.recYearly, month: min(12, max(1, x.recMonth))))
+                res.summary.append("регулярный «\(name)» \(Fmt.rubU(x.amount))")
             case .debt:
                 guard let id = x.debtID, let d = debts.first(where: { $0.uid == id }) else { continue }
                 let before = d.remaining
@@ -226,7 +236,7 @@ enum Saver {
                     e.append(ExtraPay(date: x.date.noon, amount: x.amount))
                     d.extras = e
                 }
-                ctx.insert(Tx(kind: d.isOut ? .exp : .inc, amount: x.amount, cat: d.isOut ? "loans" : "debtback", note: d.name, date: x.date, accID: account))
+                ctx.insert(Tx(kind: d.isOut ? .exp : .inc, amount: x.amount, cat: d.isOut ? "loans" : "debtback", note: d.name, date: x.date, accID: acc))
                 if before > 0 && d.remaining <= 0 { res.closedDebt = d.name }
                 res.summary.append("\(d.name) \(Fmt.rubU(x.amount))")
             case .goal:
@@ -238,7 +248,7 @@ enum Saver {
                 if before < g.target && g.saved >= g.target { res.goalDone = g.name }
                 res.summary.append("\(x.sign < 0 ? "из" : "в") копилку «\(g.name)» \(Fmt.rubU(x.amount))")
             case .tx:
-                let t = Tx(kind: x.type, amount: x.amount, cat: Catalog.valid(x.cat, for: x.type), note: x.note.trimmingCharacters(in: .whitespaces), date: x.date, accID: account, recID: x.recID)
+                let t = Tx(kind: x.type, amount: x.amount, cat: Catalog.valid(x.cat, for: x.type), note: x.note.trimmingCharacters(in: .whitespaces), date: x.date, accID: acc, recID: x.recID)
                 ctx.insert(t)
                 if res.firstTxDate == nil { res.firstTxDate = x.date }
                 let label = x.note.isEmpty ? Catalog.cat(x.cat).name : x.note

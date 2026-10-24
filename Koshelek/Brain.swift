@@ -131,7 +131,14 @@ enum Brain {
     static func contextLines(ctx: ModelContext) -> String {
         let debts = ((try? ctx.fetch(FetchDescriptor<Debt>())) ?? []).filter { !$0.isClosed }
         let goals = (try? ctx.fetch(FetchDescriptor<Goal>())) ?? []
+        let accs = (try? ctx.fetch(FetchDescriptor<Account>())) ?? []
         var t = ""
+        if !accs.isEmpty {
+            let arr = accs.map { ["id": $0.uid.uuidString, "название": $0.name] }
+            let js = (try? JSONSerialization.data(withJSONObject: arr)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+            t += "\nСчета пользователя: \(js)\nЕсли человек назвал, откуда платил или куда пришли деньги («с карты», «наличкой», «на Сбер»), добавь к операции \"acc\":\"<id>\" подходящего счёта. Если не назвал — не добавляй."
+        }
+        t += "\nЕсли человек говорит о регулярном платеже или подписке («каждый месяц», «ежемесячно», «раз в год», «подписка ... списывается 15-го») — добавь {\"kind\":\"rec\",\"type\":\"exp\"|\"inc\",\"amount\":число,\"cat\":\"id\",\"note\":\"название\",\"day\":число месяца,\"yearly\":false,\"month\":номер месяца для годовых}. Если при этом он сказал, что уже заплатил сейчас, — добавь ещё и обычную операцию."
         if !debts.isEmpty {
             let arr: [[String: Any]] = debts.map { d in
                 var o: [String: Any] = ["id": d.uid.uuidString, "название": d.name, "кредитор": d.lender, "вид": d.type.name,
@@ -156,6 +163,7 @@ enum Brain {
         else if let o = raw as? [String: Any], let a = o["items"] as? [[String: Any]] { arr = a }
         let debts = (try? ctx.fetch(FetchDescriptor<Debt>())) ?? []
         let goals = (try? ctx.fetch(FetchDescriptor<Goal>())) ?? []
+        let accs = (try? ctx.fetch(FetchDescriptor<Account>())) ?? []
         let limit = Date().addingMonths(1)
         func num(_ v: Any?) -> Double {
             if let d = v as? Double { return d }
@@ -177,6 +185,13 @@ enum Brain {
             if (x["kind"] as? String) == "goal", let s = x["goal"] as? String, let g = goals.first(where: { $0.uid.uuidString == s }) {
                 it.kind = .goal; it.goalID = g.uid; it.note = g.name; it.sign = raw < 0 ? -1 : 1
                 return it
+            }
+            if let s = x["acc"] as? String, let a = accs.first(where: { $0.uid.uuidString == s }) { it.accID = a.uid }
+            if (x["kind"] as? String) == "rec" {
+                it.kind = .rec
+                it.recDay = Int(num(x["day"])) > 0 ? Int(num(x["day"])) : Date().dayNum
+                it.recYearly = (x["yearly"] as? Bool) ?? false
+                it.recMonth = Int(num(x["month"])) > 0 ? Int(num(x["month"])) : Date().monthNum
             }
             it.type = (x["type"] as? String) == "inc" ? .inc : .exp
             it.cat = Catalog.valid((x["cat"] as? String) ?? "", for: it.type)

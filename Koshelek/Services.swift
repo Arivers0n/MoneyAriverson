@@ -12,6 +12,12 @@ final class SpeechRecognizer: ObservableObject {
     @Published var isRecording = false
     @Published var level: Float = 0
     @Published var error: String?
+    /// Остановиться самому, если человек замолчал (после того как что-то сказал).
+    var autoStop = true
+    var onAutoStop: (() -> Void)?
+    private var lastChange = Date()
+    private var heardThisSession = false
+    private var timer: Timer?
 
     private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "ru-RU"))
     private let engine = AVAudioEngine()
@@ -67,12 +73,21 @@ final class SpeechRecognizer: ObservableObject {
             engine.prepare()
             try engine.start()
             isRecording = true
+            heardThisSession = false
+            lastChange = Date()
+            timer?.invalidate()
+            timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+                Task { @MainActor in self?.tick() }
+            }
 
             task = recognizer.recognitionTask(with: req) { [weak self] result, err in
                 Task { @MainActor in
                     guard let self else { return }
                     if let result {
-                        self.transcript = self.prefix + result.bestTranscription.formattedString
+                        let text = self.prefix + result.bestTranscription.formattedString
+                        if text != self.transcript { self.lastChange = Date() }
+                        if !result.bestTranscription.formattedString.isEmpty { self.heardThisSession = true }
+                        self.transcript = text
                         if result.isFinal { self.finish() }
                     }
                     if err != nil && self.isRecording { self.finish() }
@@ -89,7 +104,17 @@ final class SpeechRecognizer: ObservableObject {
         finish()
     }
 
+    private func tick() {
+        guard isRecording, autoStop, heardThisSession else { return }
+        if Date().timeIntervalSince(lastChange) > 1.9 {
+            stop()
+            onAutoStop?()
+        }
+    }
+
     private func finish() {
+        timer?.invalidate()
+        timer = nil
         if engine.isRunning { engine.stop() }
         engine.inputNode.removeTap(onBus: 0)
         request = nil
@@ -184,8 +209,17 @@ final class Router: ObservableObject {
     @Published var toast: String?
     @Published var scanRequest = 0
     @Published var celebrate: (String, String)?
+    @Published var voiceOn = false
+    @Published var voiceRelease = 0
+
+    func startVoice() {
+        sheet = nil
+        tab = 0
+        voiceOn = true
+    }
 
     func show(_ r: Route) {
+        if case .voice = r { startVoice(); return }
         if sheet != nil {
             sheet = nil
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { self.sheet = r }

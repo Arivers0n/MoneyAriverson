@@ -46,7 +46,7 @@ struct RootView: View {
         }
         .sheet(item: $router.sheet) { route in
             switch route {
-            case .voice(let auto): VoiceSheet(autoStart: auto)
+            case .voice: EmptyView()
             case .review(let p): ReviewSheet(payload: p)
             case .newTx: TxForm(tx: nil)
             case .editTx(let t): TxForm(tx: t)
@@ -95,6 +95,9 @@ struct RootView: View {
                     .padding(32)
                 }
             }
+        }
+        .overlay {
+            if router.voiceOn { VoiceOverlay() }
         }
         .animation(.spring(duration: 0.3), value: router.toast)
         .onChange(of: phase) { _, p in

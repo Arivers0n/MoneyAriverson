@@ -174,141 +174,6 @@ struct AccountForm: View {
     }
 }
 
-// MARK: - Голосом
-
-struct VoiceSheet: View {
-    let autoStart: Bool
-    @EnvironmentObject var router: Router
-    @Environment(\.modelContext) private var ctx
-    @Environment(\.dismiss) private var dismiss
-    @StateObject private var speech = SpeechRecognizer()
-    @State private var working = false
-    @State private var err: String?
-    @FocusState private var editing: Bool
-
-    let examples = [
-        "Вчера посидели в кафе на 2300, домой на такси за 400",
-        "Пришла зарплата 85 тысяч, сразу отложил пятёрку на отпуск",
-        "Заплатил по кредиту в Сбер, восемь с половиной",
-    ]
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 18) {
-                    Text(speech.isRecording ? "Говорите, я слушаю…" : (speech.transcript.isEmpty ? "Нажмите и расскажите, что было с деньгами" : "Проверьте текст и нажмите «Разобрать»"))
-                        .font(.headline)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-
-                    micButton
-
-                    ZStack(alignment: .topLeading) {
-                        if speech.transcript.isEmpty {
-                            Text("Например: утром заправился где-то на полторы тыщи, потом в пятёрочке взял продуктов рублей на восемьсот")
-                                .foregroundStyle(.tertiary)
-                                .padding(.horizontal, 5).padding(.vertical, 8)
-                        }
-                        TextEditor(text: $speech.transcript)
-                            .focused($editing)
-                            .scrollContentBackground(.hidden)
-                            .frame(minHeight: 120)
-                    }
-                    .font(.title3)
-                    .padding(10)
-                    .background(Theme.soft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                    if let e = speech.error ?? err { Text(e).font(.subheadline).foregroundStyle(Theme.exp) }
-
-                    Button(action: parse) {
-                        HStack {
-                            if working { ProgressView().tint(Theme.onAccent) }
-                            Text(working ? "Claude разбирает…" : "Разобрать")
-                        }
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .disabled(speech.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || working)
-
-                    if !Keychain.hasKey {
-                        Text("Без ключа Claude API работает простой разбор: «кофе 250, такси 400». Чтобы понимать разговорную речь, добавьте ключ в настройках.")
-                            .font(.footnote).foregroundStyle(.secondary)
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("ЧТО МОЖНО СКАЗАТЬ").font(.caption.weight(.semibold)).tracking(0.8).foregroundStyle(.secondary)
-                        ForEach(examples, id: \.self) { e in
-                            Button { speech.transcript = e } label: {
-                                Text(e).font(.subheadline).foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(10)
-                                    .background(Theme.soft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .padding(20)
-            }
-            .navigationTitle("Голосом")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { speech.stop(); dismiss() } }
-            }
-            .task {
-                if autoStart { await speech.start() }
-            }
-            .onDisappear { speech.stop() }
-        }
-    }
-
-    private var micButton: some View {
-        Button {
-            editing = false
-            Task { await speech.toggle() }
-        } label: {
-            ZStack {
-                Circle()
-                    .fill(Theme.accent.opacity(0.18))
-                    .frame(width: 150, height: 150)
-                    .scaleEffect(speech.isRecording ? 1 + CGFloat(speech.level) * 0.5 : 0.85)
-                    .animation(.easeOut(duration: 0.12), value: speech.level)
-                Circle()
-                    .fill(speech.isRecording ? Theme.exp : Theme.accent)
-                    .frame(width: 104, height: 104)
-                    .shadow(color: (speech.isRecording ? Theme.exp : Theme.accent).opacity(0.35), radius: 14, y: 6)
-                Image(systemName: speech.isRecording ? "stop.fill" : "mic.fill")
-                    .font(.system(size: 40, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(speech.isRecording ? "Остановить запись" : "Начать запись")
-    }
-
-    private func parse() {
-        speech.stop()
-        let text = speech.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        working = true; err = nil
-        Task {
-            defer { working = false }
-            do {
-                let items = try await Brain.parseSpeech(text, ctx: ctx)
-                if items.isEmpty { err = "Не нашёл ни одной суммы. Попробуйте сказать иначе."; return }
-                router.show(.review(ReviewPayload(items: items, subtitle: "Из вашего рассказа")))
-            } catch {
-                let local = LocalParser.parse(text)
-                if local.isEmpty { err = error.localizedDescription }
-                else { router.show(.review(ReviewPayload(items: local, subtitle: "Разобрал без Claude — проверьте категории"))) }
-            }
-        }
-    }
-}
-
 // MARK: - Проверка распознанного
 
 struct ReviewSheet: View {
@@ -341,7 +206,7 @@ struct ReviewSheet: View {
                 }
                 Section {
                     ForEach($items) { $it in
-                        ReviewRow(item: $it, debts: debts, goals: goals)
+                        ReviewRow(item: $it, debts: debts, goals: goals, accounts: accs)
                     }
                 }
             }
@@ -379,6 +244,7 @@ struct ReviewRow: View {
     @Binding var item: ParsedItem
     let debts: [Debt]
     let goals: [Goal]
+    var accounts: [Account] = []
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -392,6 +258,7 @@ struct ReviewRow: View {
                 case .debt: debtHeader
                 case .goal: goalHeader
                 case .tx: categoryMenu
+                case .rec: recHeader
                 }
                 HStack {
                     DatePicker("", selection: $item.date, displayedComponents: .date).labelsHidden()
@@ -403,8 +270,11 @@ struct ReviewRow: View {
                         .frame(maxWidth: 120)
                     Text("₽").foregroundStyle(.secondary)
                 }
-                if item.kind == .tx {
-                    TextField("Заметка", text: $item.note).font(.subheadline)
+                if item.kind == .tx || item.kind == .rec {
+                    TextField(item.kind == .rec ? "Название" : "Заметка", text: $item.note).font(.subheadline)
+                }
+                if let a = accounts.first(where: { $0.uid == item.accID }) {
+                    Label(a.name, systemImage: "creditcard").font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
@@ -442,6 +312,16 @@ struct ReviewRow: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
+    }
+
+    @ViewBuilder private var recHeader: some View {
+        let c = Catalog.cat(item.cat)
+        HStack(spacing: 8) {
+            SoftIcon(symbol: "repeat", color: c.color, size: 28)
+            Text("Новый регулярный платёж").font(.body.weight(.semibold))
+        }
+        Text(item.recYearly ? "Раз в год, \(item.recDay)-го числа · \(c.name)" : "Каждый месяц, \(item.recDay)-го числа · \(c.name)")
+            .font(.caption).foregroundStyle(.secondary)
     }
 
     @ViewBuilder private var goalHeader: some View {

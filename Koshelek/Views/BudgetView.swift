@@ -11,53 +11,229 @@ struct BudgetView: View {
     @AppStorage("budget") private var budget: Double = 0
 
     @State private var month = Date().startOfMonth
+    @State private var catFilter: String?
     @State private var showScan = false
     @State private var showBudget = false
     @State private var accEdit: AccountEditTarget?
 
     var monthTxs: [Tx] { txs.filter { $0.date.sameMonth(month) } }
+    var shownTxs: [Tx] { catFilter.map { c in monthTxs.filter { $0.cat == c } } ?? monthTxs }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 14) {
-                    MonthSwitcher(month: $month)
-                    actions
-                    alerts
+                VStack(alignment: .leading, spacing: 26) {
+                    header
                     hero
-                    accounts
-                    budgetCard
-                    categories
+                    alerts
+                    if !byCategory(monthTxs).isEmpty { categoryStrip }
+                    accountsStrip
                     operations
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
+                .padding(.horizontal, 20)
+                .padding(.top, 6)
+                .padding(.bottom, 30)
             }
-            .background(Theme.bg)
-            .navigationTitle("Кошелёк")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { router.show(.settings) } label: { Image(systemName: "gearshape") }
-                }
-            }
+            .scrollIndicators(.hidden)
+            .background(Color(.systemBackground))
+            .toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .bottom) { VoiceDock(onScan: startScan, onAdd: { router.show(.newTx) }) }
             .scanFlow(isPresented: $showScan) { imgs in scan(imgs) }
             .onChange(of: router.scanRequest) { _, _ in startScan() }
+            .onChange(of: month) { _, _ in catFilter = nil }
             .sheet(isPresented: $showBudget) { BudgetLimitSheet(budget: $budget) }
             .sheet(item: $accEdit) { t in AccountForm(account: t.account) }
         }
     }
 
-    // MARK: Кнопки быстрого ввода
+    // MARK: Шапка
 
-    private var actions: some View {
-        HStack(spacing: 10) {
-            ActionTile(title: "Голосом", sub: "просто скажите", symbol: "mic.fill", color: Theme.accent) {
-                router.show(.voice(auto: true))
+    private var header: some View {
+        HStack(spacing: 4) {
+            Button { withAnimation { month = month.addingMonths(-1) } } label: {
+                Image(systemName: "chevron.left").font(.subheadline.weight(.semibold)).frame(width: 30, height: 30)
             }
-            ActionTile(title: "Скан чека", sub: "фото, скриншот", symbol: "camera.fill", color: Theme.inc) { startScan() }
-            ActionTile(title: "Вручную", sub: "форма", symbol: "plus", color: Theme.ink) { router.show(.newTx) }
+            Text(DF.month(month)).font(.headline).contentTransition(.opacity)
+            Button { withAnimation { month = month.addingMonths(1) } } label: {
+                Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).frame(width: 30, height: 30)
+            }
+            .opacity(month.sameMonth(Date()) ? 0.3 : 1)
+            Spacer()
+            Button { router.show(.settings) } label: {
+                Image(systemName: "gearshape").font(.title3).frame(width: 36, height: 36)
+            }
+        }
+        .foregroundStyle(.primary)
+    }
+
+    // MARK: Главная цифра
+
+    private var hero: some View {
+        let t = totals(for: month, txs)
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(month.sameMonth(Date()) ? "Потрачено в этом месяце" : "Потрачено за \(DF.s(month, "LLLL"))")
+                .font(.subheadline).foregroundStyle(.secondary)
+            Text(Fmt.rubU(t.exp))
+                .font(.system(size: 52, weight: .bold, design: .rounded))
+                .minimumScaleFactor(0.5).lineLimit(1)
+                .contentTransition(.numericText())
+                .animation(.snappy, value: t.exp)
+            HStack(spacing: 16) {
+                Label("+" + Fmt.rubU(t.inc), systemImage: "arrow.down.left")
+                    .foregroundStyle(Theme.inc)
+                Label(Fmt.rub(t.net), systemImage: "equal")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.subheadline.weight(.medium))
+            .labelStyle(TightLabel())
+
+            if budget > 0 {
+                let p = t.exp / budget, left = budget - t.exp
+                Button { showBudget = true } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Bar(value: p, color: p > 1 ? Theme.exp : (p > 0.8 ? Theme.warn : Theme.ink), height: 6)
+                        Text(limitText(left: left)).font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 6)
+            } else {
+                Button("Задать лимит на месяц") { showBudget = true }
+                    .font(.footnote.weight(.medium))
+                    .padding(.top, 2)
+            }
         }
     }
+
+    private func limitText(left: Double) -> String {
+        var s = left >= 0 ? "Осталось \(Fmt.rubU(left)) из \(Fmt.rubU(budget))" : "Перерасход \(Fmt.rubU(-left))"
+        if month.sameMonth(Date()) && left > 0 {
+            let daysLeft = month.daysInMonth - Date().dayNum + 1
+            s += " · ≈\(Fmt.rubU(left / Double(max(1, daysLeft)))) в день"
+        }
+        return s
+    }
+
+    // MARK: Напоминания
+
+    @ViewBuilder private var alerts: some View {
+        let pend = pendingRecurring(recs, txs: txs)
+        let soon = allInstallments(debts).filter { $0.debt.isOut && ($0.st == .overdue || ($0.st == .due && daysBetween(Date(), $0.due) <= 5)) }
+            .sorted { $0.due < $1.due }
+        if !pend.isEmpty || !soon.isEmpty {
+            VStack(spacing: 0) {
+                if !pend.isEmpty {
+                    QuietAlert(color: Theme.accent,
+                               text: pend.count == 1 ? "Записать «\(pend[0].name)» · \(Fmt.rubU(pend[0].amount))" : "\(pend.count) регулярных платежа ждут записи",
+                               action: "Записать") { recordRecurring(pend) }
+                }
+                if !pend.isEmpty && !soon.isEmpty { Divider().padding(.leading, 22) }
+                if let x = soon.first {
+                    QuietAlert(color: x.st == .overdue ? Theme.exp : Theme.warn,
+                               text: "\(x.debt.name) · \(Fmt.rubU(x.amount)) · \(relDays(x.due).text)",
+                               action: "Открыть") { router.tab = 1 }
+                }
+            }
+        }
+    }
+
+    private func recordRecurring(_ pend: [Recurring]) {
+        let items = pend.map { r in
+            ParsedItem(type: r.kind == .inc ? .inc : .exp, cat: r.cat, amount: r.amount, amountText: Fmt.input(r.amount),
+                       date: r.due(in: Date()) ?? Date().noon, note: r.name, recID: r.uid)
+        }
+        router.show(.review(ReviewPayload(items: items, subtitle: "Регулярные платежи этого месяца")))
+    }
+
+    // MARK: Категории
+
+    private var categoryStrip: some View {
+        let rows = byCategory(monthTxs)
+        let total = rows.reduce(0) { $0 + $1.sum }
+        return VStack(alignment: .leading, spacing: 12) {
+            GeometryReader { g in
+                HStack(spacing: 2) {
+                    ForEach(rows) { r in
+                        Capsule().fill(r.cat.color)
+                            .frame(width: max(3, g.size.width * r.sum / max(total, 1) - 2))
+                            .opacity(catFilter == nil || catFilter == r.cat.id ? 1 : 0.25)
+                    }
+                }
+            }
+            .frame(height: 8)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(rows) { r in
+                        let on = catFilter == r.cat.id
+                        Button { withAnimation(.snappy) { catFilter = on ? nil : r.cat.id } } label: {
+                            HStack(spacing: 6) {
+                                Circle().fill(r.cat.color).frame(width: 8, height: 8)
+                                Text(r.cat.name).foregroundStyle(on ? Color(.systemBackground) : .primary)
+                                Text(Fmt.compact(r.sum)).foregroundStyle(on ? Color(.systemBackground).opacity(0.7) : .secondary)
+                            }
+                            .font(.subheadline.weight(.medium))
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(on ? Theme.ink : Theme.soft, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Счета
+
+    private var accountsStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(accs) { a in
+                    Button { accEdit = AccountEditTarget(account: a) } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "creditcard").foregroundStyle(Color(hex: a.hex))
+                            Text(a.name).foregroundStyle(.secondary)
+                            Text(Fmt.rub(balance(of: a, txs: txs))).fontWeight(.semibold)
+                        }
+                        .font(.subheadline)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .overlay(Capsule().strokeBorder(Color.secondary.opacity(0.25)))
+                    }
+                    .buttonStyle(.plain)
+                }
+                Button { accEdit = AccountEditTarget(account: nil) } label: {
+                    Label(accs.isEmpty ? "Добавить счёт" : "Счёт", systemImage: "plus")
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .overlay(Capsule().strokeBorder(Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [4])))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: Операции
+
+    @ViewBuilder private var operations: some View {
+        if monthTxs.isEmpty {
+            VStack(spacing: 12) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 34, weight: .medium))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 72, height: 72)
+                    .background(Theme.accent.opacity(0.1), in: Circle())
+                Text(txs.isEmpty ? "Скажите, что купили" : "В этом месяце пусто").font(.title3.weight(.semibold))
+                Text("Нажмите на микрофон внизу и говорите как обычно. Или удерживайте его — и отпустите, когда закончите.")
+                    .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 30)
+        } else {
+            TxGroupedList(txs: shownTxs, accounts: accs)
+        }
+    }
+
+    // MARK: Скан
 
     private func startScan() {
         guard Keychain.hasKey else {
@@ -81,224 +257,101 @@ struct BudgetView: View {
             }
         }
     }
+}
 
-    // MARK: Уведомления
+// MARK: - Док с микрофоном
 
-    @ViewBuilder private var alerts: some View {
-        let pend = pendingRecurring(recs, txs: txs)
-        if !pend.isEmpty {
-            AlertRow(color: Theme.accent, text: pend.count == 1 ? "Пора записать «\(pend[0].name)» — \(Fmt.rubU(pend[0].amount))" :
-                        "\(pend.count) регулярных платежа ждут записи · \(Fmt.rubU(pend.reduce(0) { $0 + $1.amount }))",
-                     button: "Записать") {
-                let items = pend.map { r in
-                    ParsedItem(type: r.kind == .inc ? .inc : .exp, cat: r.cat, amount: r.amount, amountText: Fmt.input(r.amount),
-                               date: r.due(in: Date()) ?? Date().noon, note: r.name, recID: r.uid)
-                }
-                router.show(.review(ReviewPayload(items: items, subtitle: "Регулярные платежи этого месяца")))
+struct VoiceDock: View {
+    @EnvironmentObject var router: Router
+    let onScan: () -> Void
+    let onAdd: () -> Void
+    @State private var pressStart: Date?
+    @State private var pressed = false
+
+    var body: some View {
+        HStack(spacing: 22) {
+            DockButton(symbol: "camera", label: "Скан чека", action: onScan)
+            ZStack {
+                Circle().fill(Theme.accent).frame(width: 68, height: 68)
+                    .shadow(color: Theme.accent.opacity(0.35), radius: 12, y: 5)
+                Image(systemName: "mic.fill").font(.system(size: 26, weight: .semibold)).foregroundStyle(Theme.onAccent)
             }
-        }
-        let soon = allInstallments(debts).filter { $0.debt.isOut && ($0.st == .overdue || ($0.st == .due && daysBetween(Date(), $0.due) <= 5)) }
-            .sorted { $0.due < $1.due }
-        if let x = soon.first {
-            AlertRow(color: x.st == .overdue ? Theme.exp : Theme.warn,
-                     text: "\(x.debt.name): платёж \(Fmt.rubU(x.amount)) \(relDays(x.due).text)" + (soon.count > 1 ? " · ещё \(soon.count - 1)" : ""),
-                     button: "Открыть") { router.tab = 1 }
-        }
-    }
-
-    // MARK: Итог месяца
-
-    private var hero: some View {
-        let t = totals(for: month, txs)
-        return VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("ОСТАТОК ЗА МЕСЯЦ").font(.caption.weight(.semibold)).tracking(0.8).opacity(0.8)
-                Text(Fmt.rub(t.net)).font(.system(size: 38, weight: .bold, design: .rounded)).minimumScaleFactor(0.5).lineLimit(1)
-            }
-            HStack(spacing: 10) {
-                HeroFlow(title: "Доходы", value: "+" + Fmt.rubU(t.inc))
-                HeroFlow(title: "Расходы", value: "−" + Fmt.rubU(t.exp))
-            }
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .foregroundStyle(Theme.onAccent)
-        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-    }
-
-    // MARK: Счета
-
-    private var accounts: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(accs) { a in
-                    Button { accEdit = AccountEditTarget(account: a) } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(spacing: 6) {
-                                RoundedRectangle(cornerRadius: 3).fill(Color(hex: a.hex)).frame(width: 9, height: 9)
-                                Text(a.name).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                            Text(Fmt.rub(balance(of: a, txs: txs))).font(.headline)
-                        }
-                        .padding(12)
-                        .frame(minWidth: 136, alignment: .leading)
-                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
-                Button { accEdit = AccountEditTarget(account: nil) } label: {
-                    VStack(spacing: 2) {
-                        Text(accs.isEmpty ? "+ Добавить счёт" : "+ Счёт").font(.subheadline.weight(.semibold))
-                        if accs.isEmpty { Text("карта, наличные").font(.caption).foregroundStyle(.secondary) }
-                    }
-                    .padding(12)
-                    .frame(minWidth: 112, minHeight: 64)
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [5])).foregroundStyle(.secondary.opacity(0.5)))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    // MARK: Лимит
-
-    private var budgetCard: some View {
-        let exp = totals(for: month, txs).exp
-        return VStack(alignment: .leading, spacing: 8) {
-            SectionTitle(text: "Лимит расходов", action: budget > 0 ? "Изменить" : "Задать") { showBudget = true }
-            if budget <= 0 {
-                Text("Задайте лимит, и приложение покажет, сколько ещё можно потратить в этом месяце.").font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                let p = exp / budget, left = budget - exp
-                HStack(alignment: .firstTextBaseline) {
-                    Text(Fmt.rubU(exp)).font(.headline)
-                    Spacer()
-                    Text("из \(Fmt.rubU(budget))").foregroundStyle(.secondary)
-                }
-                Bar(value: p, color: p > 1 ? Theme.exp : (p > 0.8 ? Theme.warn : Theme.inc))
-                Text(budgetNote(left: left)).font(.footnote).foregroundStyle(.secondary)
-            }
-        }
-        .card()
-    }
-
-    private func budgetNote(left: Double) -> String {
-        var s = left >= 0 ? "Осталось \(Fmt.rubU(left))" : "Перерасход \(Fmt.rubU(-left))"
-        if month.sameMonth(Date()) && left > 0 {
-            let daysLeft = month.daysInMonth - Date().dayNum + 1
-            s += " · примерно \(Fmt.rubU(left / Double(max(1, daysLeft)))) в день до конца месяца"
-        }
-        return s
-    }
-
-    // MARK: Категории
-
-    private var categories: some View {
-        let rows = byCategory(monthTxs)
-        let total = rows.reduce(0) { $0 + $1.sum }
-        return VStack(alignment: .leading, spacing: 10) {
-            SectionTitle(text: "Куда ушли деньги")
-            if rows.isEmpty {
-                Text("Расходов за этот месяц пока нет.").font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                GeometryReader { g in
-                    HStack(spacing: 0) {
-                        ForEach(rows) { r in
-                            Rectangle().fill(r.cat.color).frame(width: g.size.width * r.sum / total)
+            .scaleEffect(pressed ? 0.92 : 1)
+            .animation(.snappy(duration: 0.15), value: pressed)
+            .contentShape(Circle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        if pressStart == nil {
+                            pressStart = Date(); pressed = true
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            router.startVoice()
                         }
                     }
-                }
-                .frame(height: 12)
-                .clipShape(Capsule())
-                ForEach(rows) { r in
-                    HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 3).fill(r.cat.color).frame(width: 10, height: 10)
-                        Text(r.cat.name).lineLimit(1)
-                        Spacer()
-                        Text("\(Int((r.sum / total * 100).rounded()))%").font(.footnote).foregroundStyle(.secondary)
-                        Text(Fmt.rubU(r.sum)).fontWeight(.semibold).frame(minWidth: 84, alignment: .trailing)
+                    .onEnded { _ in
+                        if let s = pressStart, Date().timeIntervalSince(s) > 0.45 { router.voiceRelease += 1 }
+                        pressStart = nil; pressed = false
                     }
-                    .font(.subheadline)
-                }
-            }
+            )
+            .accessibilityLabel("Голосовой ввод")
+            .accessibilityAddTraits(.isButton)
+            DockButton(symbol: "plus", label: "Вручную", action: onAdd)
         }
-        .card()
+        .padding(.horizontal, 18).padding(.vertical, 8)
+        .background(.regularMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.primary.opacity(0.06)))
+        .frame(maxWidth: .infinity)
+        .padding(.bottom, 6)
     }
+}
 
-    // MARK: Операции
-
-    private var operations: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SectionTitle(text: "Операции")
-            if monthTxs.isEmpty {
-                EmptyNote(title: txs.isEmpty ? "Здесь появятся ваши операции" : "В этом месяце пусто",
-                          text: "Нажмите «Голосом» и скажите, например: «продукты тысяча двести».")
-            } else {
-                TxGroupedList(txs: monthTxs, accounts: accs)
-            }
+struct DockButton: View {
+    let symbol: String
+    let label: String
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 50, height: 50)
+                .background(Theme.soft, in: Circle())
         }
-        .card()
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+}
+
+// MARK: - Мелкие элементы
+
+struct TightLabel: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) { configuration.icon.font(.caption.weight(.bold)); configuration.title }
+    }
+}
+
+struct QuietAlert: View {
+    let color: Color
+    let text: String
+    let action: String
+    let onTap: () -> Void
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 10) {
+                Circle().fill(color).frame(width: 8, height: 8)
+                Text(text).font(.subheadline).foregroundStyle(.primary).lineLimit(2).multilineTextAlignment(.leading)
+                Spacer()
+                Text(action).font(.subheadline.weight(.semibold)).foregroundStyle(color)
+            }
+            .padding(.vertical, 10)
+        }
+        .buttonStyle(.plain)
     }
 }
 
 struct AccountEditTarget: Identifiable {
     let id = UUID()
     let account: Account?
-}
-
-struct ActionTile: View {
-    let title: String
-    let sub: String
-    let symbol: String
-    let color: Color
-    let action: () -> Void
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(color == Theme.ink ? Color(.systemBackground) : .white)
-                    .frame(width: 48, height: 48)
-                    .background(color, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                Text(title).font(.subheadline.weight(.semibold))
-                Text(sub).font(.caption2).foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct AlertRow: View {
-    let color: Color
-    let text: String
-    let button: String
-    let action: () -> Void
-    var body: some View {
-        HStack(spacing: 10) {
-            Circle().fill(color).frame(width: 10, height: 10)
-            Text(text).font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
-            Button(button, action: action).font(.subheadline.weight(.semibold))
-        }
-        .padding(14)
-        .background(color.opacity(0.13), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-}
-
-struct HeroFlow: View {
-    let title: String
-    let value: String
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.caption).opacity(0.8)
-            Text(value).font(.headline).lineLimit(1).minimumScaleFactor(0.6)
-        }
-        .padding(.horizontal, 12).padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-    }
 }
 
 struct MonthSwitcher: View {
@@ -333,15 +386,15 @@ struct TxGroupedList: View {
     func accName(_ id: UUID?) -> String { accounts.first { $0.uid == id }?.name ?? "" }
 
     var body: some View {
-        VStack(spacing: 0) {
+        LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(groups) { g in
                 HStack {
-                    Text(dayLabel(g.day).uppercased())
+                    Text(dayLabel(g.day))
                     Spacer()
                     Text(Fmt.signed(g.items.reduce(0) { $0 + $1.signedAmount }))
                 }
-                .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                .padding(.top, 12).padding(.bottom, 4)
+                .font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
+                .padding(.top, 14).padding(.bottom, 4)
                 ForEach(g.items) { t in
                     Button { router.show(.editTx(t)) } label: { row(t) }.buttonStyle(.plain)
                 }
@@ -353,35 +406,48 @@ struct TxGroupedList: View {
         let n = daysBetween(d, Date())
         if n == 0 { return "Сегодня" }
         if n == 1 { return "Вчера" }
-        return DF.s(d, "d MMMM, EE")
+        return DF.s(d, "d MMMM, EEEE")
     }
 
     @ViewBuilder func row(_ t: Tx) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             if t.kind == .tr {
-                IconBadge(symbol: "arrow.left.arrow.right", color: .gray)
+                SoftIcon(symbol: "arrow.left.arrow.right", color: .gray)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Перевод").font(.body.weight(.medium))
+                    Text("Перевод").font(.body)
                     Text("\(accName(t.accID)) → \(accName(t.toID))").font(.footnote).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer()
-                Text(Fmt.rubU(t.amount)).fontWeight(.semibold).foregroundStyle(.secondary)
+                Text(Fmt.rubU(t.amount)).font(.body.weight(.medium)).foregroundStyle(.secondary)
             } else {
                 let c = Catalog.cat(t.cat)
-                IconBadge(symbol: c.symbol, color: c.color)
+                SoftIcon(symbol: c.symbol, color: c.color)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(c.name).font(.body.weight(.medium)).lineLimit(1)
-                    let sub = [t.note, accounts.count > 1 ? accName(t.accID) : ""].filter { !$0.isEmpty }.joined(separator: " · ")
+                    Text(t.note.isEmpty ? c.name : t.note).font(.body).lineLimit(1)
+                    let sub = [t.note.isEmpty ? "" : c.name, accounts.count > 1 ? accName(t.accID) : ""].filter { !$0.isEmpty }.joined(separator: " · ")
                     if !sub.isEmpty { Text(sub).font(.footnote).foregroundStyle(.secondary).lineLimit(1) }
                 }
                 Spacer()
                 Text((t.kind == .inc ? "+" : "−") + Fmt.rubU(t.amount))
-                    .fontWeight(.semibold)
+                    .font(.body.weight(.medium))
                     .foregroundStyle(t.kind == .inc ? Theme.inc : Color.primary)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 9)
         .contentShape(Rectangle())
+    }
+}
+
+struct SoftIcon: View {
+    let symbol: String
+    let color: Color
+    var size: CGFloat = 40
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.4, weight: .semibold))
+            .foregroundStyle(color)
+            .frame(width: size, height: size)
+            .background(color.opacity(0.14), in: Circle())
     }
 }
 
