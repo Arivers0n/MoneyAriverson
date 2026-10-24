@@ -164,11 +164,18 @@ func averageIncome(_ txs: [Tx]) -> Double {
 }
 
 func onTimeStreak(_ debts: [Debt]) -> Int {
-    let done = debts.filter { $0.isOut }.flatMap { $0.schedule() }
-        .filter { $0.st == .ok || $0.st == .late || $0.st == .overdue }
-        .sorted { $0.due > $1.due }
+    var done: [Inst] = []
+    for d in debts where d.isOut {
+        for x in d.schedule() {
+            let counted: Bool = x.st == InstStatus.ok || x.st == InstStatus.late || x.st == InstStatus.overdue
+            if counted { done.append(x) }
+        }
+    }
+    done.sort { (a: Inst, b: Inst) -> Bool in a.due > b.due }
     var s = 0
-    for x in done { if x.st == .ok { s += 1 } else { break } }
+    for x in done {
+        if x.st == InstStatus.ok { s += 1 } else { break }
+    }
     return s
 }
 

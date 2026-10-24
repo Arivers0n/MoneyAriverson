@@ -34,12 +34,14 @@ jobs:
 
       - name: Собрать
         run: |
-          set -o pipefail
+          set +e
           xcodebuild -project Koshelek.xcodeproj -scheme Koshelek -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            build 2>&1 | tee build.log | grep -E "error:|warning: unre|BUILD (SUCCEEDED|FAILED)" || true
-          test -d build/Build/Products/Release-iphoneos/Koshelek.app
+            build > build.log 2>&1
+          code=$?
+          grep -E "error:|BUILD (SUCCEEDED|FAILED)" build.log | sort -u | head -100
+          exit $code
 
       - name: Ошибки компиляции
         if: failure()
@@ -51,6 +53,8 @@ jobs:
           cp -R build/Build/Products/Release-iphoneos/Koshelek.app Payload/
           zip -qry Koshelek.ipa Payload
           ls -lh Koshelek.ipa
+          size=$(stat -f%z Koshelek.ipa)
+          if [ "$size" -lt 500000 ]; then echo "ipa подозрительно маленький: $size байт"; exit 1; fi
 
       - uses: actions/upload-artifact@v4
         with:
