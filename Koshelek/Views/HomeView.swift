@@ -535,56 +535,49 @@ struct PullPill: View {
     let action: () -> Void
 
     private var progress: CGFloat { min(1, pull / HomeView.pullThreshold) }
-    /// Резинка: чем дальше тянете, тем меньше растягивается (как у iOS).
+    /// Резинка: растяжение всегда следует за списком — и когда тянете, и когда он пружинит обратно,
+    /// поэтому нет рывка в момент отпускания.
     private var stretch: CGFloat {
-        guard state == .pulling || state == .armed else { return 0 }
-        let c: CGFloat = 120
-        return c * (1 - 1 / (pull / c + 1))
+        let c: CGFloat = 110
+        return c * (1 - 1 / (max(0, pull) / c + 1))
     }
+    private var armedLook: Bool { state == .armed }
+    private var busy: Bool { state == .refreshing }
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 icon
                     .font(.body.weight(.semibold))
-                    .frame(width: 22)
+                    .frame(width: 22, height: 22)
                 Text(label)
                     .font(.body.weight(.medium))
-                    .contentTransition(.interpolate)
                     .lineLimit(1)
+                    .id(label)
+                    .transition(.blurReplace)
             }
-            .foregroundStyle(state == .armed ? Color.white : (state == .done ? Theme.inc : Color.primary))
-            .padding(.horizontal, 18 + stretch * 0.5)
-            .frame(height: 44 + stretch * 0.08)
+            .foregroundStyle(armedLook ? Color.white : (state == .done ? Theme.inc : Color.primary))
+            .padding(.horizontal, 18 + stretch * 0.35)
+            .frame(height: 44 + stretch * 0.06)
             .background {
                 ZStack {
-                    if state == .armed {
-                        Capsule().fill(Theme.accent.gradient)
-                    }
-                    if state == .refreshing && Motion.enabled {
-                        Shimmer().clipShape(Capsule())
-                    }
-                    if state == .pulling {
-                        GeometryReader { g in
-                            Capsule()
-                                .fill(Theme.accent.opacity(0.22))
-                                .frame(width: max(g.size.height, g.size.width * progress))
-                        }
-                        .clipShape(Capsule())
-                    }
+                    // цвет набирается плавно по мере оттягивания
+                    Capsule().fill(Theme.accent.opacity(state == .pulling ? Double(progress) * 0.16 : 0))
+                    Capsule().fill(Theme.accent.gradient).opacity(armedLook ? 1 : 0)
+                    Shimmer(active: busy && Motion.enabled).clipShape(Capsule()).opacity(busy ? 1 : 0)
                 }
             }
             .contentShape(Capsule())
         }
         .buttonStyle(Pressable())
         .glass(Capsule(), interactive: true)
-        .scaleEffect(state == .armed && Motion.moves ? 1.04 : 1)
-        // капсула тянется, но остаётся ближе к шапке — эффект резинки
-        .offset(y: -min(pull, 160) * 0.4 * (state == .pulling || state == .armed ? 1 : 0))
-        .opacity(hideWhenIdle && state == .idle ? 0 : 1)
-        .frame(height: hideWhenIdle && state == .idle ? 0 : nil)
-        // смена состояния — пружиной; само растяжение идёт за пальцем без задержки
-        .animation(Motion.spring, value: state)
+        .scaleEffect(armedLook && Motion.moves ? 1.04 : 1)
+        // капсула едет вниз медленнее списка — ощущение, что её растягивает
+        .offset(y: -stretch * 0.45)
+        .opacity(hideWhenIdle && state == .idle && pull < 4 ? 0 : 1)
+        .frame(height: hideWhenIdle && state == .idle && pull < 4 ? 0 : nil)
+        // смена состояний — одной мягкой пружиной; растяжение идёт за пальцем без задержки
+        .animation(Motion.enabled ? .spring(duration: 0.45, bounce: 0.18) : nil, value: state)
     }
 
     private var label: String {
@@ -596,51 +589,39 @@ struct PullPill: View {
         }
     }
 
-    @ViewBuilder private var icon: some View {
+    private var iconName: String {
         switch state {
-        case .idle:
-            Image(systemName: symbol)
-        case .pulling:
-            Image(systemName: symbol)
-                .rotationEffect(.degrees(Double(progress) * 360))
-                .scaleEffect(0.8 + progress * 0.4)
-        case .armed:
-            Image(systemName: "arrow.clockwise")
-        case .refreshing:
-            SpinningSparkle()
-        case .done:
-            Image(systemName: "checkmark")
-                .transition(.scale.combined(with: .opacity))
+        case .idle, .pulling, .refreshing: return symbol
+        case .armed: return "arrow.clockwise"
+        case .done: return "checkmark"
+        }
+    }
+
+    /// Одна иконка на все состояния: поворот плавно продолжается от оттягивания к вращению при обновлении.
+    private var icon: some View {
+        TimelineView(.animation(paused: !busy || !Motion.enabled)) { tl in
+            let spin = busy && Motion.enabled ? tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.2) / 1.2 * 360 : 0
+            Image(systemName: iconName)
+                .contentTransition(.symbolEffect(.replace))
+                .rotationEffect(.degrees(state == .pulling ? Double(progress) * 180 : spin))
+                .scaleEffect(state == .pulling ? 0.85 + progress * 0.3 : 1)
         }
     }
 }
 
 /// Бегущий блик внутри капсулы во время обновления.
 struct Shimmer: View {
-    @State private var x: CGFloat = -1
+    var active: Bool
     var body: some View {
-        GeometryReader { g in
-            LinearGradient(colors: [.clear, Theme.accent.opacity(0.35), .clear], startPoint: .leading, endPoint: .trailing)
-                .frame(width: g.size.width * 0.6)
-                .offset(x: x * g.size.width)
-                .onAppear {
-                    withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: false)) { x = 1.2 }
-                }
+        TimelineView(.animation(paused: !active)) { tl in
+            GeometryReader { g in
+                let t = tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.4) / 1.4
+                LinearGradient(colors: [.clear, Theme.accent.opacity(0.28), .clear], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: g.size.width * 0.55)
+                    .offset(x: (t * 1.55 - 0.55) * g.size.width)
+            }
         }
         .allowsHitTesting(false)
-    }
-}
-
-struct SpinningSparkle: View {
-    @State private var spin = false
-    var body: some View {
-        Image(systemName: "sparkle")
-            .rotationEffect(.degrees(spin ? 360 : 0))
-            .scaleEffect(spin ? 1.15 : 0.9)
-            .onAppear {
-                guard Motion.enabled else { return }
-                withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: false)) { spin = true }
-            }
     }
 }
 
