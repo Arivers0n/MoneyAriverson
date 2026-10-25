@@ -304,23 +304,26 @@ final class SyncEngine: ObservableObject {
         let state: String
     }
 
-    /// Есть ли на сервере вход через Google.
-    func googleProvider(_ address: String) async -> OAuthProvider? {
+    /// Какие сервисы входа включены на сервере: google, yandex, apple.
+    func oauthProviders(_ address: String) async -> [String: OAuthProvider] {
         let s = Self.normalize(address)
         guard let url = URL(string: s + "/api/collections/users/auth-methods"),
               let (data, _) = try? await URLSession.shared.data(from: url),
-              let obj = jsonObject(data) as? [String: Any] else { return nil }
+              let obj = jsonObject(data) as? [String: Any] else { return [:] }
         let list = ((obj["oauth2"] as? [String: Any])?["providers"] as? [[String: Any]]) ?? (obj["authProviders"] as? [[String: Any]]) ?? []
-        guard let g = list.first(where: { jStr($0["name"]) == "google" }) else { return nil }
-        let auth = jStr(g["authURL"]).isEmpty ? jStr(g["authUrl"]) : jStr(g["authURL"])
-        return OAuthProvider(authURL: auth, codeVerifier: jStr(g["codeVerifier"]), state: jStr(g["state"]))
+        var out: [String: OAuthProvider] = [:]
+        for g in list {
+            let auth = jStr(g["authURL"]).isEmpty ? jStr(g["authUrl"]) : jStr(g["authURL"])
+            out[jStr(g["name"])] = OAuthProvider(authURL: auth, codeVerifier: jStr(g["codeVerifier"]), state: jStr(g["state"]))
+        }
+        return out
     }
 
     @MainActor
-    func loginWithGoogle(server addr: String, ctx: ModelContext) async throws {
+    func loginWithOAuth(_ provider: String, server addr: String, ctx: ModelContext) async throws {
         let base = Self.normalize(addr)
-        guard let p = await googleProvider(base) else {
-            throw APIError(message: "На сервере не включён вход через Google", status: 0)
+        guard let p = await oauthProviders(base)[provider] else {
+            throw APIError(message: "На сервере не включён этот способ входа", status: 0)
         }
         let redirect = base + "/api/kp/oauth-callback"
         let enc = redirect.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? redirect
@@ -328,11 +331,14 @@ final class SyncEngine: ObservableObject {
         let callback = try await OAuthWeb.run(url: url)
         let items = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems ?? []
         func q(_ n: String) -> String { items.first { $0.name == n }?.value ?? "" }
-        if !q("error").isEmpty { throw APIError(message: "Google: \(q("error"))", status: 0) }
+        if !q("error").isEmpty {
+            if q("error") == "user_cancelled_authorize" || q("error") == "access_denied" { throw APIError(message: "Вход отменён", status: -1) }
+            throw APIError(message: "Ошибка входа: \(q("error"))", status: 0)
+        }
         guard q("state") == p.state, !q("code").isEmpty else { throw APIError(message: "Вход отменён или устарел — попробуйте ещё раз", status: 0) }
         server = base
         let obj = try await call("/api/collections/users/auth-with-oauth2",
-                                 ["provider": "google", "code": q("code"), "codeVerifier": p.codeVerifier, "redirectURL": redirect], auth: false)
+                                 ["provider": provider, "code": q("code"), "codeVerifier": p.codeVerifier, "redirectURL": redirect], auth: false)
         try await finishLogin(obj, ctx: ctx)
     }
 

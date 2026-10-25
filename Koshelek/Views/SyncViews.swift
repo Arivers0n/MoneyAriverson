@@ -62,8 +62,8 @@ struct AccountView: View {
     @State private var err: String?
     @State private var serverOK: Bool?
     @State private var confirmLogout = false
-    @State private var googleOn = false
-    @State private var googleBusy = false
+    @State private var providers: [String] = []
+    @State private var oauthBusy: String?
 
     var body: some View {
         Form {
@@ -101,21 +101,15 @@ struct AccountView: View {
                 } header: { Text("Адрес сервера") } footer: {
                     Text("Адрес, который показал скрипт установки на вашем VPS, например money.example.ru или money.example.ru:8443.")
                 }
-                if googleOn {
+                if !providers.isEmpty {
                     Section {
-                        Button(action: google) {
-                            HStack(spacing: 10) {
-                                Spacer()
-                                if googleBusy { ProgressView() } else {
-                                    GoogleG().frame(width: 20, height: 20)
-                                    Text("Войти через Google").fontWeight(.semibold).foregroundStyle(.primary)
-                                }
-                                Spacer()
-                            }
-                            .frame(height: 30)
+                        ForEach(["apple", "google", "yandex"].filter { providers.contains($0) }, id: \.self) { p in
+                            OAuthButton(provider: p, busy: oauthBusy == p) { oauth(p) }
+                                .disabled(oauthBusy != nil || busy)
+                                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                                .listRowBackground(Color.clear)
                         }
-                        .disabled(googleBusy || busy)
-                    } footer: { Text("Или по почте и паролю:") }
+                    } header: { Text("Быстрый вход") } footer: { Text("Войдите тем же аккаунтом на iPad или другом iPhone — данные будут одни и те же. Или по почте и паролю:") }
                 }
                 Section {
                     Picker("", selection: $registering) {
@@ -146,7 +140,7 @@ struct AccountView: View {
         }
         .onAppear { if !sync.loggedIn && !server.isEmpty { checkServer() } }
         .onChange(of: server) { _, v in
-            googleOn = false
+            providers = []
             let snap = v
             Task {
                 try? await Task.sleep(nanoseconds: 700_000_000)
@@ -163,20 +157,20 @@ struct AccountView: View {
     private func checkServer() {
         Task {
             serverOK = await sync.ping(server)
-            let g = serverOK == true ? await sync.googleProvider(server) != nil : false
-            withAnimation(Motion.spring) { googleOn = g }
+            let list = serverOK == true ? Array(await sync.oauthProviders(server).keys) : []
+            withAnimation(Motion.spring) { providers = list }
         }
     }
 
-    private func google() {
-        googleBusy = true; err = nil
+    private func oauth(_ p: String) {
+        oauthBusy = p; err = nil
         Haptic.press()
         Task {
-            defer { googleBusy = false }
+            defer { oauthBusy = nil }
             do {
-                try await sync.loginWithGoogle(server: server, ctx: ctx)
+                try await sync.loginWithOAuth(p, server: server, ctx: ctx)
                 Haptic.success()
-                Router.shared.say("Вы вошли через Google — данные синхронизируются")
+                Router.shared.say("Вы вошли — данные синхронизируются")
                 dismiss()
             } catch let e as SyncEngine.APIError where e.status == -1 {
                 // пользователь закрыл окно
@@ -186,7 +180,6 @@ struct AccountView: View {
             }
         }
     }
-
     private func submit() {
         busy = true; err = nil
         Task {
@@ -343,5 +336,56 @@ struct GoogleG: View {
     }
     private func seg(_ a: CGFloat, _ b: CGFloat, _ c: Color, _ lw: CGFloat) -> some View {
         Circle().trim(from: a, to: b).stroke(c, style: StrokeStyle(lineWidth: lw))
+    }
+}
+
+/// Кнопка «Войти через …» в фирменном стиле сервиса.
+struct OAuthButton: View {
+    let provider: String
+    let busy: Bool
+    let action: () -> Void
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                if busy { ProgressView().tint(fg) } else { logo }
+                Text(title).font(.body.weight(.semibold))
+            }
+            .foregroundStyle(fg)
+            .frame(maxWidth: .infinity).frame(height: 50)
+            .background(bg, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.primary.opacity(provider == "google" ? 0.12 : 0)))
+        }
+        .buttonStyle(Pressable(scale: 0.97))
+    }
+    private var title: String {
+        switch provider {
+        case "apple": return "Войти через Apple"
+        case "yandex": return "Войти с Яндекс ID"
+        default: return "Войти через Google"
+        }
+    }
+    private var bg: Color {
+        switch provider {
+        case "apple": return scheme == .dark ? .white : .black
+        case "yandex": return Color(red: 0.99, green: 0.24, blue: 0.13)
+        default: return Color(.secondarySystemGroupedBackground)
+        }
+    }
+    private var fg: Color {
+        switch provider {
+        case "apple": return scheme == .dark ? .black : .white
+        case "yandex": return .white
+        default: return .primary
+        }
+    }
+    @ViewBuilder private var logo: some View {
+        switch provider {
+        case "apple": Image(systemName: "apple.logo").font(.system(size: 19, weight: .medium))
+        case "yandex":
+            Text("Я").font(.system(size: 14, weight: .heavy)).foregroundStyle(Color(red: 0.99, green: 0.24, blue: 0.13))
+                .frame(width: 22, height: 22).background(.white, in: Circle())
+        default: GoogleG().frame(width: 20, height: 20)
+        }
     }
 }

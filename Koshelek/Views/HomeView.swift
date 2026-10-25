@@ -34,6 +34,7 @@ struct HomeView: View {
     @State private var pullState: PullState = .idle
     @State private var pullTick = 0
     @State private var heroBump = false
+    @State private var refreshStart = Date.distantPast
 
     /// Шапка (итог месяца) закреплена, если блок «Итог» есть на экране и не идёт редактирование.
     private var pinHero: Bool { !layout.editing && layout.order.contains("summary") }
@@ -57,7 +58,7 @@ struct HomeView: View {
                     Color.clear.frame(height: 0)
                         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("homeScroll")).minY } action: { legacyPull($0) }
                     if !layout.editing && !layout.order.contains("insights") {
-                        PullPill(title: "Обновить", symbol: "arrow.down", pull: pull, state: pullState, hideWhenIdle: true) {}
+                        PullPill(title: "Обновить", symbol: "arrow.down", pull: pull, state: pullState, since: refreshStart, hideWhenIdle: true) {}
                     }
                     VStack(spacing: layout.editing ? 18 : (ap.compact ? 16 : 22)) {
                         ForEach(scrollOrder, id: \.self) { id in
@@ -143,6 +144,7 @@ struct HomeView: View {
     }
 
     private func startRefresh() {
+        refreshStart = Date()
         withAnimation(Motion.spring) { pullState = .refreshing }
         pullTick = 0
         Task {
@@ -279,7 +281,7 @@ struct HomeView: View {
     }
 
     private var insightsButton: some View {
-        PullPill(title: "Инсайты", symbol: "sparkle", pull: pull, state: pullState, doneText: doneText) {
+        PullPill(title: "Инсайты", symbol: "sparkle", pull: pull, state: pullState, since: refreshStart, doneText: doneText) {
             router.show(.insights)
         }
     }
@@ -530,6 +532,7 @@ struct PullPill: View {
     let symbol: String
     let pull: CGFloat
     let state: PullState
+    var since: Date = .distantPast
     var hideWhenIdle = false
     var doneText = "Обновлено"
     let action: () -> Void
@@ -564,7 +567,7 @@ struct PullPill: View {
                     // цвет набирается плавно по мере оттягивания
                     Capsule().fill(Theme.accent.opacity(state == .pulling ? Double(progress) * 0.16 : 0))
                     Capsule().fill(Theme.accent.gradient).opacity(armedLook ? 1 : 0)
-                    Shimmer(active: busy && Motion.enabled).clipShape(Capsule()).opacity(busy ? 1 : 0)
+                    Shimmer(active: busy && Motion.enabled, since: since).clipShape(Capsule()).opacity(busy ? 1 : 0)
                 }
             }
             .contentShape(Capsule())
@@ -589,36 +592,49 @@ struct PullPill: View {
         }
     }
 
-    private var iconName: String {
-        switch state {
-        case .idle, .pulling, .refreshing: return symbol
-        case .armed: return "arrow.clockwise"
-        case .done: return "checkmark"
+    private var iconName: String { state == .done ? "checkmark" : symbol }
+
+    /// Одна и та же звёздочка от начала до конца: пока тянете — поворачивается за пальцем,
+    /// после отпускания плавно разгоняется с того же угла и равномерно крутится; в конце мягко превращается в галочку.
+    private var icon: some View {
+        TimelineView(.animation(paused: !busy || !Motion.enabled)) { tl in
+            Image(systemName: iconName)
+                .contentTransition(.symbolEffect(.replace))
+                .rotationEffect(.degrees(angle(at: tl.date)))
+                .scaleEffect(state == .pulling || state == .armed ? 0.9 + progress * 0.2 : 1)
         }
     }
 
-    /// Одна иконка на все состояния: поворот плавно продолжается от оттягивания к вращению при обновлении.
-    private var icon: some View {
-        TimelineView(.animation(paused: !busy || !Motion.enabled)) { tl in
-            let spin = busy && Motion.enabled ? tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.2) / 1.2 * 360 : 0
-            Image(systemName: iconName)
-                .contentTransition(.symbolEffect(.replace))
-                .rotationEffect(.degrees(state == .pulling ? Double(progress) * 180 : spin))
-                .scaleEffect(state == .pulling ? 0.85 + progress * 0.3 : 1)
+    private func angle(at now: Date) -> Double {
+        switch state {
+        case .pulling, .armed:
+            return Double(progress) * 180
+        case .refreshing:
+            guard Motion.enabled else { return 180 }
+            // скорость растёт от нуля до 330°/с за ~0,3 с — без рывка в момент старта
+            let e = max(0, now.timeIntervalSince(since))
+            let v = 330.0, tau = 0.3
+            return 180 + v * (e - tau * (1 - exp(-e / tau)))
+        default:
+            return 0
         }
     }
 }
 
-/// Бегущий блик внутри капсулы во время обновления.
+/// Бегущий блик внутри капсулы во время обновления: стартует из-за левого края и плавно проявляется.
 struct Shimmer: View {
     var active: Bool
+    var since: Date = .distantPast
     var body: some View {
         TimelineView(.animation(paused: !active)) { tl in
             GeometryReader { g in
-                let t = tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.4) / 1.4
+                let e = max(0, tl.date.timeIntervalSince(since))
+                let t = e.truncatingRemainder(dividingBy: 1.4) / 1.4
+                let ease = t * t * (3 - 2 * t)
                 LinearGradient(colors: [.clear, Theme.accent.opacity(0.28), .clear], startPoint: .leading, endPoint: .trailing)
                     .frame(width: g.size.width * 0.55)
-                    .offset(x: (t * 1.55 - 0.55) * g.size.width)
+                    .offset(x: (ease * 1.55 - 0.55) * g.size.width)
+                    .opacity(min(1, e / 0.3))
             }
         }
         .allowsHitTesting(false)

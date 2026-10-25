@@ -133,25 +133,39 @@ routerAdd("GET", "/api/kp/ping", (e) => {
     return e.json(200, { ok: true, app: "kopilka", version: 1 })
 })
 
-// Вход через Google: Google возвращает пользователя сюда, а мы передаём код в приложение.
-// В Google Cloud укажите redirect URI: https://ВАШ-ДОМЕН/api/kp/oauth-callback
+// Вход через Google, Яндекс и Apple: сервис возвращает пользователя сюда, а мы передаём код в приложение.
+// Redirect URI во всех кабинетах: https://ВАШ-ДОМЕН/api/kp/oauth-callback
 routerAdd("GET", "/api/kp/oauth-callback", (e) => {
     const q = e.request.url.rawQuery || ""
     return e.redirect(302, "koshelek://oauth?" + q)
 })
+// Apple присылает код POST-запросом (form_post).
+routerAdd("POST", "/api/kp/oauth-callback", (e) => {
+    const info = e.requestInfo()
+    const b = info.body || {}
+    const parts = []
+    for (const k of ["code", "state", "error"]) {
+        if (b[k]) parts.push(k + "=" + encodeURIComponent(String(b[k])))
+    }
+    return e.redirect(303, "koshelek://oauth?" + parts.join("&"))
+})
 
-// Если в /etc/kopilka.env заданы KP_GOOGLE_ID и KP_GOOGLE_SECRET — включаем вход через Google сами.
+// Провайдеры входа из /etc/kopilka.env: KP_GOOGLE_ID/KP_GOOGLE_SECRET, KP_YANDEX_ID/KP_YANDEX_SECRET, KP_APPLE_ID/KP_APPLE_SECRET.
 onBootstrap((e) => {
     e.next()
-    const id = $os.getenv("KP_GOOGLE_ID")
-    const secret = $os.getenv("KP_GOOGLE_SECRET")
-    if (!id || !secret) return
+    const list = []
+    for (const [name, key] of [["google", "GOOGLE"], ["yandex", "YANDEX"], ["apple", "APPLE"]]) {
+        const id = $os.getenv("KP_" + key + "_ID")
+        const secret = $os.getenv("KP_" + key + "_SECRET")
+        if (id && secret) list.push({ name: name, clientId: id, clientSecret: secret })
+    }
+    if (!list.length) return
     try {
         const c = e.app.findCollectionByNameOrId("users")
-        unmarshal({ oauth2: { enabled: true, mappedFields: { name: "name", avatarURL: "" }, providers: [{ name: "google", clientId: id, clientSecret: secret }] } }, c)
+        unmarshal({ oauth2: { enabled: true, mappedFields: { name: "name", avatarURL: "" }, providers: list } }, c)
         e.app.save(c)
-        console.log("Kopilka: вход через Google включён")
+        console.log("Kopilka: вход через " + list.map((p) => p.name).join(", ") + " включён")
     } catch (err) {
-        console.log("Kopilka: не удалось включить Google:", err)
+        console.log("Kopilka: не удалось включить вход через сервисы:", err)
     }
 })

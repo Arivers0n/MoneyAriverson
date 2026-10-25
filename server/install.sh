@@ -192,21 +192,31 @@ dHVybiBlLmpzb24oMjAwLCB7IHNhdmVkOiBzYXZlZCwgc2tpcHBlZDogc2tpcHBlZCB9KQp9LCAkYXBp
 dXNlcnMiKSkKCi8vINCf0YDQvtCy0LXRgNC60LAsINGH0YLQviDRgdC10YDQstC10YAg0LbQuNCy0L7QuSAo0LTQu9GPINGN0LrR
 gNCw0L3QsCDQvdCw0YHRgtGA0L7QtdC6KS4Kcm91dGVyQWRkKCJHRVQiLCAiL2FwaS9rcC9waW5nIiwgKGUpID0+IHsKICAgIHJl
 dHVybiBlLmpzb24oMjAwLCB7IG9rOiB0cnVlLCBhcHA6ICJrb3BpbGthIiwgdmVyc2lvbjogMSB9KQp9KQoKLy8g0JLRhdC+0LQg
-0YfQtdGA0LXQtyBHb29nbGU6IEdvb2dsZSDQstC+0LfQstGA0LDRidCw0LXRgiDQv9C+0LvRjNC30L7QstCw0YLQtdC70Y8g0YHR
-jtC00LAsINCwINC80Ysg0L/QtdGA0LXQtNCw0ZHQvCDQutC+0LQg0LIg0L/RgNC40LvQvtC20LXQvdC40LUuCi8vINCSIEdvb2ds
-ZSBDbG91ZCDRg9C60LDQttC40YLQtSByZWRpcmVjdCBVUkk6IGh0dHBzOi8v0JLQkNCoLdCU0J7QnNCV0J0vYXBpL2twL29hdXRo
-LWNhbGxiYWNrCnJvdXRlckFkZCgiR0VUIiwgIi9hcGkva3Avb2F1dGgtY2FsbGJhY2siLCAoZSkgPT4gewogICAgY29uc3QgcSA9
-IGUucmVxdWVzdC51cmwucmF3UXVlcnkgfHwgIiIKICAgIHJldHVybiBlLnJlZGlyZWN0KDMwMiwgImtvc2hlbGVrOi8vb2F1dGg/
-IiArIHEpCn0pCgovLyDQldGB0LvQuCDQsiAvZXRjL2tvcGlsa2EuZW52INC30LDQtNCw0L3RiyBLUF9HT09HTEVfSUQg0LggS1Bf
-R09PR0xFX1NFQ1JFVCDigJQg0LLQutC70Y7Rh9Cw0LXQvCDQstGF0L7QtCDRh9C10YDQtdC3IEdvb2dsZSDRgdCw0LzQuC4Kb25C
-b290c3RyYXAoKGUpID0+IHsKICAgIGUubmV4dCgpCiAgICBjb25zdCBpZCA9ICRvcy5nZXRlbnYoIktQX0dPT0dMRV9JRCIpCiAg
-ICBjb25zdCBzZWNyZXQgPSAkb3MuZ2V0ZW52KCJLUF9HT09HTEVfU0VDUkVUIikKICAgIGlmICghaWQgfHwgIXNlY3JldCkgcmV0
-dXJuCiAgICB0cnkgewogICAgICAgIGNvbnN0IGMgPSBlLmFwcC5maW5kQ29sbGVjdGlvbkJ5TmFtZU9ySWQoInVzZXJzIikKICAg
-ICAgICB1bm1hcnNoYWwoeyBvYXV0aDI6IHsgZW5hYmxlZDogdHJ1ZSwgbWFwcGVkRmllbGRzOiB7IG5hbWU6ICJuYW1lIiwgYXZh
-dGFyVVJMOiAiIiB9LCBwcm92aWRlcnM6IFt7IG5hbWU6ICJnb29nbGUiLCBjbGllbnRJZDogaWQsIGNsaWVudFNlY3JldDogc2Vj
-cmV0IH1dIH0gfSwgYykKICAgICAgICBlLmFwcC5zYXZlKGMpCiAgICAgICAgY29uc29sZS5sb2coIktvcGlsa2E6INCy0YXQvtC0
-INGH0LXRgNC10LcgR29vZ2xlINCy0LrQu9GO0YfRkdC9IikKICAgIH0gY2F0Y2ggKGVycikgewogICAgICAgIGNvbnNvbGUubG9n
-KCJLb3BpbGthOiDQvdC1INGD0LTQsNC70L7RgdGMINCy0LrQu9GO0YfQuNGC0YwgR29vZ2xlOiIsIGVycikKICAgIH0KfSkK
+0YfQtdGA0LXQtyBHb29nbGUsINCv0L3QtNC10LrRgSDQuCBBcHBsZTog0YHQtdGA0LLQuNGBINCy0L7Qt9Cy0YDQsNGJ0LDQtdGC
+INC/0L7Qu9GM0LfQvtCy0LDRgtC10LvRjyDRgdGO0LTQsCwg0LAg0LzRiyDQv9C10YDQtdC00LDRkdC8INC60L7QtCDQsiDQv9GA
+0LjQu9C+0LbQtdC90LjQtS4KLy8gUmVkaXJlY3QgVVJJINCy0L4g0LLRgdC10YUg0LrQsNCx0LjQvdC10YLQsNGFOiBodHRwczov
+L9CS0JDQqC3QlNCe0JzQldCdL2FwaS9rcC9vYXV0aC1jYWxsYmFjawpyb3V0ZXJBZGQoIkdFVCIsICIvYXBpL2twL29hdXRoLWNh
+bGxiYWNrIiwgKGUpID0+IHsKICAgIGNvbnN0IHEgPSBlLnJlcXVlc3QudXJsLnJhd1F1ZXJ5IHx8ICIiCiAgICByZXR1cm4gZS5y
+ZWRpcmVjdCgzMDIsICJrb3NoZWxlazovL29hdXRoPyIgKyBxKQp9KQovLyBBcHBsZSDQv9GA0LjRgdGL0LvQsNC10YIg0LrQvtC0
+IFBPU1Qt0LfQsNC/0YDQvtGB0L7QvCAoZm9ybV9wb3N0KS4Kcm91dGVyQWRkKCJQT1NUIiwgIi9hcGkva3Avb2F1dGgtY2FsbGJh
+Y2siLCAoZSkgPT4gewogICAgY29uc3QgaW5mbyA9IGUucmVxdWVzdEluZm8oKQogICAgY29uc3QgYiA9IGluZm8uYm9keSB8fCB7
+fQogICAgY29uc3QgcGFydHMgPSBbXQogICAgZm9yIChjb25zdCBrIG9mIFsiY29kZSIsICJzdGF0ZSIsICJlcnJvciJdKSB7CiAg
+ICAgICAgaWYgKGJba10pIHBhcnRzLnB1c2goayArICI9IiArIGVuY29kZVVSSUNvbXBvbmVudChTdHJpbmcoYltrXSkpKQogICAg
+fQogICAgcmV0dXJuIGUucmVkaXJlY3QoMzAzLCAia29zaGVsZWs6Ly9vYXV0aD8iICsgcGFydHMuam9pbigiJiIpKQp9KQoKLy8g
+0J/RgNC+0LLQsNC50LTQtdGA0Ysg0LLRhdC+0LTQsCDQuNC3IC9ldGMva29waWxrYS5lbnY6IEtQX0dPT0dMRV9JRC9LUF9HT09H
+TEVfU0VDUkVULCBLUF9ZQU5ERVhfSUQvS1BfWUFOREVYX1NFQ1JFVCwgS1BfQVBQTEVfSUQvS1BfQVBQTEVfU0VDUkVULgpvbkJv
+b3RzdHJhcCgoZSkgPT4gewogICAgZS5uZXh0KCkKICAgIGNvbnN0IGxpc3QgPSBbXQogICAgZm9yIChjb25zdCBbbmFtZSwga2V5
+XSBvZiBbWyJnb29nbGUiLCAiR09PR0xFIl0sIFsieWFuZGV4IiwgIllBTkRFWCJdLCBbImFwcGxlIiwgIkFQUExFIl1dKSB7CiAg
+ICAgICAgY29uc3QgaWQgPSAkb3MuZ2V0ZW52KCJLUF8iICsga2V5ICsgIl9JRCIpCiAgICAgICAgY29uc3Qgc2VjcmV0ID0gJG9z
+LmdldGVudigiS1BfIiArIGtleSArICJfU0VDUkVUIikKICAgICAgICBpZiAoaWQgJiYgc2VjcmV0KSBsaXN0LnB1c2goeyBuYW1l
+OiBuYW1lLCBjbGllbnRJZDogaWQsIGNsaWVudFNlY3JldDogc2VjcmV0IH0pCiAgICB9CiAgICBpZiAoIWxpc3QubGVuZ3RoKSBy
+ZXR1cm4KICAgIHRyeSB7CiAgICAgICAgY29uc3QgYyA9IGUuYXBwLmZpbmRDb2xsZWN0aW9uQnlOYW1lT3JJZCgidXNlcnMiKQog
+ICAgICAgIHVubWFyc2hhbCh7IG9hdXRoMjogeyBlbmFibGVkOiB0cnVlLCBtYXBwZWRGaWVsZHM6IHsgbmFtZTogIm5hbWUiLCBh
+dmF0YXJVUkw6ICIiIH0sIHByb3ZpZGVyczogbGlzdCB9IH0sIGMpCiAgICAgICAgZS5hcHAuc2F2ZShjKQogICAgICAgIGNvbnNv
+bGUubG9nKCJLb3BpbGthOiDQstGF0L7QtCDRh9C10YDQtdC3ICIgKyBsaXN0Lm1hcCgocCkgPT4gcC5uYW1lKS5qb2luKCIsICIp
+ICsgIiDQstC60LvRjtGH0ZHQvSIpCiAgICB9IGNhdGNoIChlcnIpIHsKICAgICAgICBjb25zb2xlLmxvZygiS29waWxrYTog0L3Q
+tSDRg9C00LDQu9C+0YHRjCDQstC60LvRjtGH0LjRgtGMINCy0YXQvtC0INGH0LXRgNC10Lcg0YHQtdGA0LLQuNGB0Ys6IiwgZXJy
+KQogICAgfQp9KQo=
 B64
 
 id kopilka >/dev/null 2>&1 || useradd --system --home "$DIR" --shell /usr/sbin/nologin kopilka
@@ -236,29 +246,46 @@ systemctl enable --now kopilka >/dev/null
 sleep 3
 curl -fsS "http://127.0.0.1:$PORT_INTERNAL/api/kp/ping" >/dev/null || die "сервер не отвечает: journalctl -u kopilka -n 50"
 
-say "Готовлю команду для входа через Google"
-cat > /usr/local/bin/kopilka-google <<'GOOG'
+say "Готовлю команду для входа через Google, Яндекс и Apple"
+cat > /usr/local/bin/kopilka-login <<'GOOG'
 #!/usr/bin/env bash
-# Включить вход через Google: sudo kopilka-google
+# Включить вход через сервисы: sudo kopilka-login
 set -e
 [ "$(id -u)" -eq 0 ] || { echo "запустите через sudo"; exit 1; }
 URL=$(cat /opt/kopilka/url 2>/dev/null || echo "https://ВАШ-ДОМЕН")
-echo "В Google Cloud → Clients → Web application укажите Authorized redirect URI:"
+ENV=/etc/kopilka.env
+touch "$ENV"; chmod 600 "$ENV"
+echo "Redirect URI для всех сервисов:"
 echo "    $URL/api/kp/oauth-callback"
+echo
+echo "Что настраиваем?  1) Google   2) Яндекс   3) Apple   4) Выключить сервис"
+read -rp "> " C
+case "$C" in
+  1) K=GOOGLE ;; 2) K=YANDEX ;; 3) K=APPLE ;;
+  4) read -rp "Какой (google/yandex/apple): " X; K=$(echo "$X" | tr a-z A-Z)
+     sed -i "/^KP_${K}_/d" "$ENV"; systemctl restart kopilka; echo "Выключено."; exit 0 ;;
+  *) echo "нужно 1-4"; exit 1 ;;
+esac
+if [ "$K" = APPLE ]; then
+  echo "Для Apple: Client ID = Services ID (например ru.koshelek.signin),"
+  echo "Client secret = JWT, который генерирует админка PocketBase (Users → OAuth2 → Apple → Generate secret). Действует 6 месяцев."
+fi
 read -rp "Client ID: " ID
 read -rp "Client secret: " SECRET
 [ -n "$ID" ] && [ -n "$SECRET" ] || { echo "нужны оба значения"; exit 1; }
-printf 'KP_GOOGLE_ID=%s\nKP_GOOGLE_SECRET=%s\n' "$ID" "$SECRET" > /etc/kopilka.env
-chmod 600 /etc/kopilka.env
+sed -i "/^KP_${K}_/d" "$ENV"
+printf 'KP_%s_ID=%s\nKP_%s_SECRET=%s\n' "$K" "$ID" "$K" "$SECRET" >> "$ENV"
 systemctl restart kopilka
 sleep 3
-if curl -fsS http://127.0.0.1:8090/api/collections/users/auth-methods | grep -q '"google"'; then
-  echo "Готово: в приложении появилась кнопка «Войти через Google»."
+N=$(echo "$K" | tr A-Z a-z)
+if curl -fsS http://127.0.0.1:8090/api/collections/users/auth-methods | grep -q "\"$N\""; then
+  echo "Готово: в приложении появится кнопка входа через $N."
 else
   echo "Не получилось — посмотрите: journalctl -u kopilka -n 30"
 fi
 GOOG
-chmod +x /usr/local/bin/kopilka-google
+chmod +x /usr/local/bin/kopilka-login
+ln -sf /usr/local/bin/kopilka-login /usr/local/bin/kopilka-google
 
 say "Создаю администратора"
 ADMIN_PASS=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)
@@ -352,5 +379,5 @@ $(printf '\033[1;32m')Готово!$(printf '\033[0m')
   Логи:                          journalctl -u kopilka -f
 
 В приложении: Настройки → Синхронизация → вставьте адрес сервера → зарегистрируйтесь.
-Вход через Google (по желанию): sudo kopilka-google
+Вход через Google / Яндекс / Apple (по желанию): sudo kopilka-login
 DONE
