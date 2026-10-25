@@ -241,7 +241,7 @@ struct FamilyView: View {
                     HStack {
                         Text(s.code).font(.system(.title2, design: .monospaced).weight(.bold)).tracking(3)
                         Spacer()
-                        ShareLink(item: "Присоединяйся к нашему бюджету в Копилке. Код приглашения: \(s.code)\nСервер: \(sync.server.replacingOccurrences(of: "https://", with: ""))") {
+                        ShareLink(item: "Присоединяйся к нашему бюджету в Копилке: \(sync.server)/api/kp/invite?code=\(s.code)\n\nИли вручную — сервер: \(sync.server.replacingOccurrences(of: "https://", with: "")), код приглашения: \(s.code)") {
                             Label("Отправить", systemImage: "square.and.arrow.up")
                         }
                     }

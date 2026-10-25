@@ -295,6 +295,20 @@ final class Router: ObservableObject {
         case "debts": show(.payments)
         case "goals", "cards": show(.goals(1))
         case "stats": show(.stats)
+        case "connect":
+            // Приглашение: koshelek://connect?server=https://money.example.ru&code=ABC123
+            let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            let server = items.first { $0.name == "server" }?.value ?? ""
+            let code = (items.first { $0.name == "code" }?.value ?? "").uppercased()
+            let sync = SyncEngine.shared
+            if !code.isEmpty { UserDefaults.standard.set(code, forKey: "pendingJoin") }
+            if !sync.loggedIn {
+                if !server.isEmpty { sync.server = SyncEngine.normalize(server) }
+                say("Сервер уже указан — войдите или зарегистрируйтесь")
+                show(.settings)
+            } else if !code.isEmpty {
+                Task { await sync.joinPending(ctx: TestData.shared.context) }
+            }
         default: break
         }
     }

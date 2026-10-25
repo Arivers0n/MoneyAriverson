@@ -360,6 +360,21 @@ final class SyncEngine: ObservableObject {
         }
         state = .idle
         await sync(ctx: ctx)
+        await joinPending(ctx: ctx)
+    }
+
+    /// Вступить в бюджет по коду из ссылки-приглашения, если он ждёт входа.
+    func joinPending(ctx: ModelContext) async {
+        guard let code = UserDefaults.standard.string(forKey: "pendingJoin"), !code.isEmpty, loggedIn else { return }
+        UserDefaults.standard.removeObject(forKey: "pendingJoin")
+        if spaces.contains(where: { $0.code.uppercased() == code }) { return }
+        do {
+            try await join(code: code, ctx: ctx)
+            Router.shared.say("Вы в общем бюджете «\(currentSpace?.name ?? "Семья")»")
+            Haptic.success()
+        } catch {
+            Router.shared.say("Не удалось вступить: \(error.localizedDescription)")
+        }
     }
 
     func logout(keepData: Bool) {

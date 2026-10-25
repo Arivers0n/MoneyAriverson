@@ -169,3 +169,22 @@ onBootstrap((e) => {
         console.log("Kopilka: не удалось включить вход через сервисы:", err)
     }
 })
+
+// Ссылка-приглашение: https://ДОМЕН/api/kp/invite?code=XXXXXX — открывает приложение с уже указанным сервером.
+routerAdd("GET", "/api/kp/invite", (e) => {
+    const code = String(e.request.url.query().get("code") || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 12)
+    const proto = e.request.header.get("X-Forwarded-Proto") || "https"
+    const server = proto + "://" + e.request.host
+    const link = "koshelek://connect?server=" + encodeURIComponent(server) + (code ? "&code=" + code : "")
+    const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Копилка — приглашение</title>
+<style>body{font-family:-apple-system,system-ui,sans-serif;background:#f2f3f5;color:#16201c;margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center}
+.c{background:#fff;border-radius:24px;padding:28px 24px;max-width:340px;margin:16px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+a.b{display:block;background:#0E9F7E;color:#fff;text-decoration:none;font-weight:600;padding:15px;border-radius:14px;margin:18px 0 10px}
+code{font-size:22px;letter-spacing:3px;font-weight:700}p{color:#5b6660;line-height:1.45}</style></head>
+<body><div class="c"><h2>Копилка</h2><p>Вас пригласили в общий бюджет.</p>${code ? "<p>Код приглашения<br><code>" + code + "</code></p>" : ""}
+<a class="b" href="${link}">Открыть в Копилке</a>
+<p style="font-size:13px">Если ничего не происходит — сначала установите приложение Копилка, затем нажмите кнопку ещё раз. Сервер: ${e.request.host}</p></div>
+<script>setTimeout(function(){location.href=${JSON.stringify(link)}},400)</script></body></html>`
+    return e.html(200, html)
+})
