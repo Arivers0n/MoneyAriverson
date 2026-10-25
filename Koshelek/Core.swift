@@ -17,14 +17,14 @@ extension Color {
 }
 
 enum Theme {
-    static let accent = Color.dynamic("2B47C9", "7C93FF")
-    static let onAccent = Color.dynamic("FFFFFF", "0B1030")
+    static var accent: Color { Appearance.shared.accentColor }
+    static var onAccent: Color { Appearance.shared.onAccent }
     static let inc = Color.dynamic("17805A", "4CC995")
     static let exp = Color.dynamic("B8452A", "F0886B")
     static let warn = Color.dynamic("B7791F", "E8B04E")
     static let ink = Color.dynamic("16201C", "E8EEEA")
-    static let bg = Color(.systemGroupedBackground)
-    static let card = Color(.secondarySystemGroupedBackground)
+    static var bg: Color { Appearance.shared.background == "pure" ? Color(.systemBackground) : Color(.systemGroupedBackground) }
+    static var card: Color { Appearance.shared.background == "pure" ? Color(.secondarySystemBackground) : Color(.secondarySystemGroupedBackground) }
     static let soft = Color(.tertiarySystemFill)
     static let palette = ["2B47C9", "17805A", "C2621F", "8A4FD0", "1A9BB0", "D04F6E", "9A8A1F", "4E5E9E"]
 }
@@ -173,12 +173,12 @@ struct Category: Identifiable, Hashable {
     let name: String
     let hex: String
     let kind: TxKind
+    var symbol: String = ""
     var color: Color { Color(hex: hex) }
-    var symbol: String { Catalog.symbols[id] ?? "circle.fill" }
 }
 
 enum Catalog {
-    static let expense: [Category] = [
+    static let baseExpense: [Category] = [
         .init(id: "food", name: "Продукты", hex: "2E8B57", kind: .exp),
         .init(id: "cafe", name: "Кафе", hex: "D9822B", kind: .exp),
         .init(id: "transport", name: "Транспорт", hex: "3B6FD8", kind: .exp),
@@ -193,7 +193,7 @@ enum Catalog {
         .init(id: "savings", name: "Накопления", hex: "2F7D8C", kind: .exp),
         .init(id: "other", name: "Другое", hex: "7A8580", kind: .exp),
     ]
-    static let income: [Category] = [
+    static let baseIncome: [Category] = [
         .init(id: "salary", name: "Зарплата", hex: "17805A", kind: .inc),
         .init(id: "side", name: "Подработка", hex: "2F9E8F", kind: .inc),
         .init(id: "debtback", name: "Возврат долга", hex: "3E7FA8", kind: .inc),
@@ -208,16 +208,43 @@ enum Catalog {
         "other": "ellipsis", "salary": "briefcase.fill", "side": "hammer.fill", "debtback": "arrow.uturn.backward",
         "cashback": "percent", "gift": "gift.fill", "iother": "ellipsis",
     ]
+    /// Служебные категории нельзя скрыть: на них опираются долги, копилки и «Другое».
+    static let locked: Set<String> = ["loans", "savings", "other", "debtback", "iother"]
+
+    // Кэш итогового каталога с учётом настроек пользователя
+    private static var cacheKey = -1
+    private static var cacheAll: [Category] = []
+
+    /// Все категории (включая скрытые) — для отображения старых операций.
+    static var all: [Category] {
+        let p = CategoryPrefs.shared
+        if cacheKey == p.version { return cacheAll }
+        func apply(_ c: Category) -> Category {
+            let o = p.overrides[c.id]
+            return Category(id: c.id, name: (o?.name).flatMap { $0.isEmpty ? nil : $0 } ?? c.name,
+                            hex: o?.hex ?? c.hex, kind: c.kind, symbol: o?.symbol ?? symbols[c.id] ?? "circle.fill")
+        }
+        var out = (baseExpense + baseIncome).map(apply)
+        for c in p.custom {
+            out.append(Category(id: c.id, name: c.name, hex: c.hex, kind: c.kind == "inc" ? .inc : .exp, symbol: c.symbol))
+        }
+        cacheAll = out
+        cacheKey = p.version
+        return out
+    }
+    static var expense: [Category] { all.filter { $0.kind == .exp && !CategoryPrefs.shared.hidden.contains($0.id) } }
+    static var income: [Category] { all.filter { $0.kind == .inc && !CategoryPrefs.shared.hidden.contains($0.id) } }
+
     static func list(_ k: TxKind) -> [Category] { k == .inc ? income : expense }
     static func cat(_ id: String) -> Category {
-        (expense + income).first { $0.id == id } ?? expense[expense.count - 1]
+        all.first { $0.id == id } ?? all.first { $0.id == "other" }!
     }
     static func valid(_ id: String, for kind: TxKind) -> String {
-        if list(kind).contains(where: { $0.id == id }) { return id }
+        if all.contains(where: { $0.id == id && $0.kind == kind }) { return id }
         return kind == .inc ? "iother" : "other"
     }
     static func byName(_ name: String, kind: TxKind) -> String {
-        list(kind).first { $0.name.lowercased() == name.lowercased() }?.id ?? (kind == .inc ? "iother" : "other")
+        all.first { $0.kind == kind && $0.name.lowercased() == name.lowercased() }?.id ?? (kind == .inc ? "iother" : "other")
     }
     static func describe() -> String {
         "Категории расходов (type \"exp\"): " + expense.map { "\($0.id)=\($0.name)" }.joined(separator: ", ") +

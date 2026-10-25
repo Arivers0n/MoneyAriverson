@@ -80,7 +80,7 @@ struct StatsView: View {
             .padding(.bottom, 30)
         }
         .scrollIndicators(.hidden)
-        .background(Theme.bg.ignoresSafeArea())
+        .background(Backdrop())
         .onChange(of: kind) { _, _ in hidden = []; selected = nil }
         .onChange(of: month) { _, _ in hidden = []; selected = nil }
     }
@@ -284,7 +284,7 @@ struct SearchView: View {
                 }
                 .font(.title3)
                 .padding(.horizontal, 16).frame(height: 54)
-                .background(Theme.card, in: Capsule())
+                .cardBG(Capsule())
                 if q.isEmpty {
                     Text("Ищите по заметке, категории, счёту или сумме").foregroundStyle(.secondary).padding(.top, 30)
                 } else if res.isEmpty {
@@ -302,7 +302,7 @@ struct SearchView: View {
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 30)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Theme.bg.ignoresSafeArea())
+        .background(Backdrop())
         .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { focused = true } }
     }
 }
@@ -369,7 +369,7 @@ struct InsightsView: View {
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 30)
         }
         .scrollIndicators(.hidden)
-        .background(Theme.bg.ignoresSafeArea())
+        .background(Backdrop())
         .sheet(isPresented: $showChat) { AdvisorChat() }
         .task {
             guard tip == nil, Keychain.hasKey else { return }

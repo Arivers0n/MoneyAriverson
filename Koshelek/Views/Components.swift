@@ -6,7 +6,7 @@ struct CardStyle: ViewModifier {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .cardBG(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
 extension View {

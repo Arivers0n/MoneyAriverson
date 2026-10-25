@@ -255,7 +255,7 @@ struct DebtDetail: View {
             }
             .padding(16)
         }
-        .background(Theme.bg)
+        .background(Backdrop())
         .navigationTitle(debt.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { Button("Изменить") { edit = true } }

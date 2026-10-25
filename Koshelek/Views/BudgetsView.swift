@@ -53,7 +53,7 @@ struct BudgetsView: View {
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 30)
         }
         .scrollIndicators(.hidden)
-        .background(Theme.bg.ignoresSafeArea())
+        .background(Backdrop())
         .sheet(item: $edit) { t in
             LimitForm(cat: t.cat, limits: $limits, overall: $budget)
         }
@@ -129,7 +129,7 @@ struct LimitCard: View {
                 }
             }
             .padding(16)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .cardBG(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -233,7 +233,7 @@ struct AccountsView: View {
             }
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 30)
         }
-        .background(Theme.bg.ignoresSafeArea())
+        .background(Backdrop())
         .sheet(item: $edit) { t in AccountForm(account: t.account) }
     }
 

@@ -69,7 +69,7 @@ struct GlassIconGroup: View {
 struct CategoryTile: View {
     let symbol: String
     let color: Color
-    var size: CGFloat = 50
+    var size: CGFloat = Appearance.shared.compact ? 40 : 50
     var body: some View {
         Image(systemName: symbol)
             .font(.system(size: size * 0.42, weight: .medium))
@@ -94,7 +94,7 @@ struct MonthPill: View {
         }
         .foregroundStyle(.primary)
         .padding(.horizontal, 6)
-        .background(Theme.card, in: Capsule())
+        .cardBG(Capsule())
     }
     var title: String {
         month.sameYear(Date()) ? DF.s(month, "LLLL").capitalizedFirst : DF.s(month, "LLL yyyy").replacingOccurrences(of: ".", with: "").capitalizedFirst
@@ -191,7 +191,7 @@ struct PillToggle: View {
             }
         }
         .padding(4)
-        .background(Theme.card, in: Capsule())
+        .cardBG(Capsule())
     }
 }
 
@@ -219,8 +219,8 @@ struct RowCard<Content: View>: View {
     @ViewBuilder var content: () -> Content
     var body: some View {
         HStack(spacing: 14) { content() }
-            .padding(.horizontal, 14).padding(.vertical, 12)
+            .padding(.horizontal, 14).padding(.vertical, Appearance.shared.compact ? 8 : 12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .cardBG(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 }

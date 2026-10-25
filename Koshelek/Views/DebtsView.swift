@@ -39,7 +39,7 @@ struct DebtsView: View {
                 .padding(.top, 14)
                 .padding(.bottom, 24)
             }
-            .background(Theme.bg.ignoresSafeArea())
+            .background(Backdrop())
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { id in
                 if let d = debts.first(where: { $0.uid == id }) { DebtDetail(debt: d) }
@@ -70,7 +70,7 @@ struct DebtsView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .foregroundStyle(Color.primary)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .cardBG(RoundedRectangle(cornerRadius: 24, style: .continuous))
         } else {
             let totalRem = outOpen.reduce(0) { $0 + $1.remaining }
             let paidAll = debts.filter { $0.isOut }.reduce(0) { $0 + $1.paidSum }
@@ -108,7 +108,7 @@ struct DebtsView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .foregroundStyle(Color.primary)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .cardBG(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
     }
 
@@ -264,7 +264,7 @@ struct Tile: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .cardBG(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

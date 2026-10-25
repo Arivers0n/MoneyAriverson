@@ -26,6 +26,17 @@ struct SettingsView: View {
                 SyncSettingsSection()
 
                 Section {
+                    NavigationLink { AppearanceView() } label: { Label("Оформление и темы", systemImage: "paintpalette") }
+                    Button { dismiss(); DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { router.show(.customize) } } label: {
+                        Label("Главный экран", systemImage: "square.grid.2x2").foregroundStyle(.primary)
+                    }
+                    NavigationLink { CategoriesView() } label: { Label("Категории", systemImage: "tag") }
+                    NavigationLink { IconPickerView() } label: { Label("Иконка приложения", systemImage: "app.badge") }
+                } header: { Text("Под себя") } footer: {
+                    Text("Совет: удержите палец на главном экране — блоки можно убирать и добавлять прямо там.")
+                }
+
+                Section {
                     SecureField("sk-ant-…", text: $key)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()

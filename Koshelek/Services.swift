@@ -189,7 +189,7 @@ enum Route: Identifiable {
     case newTx
     case editTx(Tx)
     case settings
-    case stats, payments, search, insights, accounts
+    case stats, payments, search, insights, accounts, customize
     case goals(Int)
     var id: String {
         switch self {
@@ -203,6 +203,7 @@ enum Route: Identifiable {
         case .search: return "search"
         case .insights: return "insights"
         case .accounts: return "accounts"
+        case .customize: return "customize"
         case .goals(let t): return "goals-\(t)"
         }
     }

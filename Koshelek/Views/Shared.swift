@@ -23,7 +23,7 @@ struct MonthSwitcher: View {
             Button { month = month.addingMonths(1) } label: { Image(systemName: "chevron.right").frame(width: 36, height: 36) }
         }
         .padding(4)
-        .background(Theme.card, in: Capsule())
+        .cardBG(Capsule())
     }
 }
 

@@ -12,7 +12,6 @@ struct KoshelekApp: App {
                 .environmentObject(router)
                 .environmentObject(sync)
                 .onOpenURL { router.handle(url: $0) }
-                .tint(Theme.accent)
         }
         .modelContainer(Store.container)
     }
@@ -21,6 +20,8 @@ struct KoshelekApp: App {
 struct RootView: View {
     @EnvironmentObject var router: Router
     @EnvironmentObject var sync: SyncEngine
+    @ObservedObject private var ap = Appearance.shared
+    @ObservedObject private var cats = CategoryPrefs.shared
     @Environment(\.modelContext) private var ctx
     @Environment(\.scenePhase) private var phase
     @Query private var qDebts: [Debt]
@@ -58,7 +59,7 @@ struct RootView: View {
 
     var body: some View {
         HomeView()
-        .id(sync.spaceVersion)
+        .id("\(sync.spaceVersion)-\(ap.version)-\(cats.version)")
         .scanFlow(isPresented: $showScan) { imgs in scan(imgs) }
         .onChange(of: router.scanRequest) { _, _ in startScan() }
         .sheet(item: $router.sheet) { route in
@@ -73,6 +74,7 @@ struct RootView: View {
             case .search: SearchView()
             case .insights: InsightsView()
             case .accounts: AccountsView().presentationDetents([.medium, .large])
+            case .customize: CustomizeView()
             case .goals(let t): BudgetsView(tab: t)
             }
         }
@@ -114,7 +116,7 @@ struct RootView: View {
                             .buttonStyle(.borderedProminent).controlSize(.large)
                     }
                     .padding(26)
-                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                    .cardBG(RoundedRectangle(cornerRadius: 26, style: .continuous))
                     .padding(32)
                 }
             }
@@ -131,6 +133,9 @@ struct RootView: View {
                 ctx.commitIfNeeded()
             }
         }
+        .tint(ap.accentColor)
+        .fontDesign(ap.fontDesign)
+        .preferredColorScheme(ap.colorScheme)
         .task {
             if Notifier.enabled { _ = await Notifier.requestPermission() }
             Notifier.reschedule(ctx: ctx)

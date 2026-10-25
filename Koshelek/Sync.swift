@@ -323,6 +323,10 @@ final class SyncEngine: ObservableObject {
             }
         }
         move(Tx.self); move(Account.self); move(Debt.self); move(Recurring.self); move(Goal.self)
+        if let c = UserDefaults.standard.data(forKey: "cats:\(Space.localID)"), UserDefaults.standard.data(forKey: "cats:\(id)") == nil {
+            UserDefaults.standard.set(c, forKey: "cats:\(id)")
+            UserDefaults.standard.set(true, forKey: "prefsDirty:\(id)")
+        }
         if let l = UserDefaults.standard.data(forKey: "catLimits:\(Space.localID)"), UserDefaults.standard.data(forKey: "catLimits:\(id)") == nil {
             UserDefaults.standard.set(l, forKey: "catLimits:\(id)")
             UserDefaults.standard.set(true, forKey: "prefsDirty:\(id)")
@@ -355,6 +359,7 @@ final class SyncEngine: ObservableObject {
         let old = Space.current
         UserDefaults.standard.set(UserDefaults.standard.double(forKey: "budget"), forKey: "budget:\(old)")
         Space.current = id
+        CategoryPrefs.shared.reload()
         UserDefaults.standard.set(UserDefaults.standard.double(forKey: "budget:\(id)"), forKey: "budget")
         spaceVersion += 1
     }
@@ -450,7 +455,7 @@ final class SyncEngine: ObservableObject {
         add(Account.self); add(Debt.self); add(Recurring.self); add(Goal.self); add(Tx.self)
         if UserDefaults.standard.bool(forKey: "prefsDirty:\(space)") {
             let limits = (UserDefaults.standard.data(forKey: "catLimits:\(space)")).flatMap { try? JSONDecoder().decode([String: Double].self, from: $0) } ?? [:]
-            docs.append(["cid": "prefs", "kind": "prefs", "data": ["budget": UserDefaults.standard.double(forKey: "budget:\(space)"), "catLimits": limits],
+            docs.append(["cid": "prefs", "kind": "prefs", "data": ["budget": UserDefaults.standard.double(forKey: "budget:\(space)"), "catLimits": limits, "cats": CategoryPrefs.storedJSON(space: space)],
                          "deleted": false, "cts": UserDefaults.standard.double(forKey: "prefsTs:\(space)") * 1000])
         }
         guard !docs.isEmpty else { return }
@@ -514,6 +519,7 @@ final class SyncEngine: ObservableObject {
         if let p = byKind["prefs"]?.last, !UserDefaults.standard.bool(forKey: "prefsDirty:\(space)") {
             let b = jNum((p["data"] as? [String: Any])?["budget"])
             UserDefaults.standard.set(b, forKey: "budget:\(space)")
+            CategoryPrefs.shared.applyRemote((p["data"] as? [String: Any])?["cats"], space: space)
             if let l = (p["data"] as? [String: Any])?["catLimits"] as? [String: Any] {
                 let v = l.mapValues { jNum($0) }
                 UserDefaults.standard.set(try? JSONEncoder().encode(v), forKey: "catLimits:\(space)")

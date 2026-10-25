@@ -80,7 +80,7 @@ struct SavingsView: View {
                     .font(.subheadline.weight(.semibold))
             }
             .padding(16)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .cardBG(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
     }
 }
@@ -134,7 +134,7 @@ struct GoalCard: View {
             .buttonStyle(.plain)
         }
         .padding(16)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .cardBG(RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
     var ruleText: String {
         var r: [String] = []
