@@ -8,6 +8,8 @@ struct RecTarget: Identifiable { let id = UUID(); let rec: Recurring? }
 
 struct SavingsView: View {
     @EnvironmentObject var router: Router
+    /// Запрос «создать копилку» снаружи (кнопка «+» в шапке).
+    @Binding var addRequest: Int
     @Query(sort: \Goal.created) private var qGoals: [Goal]
     private var goals: [Goal] { qGoals.live }
     @Query(sort: \Tx.date, order: .reverse) private var qTxs: [Tx]
@@ -19,35 +21,25 @@ struct SavingsView: View {
     var done: [Goal] { goals.filter { $0.target > 0 && $0.saved >= $0.target } }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    WalletHeader(title: "Копилки") { goalEdit = GoalTarget(goal: nil) }
-                    hero
-                    if goals.isEmpty { emptyState }
-                    ForEach(active) { g in
+        VStack(alignment: .leading, spacing: 18) {
+            hero
+            if goals.isEmpty { emptyState }
+            ForEach(active) { g in
+                GoalCard(goal: g, onEdit: { goalEdit = GoalTarget(goal: g) }, onAdd: { goalAdd = g })
+            }
+            if !done.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Достигнуто").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                    ForEach(done) { g in
                         GoalCard(goal: g, onEdit: { goalEdit = GoalTarget(goal: g) }, onAdd: { goalAdd = g })
                     }
-                    if !done.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Достигнуто").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                            ForEach(done) { g in
-                                GoalCard(goal: g, onEdit: { goalEdit = GoalTarget(goal: g) }, onAdd: { goalAdd = g })
-                            }
-                        }
-                    }
-                    tips
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 6)
-                .padding(.bottom, 30)
             }
-            .scrollIndicators(.hidden)
-            .background(Color(.systemBackground))
-            .toolbar(.hidden, for: .navigationBar)
-            .sheet(item: $goalEdit) { t in GoalForm(goal: t.goal) }
-            .sheet(item: $goalAdd) { g in GoalAddSheet(goal: g) }
+            tips
         }
+        .sheet(item: $goalEdit) { t in GoalForm(goal: t.goal) }
+        .sheet(item: $goalAdd) { g in GoalAddSheet(goal: g) }
+        .onChange(of: addRequest) { _, _ in goalEdit = GoalTarget(goal: nil) }
     }
 
     private var hero: some View {
@@ -88,7 +80,7 @@ struct SavingsView: View {
                     .font(.subheadline.weight(.semibold))
             }
             .padding(16)
-            .background(Theme.soft, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
     }
 }
@@ -142,8 +134,7 @@ struct GoalCard: View {
             .buttonStyle(.plain)
         }
         .padding(16)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.primary.opacity(0.06)))
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
     var ruleText: String {
         var r: [String] = []

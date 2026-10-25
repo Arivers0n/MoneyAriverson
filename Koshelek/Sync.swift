@@ -323,6 +323,10 @@ final class SyncEngine: ObservableObject {
             }
         }
         move(Tx.self); move(Account.self); move(Debt.self); move(Recurring.self); move(Goal.self)
+        if let l = UserDefaults.standard.data(forKey: "catLimits:\(Space.localID)"), UserDefaults.standard.data(forKey: "catLimits:\(id)") == nil {
+            UserDefaults.standard.set(l, forKey: "catLimits:\(id)")
+            UserDefaults.standard.set(true, forKey: "prefsDirty:\(id)")
+        }
         let b = UserDefaults.standard.double(forKey: "budget:\(Space.localID)")
         if b > 0 && UserDefaults.standard.double(forKey: "budget:\(id)") == 0 {
             UserDefaults.standard.set(b, forKey: "budget:\(id)")
@@ -445,7 +449,8 @@ final class SyncEngine: ObservableObject {
         }
         add(Account.self); add(Debt.self); add(Recurring.self); add(Goal.self); add(Tx.self)
         if UserDefaults.standard.bool(forKey: "prefsDirty:\(space)") {
-            docs.append(["cid": "prefs", "kind": "prefs", "data": ["budget": UserDefaults.standard.double(forKey: "budget:\(space)")],
+            let limits = (UserDefaults.standard.data(forKey: "catLimits:\(space)")).flatMap { try? JSONDecoder().decode([String: Double].self, from: $0) } ?? [:]
+            docs.append(["cid": "prefs", "kind": "prefs", "data": ["budget": UserDefaults.standard.double(forKey: "budget:\(space)"), "catLimits": limits],
                          "deleted": false, "cts": UserDefaults.standard.double(forKey: "prefsTs:\(space)") * 1000])
         }
         guard !docs.isEmpty else { return }
@@ -509,6 +514,10 @@ final class SyncEngine: ObservableObject {
         if let p = byKind["prefs"]?.last, !UserDefaults.standard.bool(forKey: "prefsDirty:\(space)") {
             let b = jNum((p["data"] as? [String: Any])?["budget"])
             UserDefaults.standard.set(b, forKey: "budget:\(space)")
+            if let l = (p["data"] as? [String: Any])?["catLimits"] as? [String: Any] {
+                let v = l.mapValues { jNum($0) }
+                UserDefaults.standard.set(try? JSONEncoder().encode(v), forKey: "catLimits:\(space)")
+            }
             if Space.current == space { UserDefaults.standard.set(b, forKey: "budget") }
         }
     }

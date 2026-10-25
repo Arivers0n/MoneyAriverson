@@ -30,46 +30,8 @@ struct RootView: View {
     @Query private var qRecs: [Recurring]
     private var recs: [Recurring] { qRecs.live }
 
-    var overdueCount: Int { allInstallments(debts).filter { $0.st == .overdue && $0.debt.isOut }.count }
-    var pendingCount: Int { pendingRecurring(recs, txs: txs).count }
 
     @State private var showScan = false
-
-    /// Выбор вкладки «Голос» не переключает экран, а открывает голосовую панель.
-    private var tabSelection: Binding<Int> {
-        Binding(get: { router.tab }, set: { v in
-            if v == 4 { UIImpactFeedbackGenerator(style: .medium).impactOccurred(); router.startVoice() }
-            else { router.tab = v }
-        })
-    }
-
-    @ViewBuilder private var tabs: some View {
-        if #available(iOS 18.0, *) {
-            TabView(selection: tabSelection) {
-                Tab("Главная", systemImage: "house.fill", value: 0) { BudgetView() }
-                Tab("Копилки", systemImage: "banknote.fill", value: 1) { SavingsView() }
-                Tab("Платежи", systemImage: "calendar", value: 2) { DebtsView() }
-                    .badge(overdueCount + pendingCount)
-                Tab("Анализ", systemImage: "chart.bar.fill", value: 3) { StatsView() }
-                Tab("Сказать", systemImage: "mic.fill", value: 4, role: .search) { Color.clear }
-            }
-        } else {
-            TabView(selection: $router.tab) {
-                BudgetView().tabItem { Label("Главная", systemImage: "house.fill") }.tag(0)
-                SavingsView().tabItem { Label("Копилки", systemImage: "banknote.fill") }.tag(1)
-                DebtsView().tabItem { Label("Платежи", systemImage: "calendar") }.badge(overdueCount + pendingCount).tag(2)
-                StatsView().tabItem { Label("Анализ", systemImage: "chart.bar.fill") }.tag(3)
-            }
-            .overlay(alignment: .bottomTrailing) {
-                Button { router.startVoice() } label: {
-                    Image(systemName: "mic.fill").font(.title3.weight(.semibold)).foregroundStyle(Theme.onAccent)
-                        .frame(width: 56, height: 56).background(Theme.accent, in: Circle())
-                        .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
-                }
-                .padding(.trailing, 18).padding(.bottom, 64)
-            }
-        }
-    }
 
     private func startScan() {
         guard Keychain.hasKey else {
@@ -95,7 +57,7 @@ struct RootView: View {
     }
 
     var body: some View {
-        tabs
+        HomeView()
         .id(sync.spaceVersion)
         .scanFlow(isPresented: $showScan) { imgs in scan(imgs) }
         .onChange(of: router.scanRequest) { _, _ in startScan() }
@@ -106,6 +68,12 @@ struct RootView: View {
             case .newTx: TxForm(tx: nil)
             case .editTx(let t): TxForm(tx: t)
             case .settings: SettingsView()
+            case .stats: StatsView()
+            case .payments: DebtsView()
+            case .search: SearchView()
+            case .insights: InsightsView()
+            case .accounts: AccountsView().presentationDetents([.medium, .large])
+            case .goals(let t): BudgetsView(tab: t)
             }
         }
         .overlay(alignment: .bottom) {
@@ -115,7 +83,7 @@ struct RootView: View {
                     .padding(.horizontal, 16).padding(.vertical, 10)
                     .foregroundStyle(Color(.systemBackground))
                     .background(Theme.ink, in: Capsule())
-                    .padding(.bottom, 64)
+                    .padding(.bottom, 110)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }

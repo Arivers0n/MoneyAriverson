@@ -189,6 +189,8 @@ enum Route: Identifiable {
     case newTx
     case editTx(Tx)
     case settings
+    case stats, payments, search, insights, accounts
+    case goals(Int)
     var id: String {
         switch self {
         case .voice: return "voice"
@@ -196,6 +198,12 @@ enum Route: Identifiable {
         case .newTx: return "new"
         case .editTx(let t): return "tx-\(t.uid)"
         case .settings: return "settings"
+        case .stats: return "stats"
+        case .payments: return "payments"
+        case .search: return "search"
+        case .insights: return "insights"
+        case .accounts: return "accounts"
+        case .goals(let t): return "goals-\(t)"
         }
     }
 }
@@ -212,8 +220,8 @@ final class Router: ObservableObject {
     @Published var voiceOn = false
     @Published var voiceRelease = 0
 
-    @Published var wallet = 0
-    @Published var life = 0
+    /// Фильтр ленты и анализа по счёту (nil — все счета)
+    @Published var accFilter: UUID?
 
     func startVoice() {
         sheet = nil
@@ -234,12 +242,12 @@ final class Router: ObservableObject {
     }
     func handle(url: URL) {
         switch url.host ?? "" {
-        case "voice": tab = 0; show(.voice(auto: true))
+        case "voice": show(.voice(auto: true))
         case "scan": sheet = nil; scanRequest += 1
-        case "add": tab = 0; show(.newTx)
-        case "debts": tab = 2
-        case "goals", "cards": tab = 1
-        case "stats": tab = 3
+        case "add": show(.newTx)
+        case "debts": show(.payments)
+        case "goals", "cards": show(.goals(1))
+        case "stats": show(.stats)
         default: break
         }
     }

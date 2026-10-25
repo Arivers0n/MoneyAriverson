@@ -46,6 +46,23 @@ enum Advisor {
             }
         }
 
+        // Лимиты по категориям
+        let limits = CatLimits.load()
+        if !limits.isEmpty {
+            var spent: [String: Double] = [:]
+            for t in cur.items where t.kind == .exp { spent[t.cat, default: 0] += t.amount }
+            for (id, lim) in limits.sorted(by: { (spent[$0.key] ?? 0) / max($0.value, 1) > (spent[$1.key] ?? 0) / max($1.value, 1) }) where lim > 0 {
+                let s = spent[id] ?? 0, c = Catalog.cat(id)
+                if s > lim {
+                    out.append(Insight(tone: .bad, symbol: c.symbol, text: "Бюджет «\(c.name)» превышен на \(Fmt.rubU(s - lim)). Лучше притормозить с этой категорией до конца месяца."))
+                    break
+                } else if s > lim * 0.8 {
+                    out.append(Insight(tone: .warn, symbol: c.symbol, text: "По «\(c.name)» потрачено \(Int(s / lim * 100))% бюджета, осталось \(Fmt.rubU(lim - s))."))
+                    break
+                }
+            }
+        }
+
         // Рост категорий (с поправкой на прошедшую часть месяца)
         let frac = Double(now.dayNum) / Double(now.daysInMonth)
         let a = Dictionary(uniqueKeysWithValues: byCategory(cur.items).map { ($0.cat.id, $0.sum) })

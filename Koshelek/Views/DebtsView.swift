@@ -26,7 +26,7 @@ struct DebtsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 14) {
-                    WalletHeader(title: "Платежи") { showForm = true }
+                    SheetBar(title: "Платежи", symbol: "calendar") { GlassCircle(symbol: "plus", weight: .semibold) { showForm = true } }.padding(.bottom, 6)
                     hero
                     overdueAlert
                     if !debts.isEmpty { tiles }
@@ -36,9 +36,10 @@ struct DebtsView: View {
                     advice
                 }
                 .padding(.horizontal, 16)
+                .padding(.top, 14)
                 .padding(.bottom, 24)
             }
-            .background(Theme.bg)
+            .background(Theme.bg.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { id in
                 if let d = debts.first(where: { $0.uid == id }) { DebtDetail(debt: d) }
@@ -64,12 +65,12 @@ struct DebtsView: View {
                 Button { showForm = true } label: {
                     Label("Добавить долг", systemImage: "plus").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 4)
                 }
-                .buttonStyle(.borderedProminent).tint(Color(.systemBackground)).foregroundStyle(Theme.ink)
+                .buttonStyle(.borderedProminent)
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .foregroundStyle(Color(.systemBackground))
-            .background(Theme.ink, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .foregroundStyle(Color.primary)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         } else {
             let totalRem = outOpen.reduce(0) { $0 + $1.remaining }
             let paidAll = debts.filter { $0.isOut }.reduce(0) { $0 + $1.paidSum }
@@ -86,11 +87,11 @@ struct DebtsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Ближайший платёж").font(.caption).opacity(0.75)
                             Text("\(x.debt.name) · \(Fmt.rubU(x.amount))").font(.headline)
-                            Text("\(DF.short(x.due)), \(r.text)").font(.subheadline).foregroundStyle(r.bad ? Theme.exp : Color(.systemBackground).opacity(0.85))
+                            Text("\(DF.short(x.due)), \(r.text)").font(.subheadline).foregroundStyle(r.bad ? Theme.exp : Color.secondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
-                        .background(Color(.systemBackground).opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .background(Theme.soft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 } else if outOpen.isEmpty {
@@ -106,8 +107,8 @@ struct DebtsView: View {
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .foregroundStyle(Color(.systemBackground))
-            .background(Theme.ink, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .foregroundStyle(Color.primary)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
     }
 
@@ -246,7 +247,7 @@ struct DarkFlow: View {
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemBackground).opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(Theme.soft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
