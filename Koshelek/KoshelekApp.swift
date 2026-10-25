@@ -33,9 +33,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
 final class SceneDelegate: NSObject, UIWindowSceneDelegate {
     @MainActor static var pending: String?
-    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem) async -> Bool {
-        await MainActor.run { SceneDelegate.open(shortcutItem.type) }
-        return true
+    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem, completionHandler: @escaping (Bool) -> Void) {
+        SceneDelegate.open(shortcutItem.type)
+        completionHandler(true)
     }
     @MainActor static func open(_ type: String) {
         if let url = URL(string: "koshelek://\(type)") { Router.shared.handle(url: url) }
