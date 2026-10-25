@@ -33,8 +33,9 @@ struct VoiceOverlay: View {
             panel
                 .offset(y: appeared ? 0 : 420)
         }
-        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: appeared)
+        .animation(Motion.enabled ? .spring(response: 0.38, dampingFraction: 0.86) : .linear(duration: 0.12), value: appeared)
         .task {
+            Haptic.press()
             appeared = true
             speech.onAutoStop = { parse() }
             await speech.start()
@@ -147,10 +148,12 @@ struct VoiceOverlay: View {
     private var micButton: some View {
         Button {
             editing = false
+            Haptic.press()
             if speech.isRecording { speech.stop(); phase = .idle }
             else { phase = .listening; Task { await speech.start(); if !speech.isRecording { phase = .idle } } }
         } label: {
             ZStack {
+                if phase == .listening && Motion.enabled { PulseRing(color: Theme.exp) }
                 Circle()
                     .fill((phase == .listening ? Theme.exp : Theme.accent).opacity(0.16))
                     .frame(width: 76, height: 76)
@@ -168,7 +171,7 @@ struct VoiceOverlay: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(Pressable(scale: 0.9, haptic: false))
         .disabled(phase == .thinking)
         .accessibilityLabel(phase == .listening ? "Остановить" : "Говорить")
     }
@@ -191,14 +194,16 @@ struct VoiceOverlay: View {
             do { items = try await Brain.parseSpeech(text, ctx: ctx) }
             catch {
                 items = LocalParser.parse(text)
-                if items.isEmpty { err = error.localizedDescription; phase = .idle; return }
+                if items.isEmpty { Haptic.warning(); err = error.localizedDescription; phase = .idle; return }
             }
             guard !items.isEmpty else {
+                Haptic.warning()
                 err = "Не услышал сумм. Скажите, например: «кофе двести пятьдесят»."
                 phase = .idle
                 return
             }
             speech.onAutoStop = nil
+            Haptic.success()
             appeared = false
             try? await Task.sleep(nanoseconds: 220_000_000)
             router.voiceOn = false
@@ -234,7 +239,27 @@ struct SideButton: View {
                 .frame(width: 46, height: 46)
                 .background(Theme.soft, in: Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(Pressable(scale: 0.88))
         .accessibilityLabel(label)
+    }
+}
+
+/// Расходящиеся кольца вокруг микрофона, пока идёт запись.
+struct PulseRing: View {
+    let color: Color
+    @State private var go = false
+    var body: some View {
+        ZStack {
+            ForEach(0..<2, id: \.self) { i in
+                Circle()
+                    .stroke(color.opacity(0.35), lineWidth: 2)
+                    .frame(width: 76, height: 76)
+                    .scaleEffect(go ? 1.6 : 1)
+                    .opacity(go ? 0 : 1)
+                    .animation(.easeOut(duration: 1.6).repeatForever(autoreverses: false).delay(Double(i) * 0.8), value: go)
+            }
+        }
+        .onAppear { go = true }
+        .allowsHitTesting(false)
     }
 }

@@ -1,8 +1,26 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
+
+/// Нажатие на уведомление открывает нужный экран (например, голосовой ввод).
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        if let s = response.notification.request.content.userInfo["url"] as? String, let url = URL(string: s) {
+            await MainActor.run { Router.shared.handle(url: url) }
+        }
+    }
+}
 
 @main
 struct KoshelekApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var router = Router.shared
     @StateObject private var sync = SyncEngine.shared
 
@@ -107,9 +125,10 @@ struct RootView: View {
             if let c = router.celebrate {
                 ZStack {
                     Color.black.opacity(0.35).ignoresSafeArea()
-                    ConfettiView()
+                    if ConfettiView.allowed { ConfettiView() }
                     VStack(spacing: 12) {
                         Image(systemName: "checkmark.seal.fill").font(.system(size: 54)).foregroundStyle(Theme.inc)
+                            .symbolEffect(.bounce, value: c.0)
                         Text(c.0).font(.title2.weight(.bold)).multilineTextAlignment(.center)
                         Text(c.1).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         Button("Отлично") { router.celebrate = nil }
@@ -118,9 +137,12 @@ struct RootView: View {
                     .padding(26)
                     .cardBG(RoundedRectangle(cornerRadius: 26, style: .continuous))
                     .padding(32)
+                    .transition(.scale(scale: 0.85).combined(with: .opacity))
                 }
+                .onAppear { Haptic.success() }
             }
         }
+        .animation(Motion.spring, value: router.celebrate?.0)
         .overlay {
             if router.voiceOn { VoiceOverlay() }
         }
@@ -155,6 +177,6 @@ extension Router {
         if let d = res.closedDebt { celebrate = ("«\(d)» закрыт!", "Долг полностью погашен. Так держать.") }
         else if let g = res.goalDone { celebrate = ("Цель «\(g)» достигнута!", "Копилка полная. Время тратить с удовольствием.") }
         else if res.summary.contains(where: { $0.contains("нет доступа") }) { say("Задачи не сохранены: разрешите доступ к Напоминаниям") }
-        else { say("Добавлено: \(res.count)") }
+        else { Haptic.success(); say("Добавлено: \(res.count)") }
     }
 }

@@ -54,7 +54,7 @@ struct HomeView: View {
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.7).onEnded { _ in
                 guard !layout.editing else { return }
-                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                Haptic.heavy()
                 withAnimation(.snappy) { layout.editing = true }
             }
         )
@@ -146,21 +146,21 @@ struct HomeView: View {
                 Text(label).foregroundStyle(.secondary)
                 MonthPill(month: $month)
                 if !month.sameMonth(Date()) {
-                    Button { withAnimation(.snappy) { month = Date().startOfMonth } } label: {
+                    Button { Haptic.select(); withAnimation(Motion.snappy) { month = Date().startOfMonth } } label: {
                         Image(systemName: "arrow.uturn.backward.circle").font(.title3).foregroundStyle(.secondary)
                     }
                 }
             }
-            Text(masked ? "••••• ₽" : Fmt.rub(value))
-                .font(.system(size: ap.compact ? 52 : 64, weight: .bold))
+            RollingAmount(value: value, font: .system(size: ap.compact ? 52 : 64, weight: .bold), masked: masked)
                 .minimumScaleFactor(0.4).lineLimit(1)
-                .contentTransition(.numericText())
-                .animation(.snappy, value: value)
-                .onTapGesture { if ap.hideAmounts { withAnimation { reveal.toggle() } } }
+                .onTapGesture { if ap.hideAmounts { Haptic.tap(); withAnimation(Motion.spring) { reveal.toggle() } } }
             HStack(spacing: 22) {
-                FlowChip(symbol: "arrow.down.left", color: Theme.inc, text: masked ? "•••" : Fmt.rubU(t.inc), textColor: Theme.inc)
+                if ap.alwaysIncome || t.inc > 0 {
+                    FlowChip(symbol: "arrow.down.left", color: Theme.inc, text: masked ? "•••" : Fmt.rubU(t.inc), textColor: Theme.inc)
+                }
                 FlowChip(symbol: "arrow.up.right", color: Theme.warn, text: masked ? "•••" : Fmt.rubU(t.exp), textColor: .primary)
             }
+            .animation(Motion.spring, value: t.exp)
         }
     }
 
@@ -171,7 +171,7 @@ struct HomeView: View {
                 .padding(.horizontal, 18).frame(height: 44)
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(Pressable())
         .glass(Capsule(), interactive: true)
     }
 
@@ -266,7 +266,7 @@ struct HomeView: View {
                     .onChanged { _ in
                         if pressStart == nil {
                             pressStart = Date(); micPressed = true
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            Haptic.press()
                             router.startVoice()
                         }
                     }
@@ -302,7 +302,7 @@ struct EditableBlock: ViewModifier {
             .overlay(alignment: .topLeading) {
                 if editing {
                     Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        Haptic.tap()
                         onRemove()
                     }) {
                         Image(systemName: "minus")
@@ -317,7 +317,7 @@ struct EditableBlock: ViewModifier {
                     .transition(.scale.combined(with: .opacity))
                 }
             }
-            .rotationEffect(.degrees(editing ? (wobble ? 0.5 : -0.5) : 0))
+            .rotationEffect(.degrees(editing && Motion.full ? (wobble ? 0.5 : -0.5) : 0))
             .onChange(of: editing) { _, on in
                 if on {
                     withAnimation(.easeInOut(duration: 0.14).repeatForever(autoreverses: true)) { wobble = true }
@@ -381,7 +381,7 @@ struct AddBlockSheet: View {
                     ForEach(layout.hidden) { b in
                         Button {
                             layout.add(b.id)
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            Haptic.tap()
                             if layout.hidden.isEmpty { dismiss() }
                         } label: {
                             RowCard {

@@ -142,7 +142,7 @@ enum Notifier {
     static func reschedule(ctx: ModelContext) {
         let center = UNUserNotificationCenter.current()
         center.removeAllPendingNotificationRequests()
-        guard enabled else { return }
+        guard enabled else { scheduleDaily(center); return }
         let debts = ctx.live(Debt.self)
         let recs = ctx.live(Recurring.self)
         let now = Date()
@@ -172,6 +172,37 @@ enum Notifier {
             let req = UNNotificationRequest(identifier: "k\(i)", content: c, trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false))
             center.add(req)
         }
+        scheduleDaily(center)
+    }
+
+    // Ежедневное напоминание «Запишите траты»
+    static var dailyOn: Bool {
+        get { UserDefaults.standard.bool(forKey: "notify.daily") }
+        set { UserDefaults.standard.set(newValue, forKey: "notify.daily") }
+    }
+    /// Минуты от полуночи, по умолчанию 21:00.
+    static var dailyMinutes: Int {
+        get { UserDefaults.standard.object(forKey: "notify.dailyMin") as? Int ?? 21 * 60 }
+        set { UserDefaults.standard.set(newValue, forKey: "notify.dailyMin") }
+    }
+    static let dailyPhrases = [
+        "Пара секунд: что сегодня потратили? Скажите голосом 🎙",
+        "Запишите траты за день — завтра не вспомните, куда ушли деньги.",
+        "Вечерняя сверка: кофе, такси, магазин? Одно касание — и готово.",
+        "Копилка ждёт. Что сегодня было — траты или день без трат? 🌿",
+    ]
+    static func scheduleDaily(_ center: UNUserNotificationCenter = .current()) {
+        center.removePendingNotificationRequests(withIdentifiers: ["daily"])
+        guard dailyOn else { return }
+        let c = UNMutableNotificationContent()
+        c.title = "Копилка"
+        c.body = dailyPhrases.randomElement() ?? dailyPhrases[0]
+        c.sound = .default
+        c.userInfo = ["url": "koshelek://voice"]
+        var comps = DateComponents()
+        comps.hour = dailyMinutes / 60
+        comps.minute = dailyMinutes % 60
+        center.add(UNNotificationRequest(identifier: "daily", content: c, trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)))
     }
 }
 

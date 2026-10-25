@@ -49,15 +49,17 @@ struct Bar: View {
     let value: Double
     var color: Color = Theme.inc
     var height: CGFloat = 10
+    @State private var shown: Double = Motion.full ? 0 : 1
     var body: some View {
         GeometryReader { g in
             ZStack(alignment: .leading) {
                 Capsule().fill(Theme.soft)
-                Capsule().fill(color).frame(width: max(0, min(1, value)) * g.size.width)
+                Capsule().fill(color.gradient).frame(width: max(0, min(1, value * shown)) * g.size.width)
             }
         }
         .frame(height: height)
-        .animation(.easeOut(duration: 0.4), value: value)
+        .animation(Motion.spring, value: value)
+        .onAppear { if shown < 1 { withAnimation(.spring(response: 0.8, dampingFraction: 0.85).delay(0.15)) { shown = 1 } } }
     }
 }
 
@@ -173,6 +175,7 @@ struct AmountField: View {
 // MARK: - Конфетти
 
 struct ConfettiView: View {
+    static var allowed: Bool { Appearance.shared.confetti && Motion.full }
     struct P { var x: Double; var vx: Double; var vy: Double; var r: Double; var vr: Double; var c: Color; var s: Double }
     @State private var start = Date()
     @State private var parts: [P] = (0..<140).map { _ in

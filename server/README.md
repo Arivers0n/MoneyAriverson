@@ -31,3 +31,13 @@ sudo bash install.sh money.ваш-домен.ru вы@почта.ru
 - Перезапуск: `systemctl restart kopilka`
 - Бэкапы: `/opt/kopilka/backups`
 - Админка: `https://ваш-адрес/_/`
+
+## Вход через Google
+
+1. Обновите сервер: снова запустите `sudo bash install.sh ваш-домен почта` (данные не пропадут).
+2. Откройте https://console.cloud.google.com → создайте проект → **Google Auth Platform** → **Get started**: имя приложения «Копилка», ваша почта, тип **External**.
+3. **Audience** → добавьте свою почту (и почту семьи) в **Test users** — или нажмите **Publish app**.
+4. **Clients** → **Create client** → тип **Web application** → в **Authorized redirect URIs** добавьте:
+   `https://ВАШ-ДОМЕН/api/kp/oauth-callback` (если сервер на порту 8443 — `https://ВАШ-ДОМЕН:8443/api/kp/oauth-callback`).
+5. Скопируйте Client ID и Client secret и на сервере выполните `sudo kopilka-google` — вставьте их.
+6. В приложении: Настройки → Синхронизация → адрес сервера → появится кнопка «Войти через Google».

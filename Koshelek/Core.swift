@@ -113,8 +113,21 @@ enum Fmt {
         return f
     }()
     /// «1 234 ₽», со знаком минус для отрицательных
+    static let nfKop: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 2
+        f.groupingSeparator = "\u{00A0}"
+        f.decimalSeparator = ","
+        f.locale = ruLocale
+        return f
+    }()
     static func rub(_ v: Double) -> String {
-        (v < 0 ? "−" : "") + (nf.string(from: NSNumber(value: abs(v.rounded()))) ?? "0") + "\u{00A0}₽"
+        if Appearance.shared.showKopecks {
+            return (v < 0 ? "−" : "") + (nfKop.string(from: NSNumber(value: (abs(v) * 100).rounded() / 100)) ?? "0") + "\u{00A0}₽"
+        }
+        return (v < 0 ? "−" : "") + (nf.string(from: NSNumber(value: abs(v.rounded()))) ?? "0") + "\u{00A0}₽"
     }
     static func rubU(_ v: Double) -> String { rub(abs(v)) }
     static func signed(_ v: Double) -> String { (v >= 0 ? "+" : "−") + rubU(v) }

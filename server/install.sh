@@ -191,7 +191,22 @@ ZC5hdXRob3IpIDogZS5hdXRoLmlkKQogICAgICAgIGUuYXBwLnNhdmUocmVjKQogICAgICAgIHNhdmVk
 dHVybiBlLmpzb24oMjAwLCB7IHNhdmVkOiBzYXZlZCwgc2tpcHBlZDogc2tpcHBlZCB9KQp9LCAkYXBpcy5yZXF1aXJlQXV0aCgi
 dXNlcnMiKSkKCi8vINCf0YDQvtCy0LXRgNC60LAsINGH0YLQviDRgdC10YDQstC10YAg0LbQuNCy0L7QuSAo0LTQu9GPINGN0LrR
 gNCw0L3QsCDQvdCw0YHRgtGA0L7QtdC6KS4Kcm91dGVyQWRkKCJHRVQiLCAiL2FwaS9rcC9waW5nIiwgKGUpID0+IHsKICAgIHJl
-dHVybiBlLmpzb24oMjAwLCB7IG9rOiB0cnVlLCBhcHA6ICJrb3BpbGthIiwgdmVyc2lvbjogMSB9KQp9KQo=
+dHVybiBlLmpzb24oMjAwLCB7IG9rOiB0cnVlLCBhcHA6ICJrb3BpbGthIiwgdmVyc2lvbjogMSB9KQp9KQoKLy8g0JLRhdC+0LQg
+0YfQtdGA0LXQtyBHb29nbGU6IEdvb2dsZSDQstC+0LfQstGA0LDRidCw0LXRgiDQv9C+0LvRjNC30L7QstCw0YLQtdC70Y8g0YHR
+jtC00LAsINCwINC80Ysg0L/QtdGA0LXQtNCw0ZHQvCDQutC+0LQg0LIg0L/RgNC40LvQvtC20LXQvdC40LUuCi8vINCSIEdvb2ds
+ZSBDbG91ZCDRg9C60LDQttC40YLQtSByZWRpcmVjdCBVUkk6IGh0dHBzOi8v0JLQkNCoLdCU0J7QnNCV0J0vYXBpL2twL29hdXRo
+LWNhbGxiYWNrCnJvdXRlckFkZCgiR0VUIiwgIi9hcGkva3Avb2F1dGgtY2FsbGJhY2siLCAoZSkgPT4gewogICAgY29uc3QgcSA9
+IGUucmVxdWVzdC51cmwucmF3UXVlcnkgfHwgIiIKICAgIHJldHVybiBlLnJlZGlyZWN0KDMwMiwgImtvc2hlbGVrOi8vb2F1dGg/
+IiArIHEpCn0pCgovLyDQldGB0LvQuCDQsiAvZXRjL2tvcGlsa2EuZW52INC30LDQtNCw0L3RiyBLUF9HT09HTEVfSUQg0LggS1Bf
+R09PR0xFX1NFQ1JFVCDigJQg0LLQutC70Y7Rh9Cw0LXQvCDQstGF0L7QtCDRh9C10YDQtdC3IEdvb2dsZSDRgdCw0LzQuC4Kb25C
+b290c3RyYXAoKGUpID0+IHsKICAgIGUubmV4dCgpCiAgICBjb25zdCBpZCA9ICRvcy5nZXRlbnYoIktQX0dPT0dMRV9JRCIpCiAg
+ICBjb25zdCBzZWNyZXQgPSAkb3MuZ2V0ZW52KCJLUF9HT09HTEVfU0VDUkVUIikKICAgIGlmICghaWQgfHwgIXNlY3JldCkgcmV0
+dXJuCiAgICB0cnkgewogICAgICAgIGNvbnN0IGMgPSBlLmFwcC5maW5kQ29sbGVjdGlvbkJ5TmFtZU9ySWQoInVzZXJzIikKICAg
+ICAgICB1bm1hcnNoYWwoeyBvYXV0aDI6IHsgZW5hYmxlZDogdHJ1ZSwgbWFwcGVkRmllbGRzOiB7IG5hbWU6ICJuYW1lIiwgYXZh
+dGFyVVJMOiAiIiB9LCBwcm92aWRlcnM6IFt7IG5hbWU6ICJnb29nbGUiLCBjbGllbnRJZDogaWQsIGNsaWVudFNlY3JldDogc2Vj
+cmV0IH1dIH0gfSwgYykKICAgICAgICBlLmFwcC5zYXZlKGMpCiAgICAgICAgY29uc29sZS5sb2coIktvcGlsa2E6INCy0YXQvtC0
+INGH0LXRgNC10LcgR29vZ2xlINCy0LrQu9GO0YfRkdC9IikKICAgIH0gY2F0Y2ggKGVycikgewogICAgICAgIGNvbnNvbGUubG9n
+KCJLb3BpbGthOiDQvdC1INGD0LTQsNC70L7RgdGMINCy0LrQu9GO0YfQuNGC0YwgR29vZ2xlOiIsIGVycikKICAgIH0KfSkK
 B64
 
 id kopilka >/dev/null 2>&1 || useradd --system --home "$DIR" --shell /usr/sbin/nologin kopilka
@@ -206,6 +221,7 @@ After=network.target
 User=kopilka
 Group=kopilka
 WorkingDirectory=$DIR
+EnvironmentFile=-/etc/kopilka.env
 ExecStart=$DIR/pocketbase serve --http=127.0.0.1:$PORT_INTERNAL --dir=$DIR/pb_data --hooksDir=$DIR/pb_hooks --migrationsDir=$DIR/pb_migrations
 Restart=always
 RestartSec=3
@@ -219,6 +235,30 @@ systemctl daemon-reload
 systemctl enable --now kopilka >/dev/null
 sleep 3
 curl -fsS "http://127.0.0.1:$PORT_INTERNAL/api/kp/ping" >/dev/null || die "сервер не отвечает: journalctl -u kopilka -n 50"
+
+say "Готовлю команду для входа через Google"
+cat > /usr/local/bin/kopilka-google <<'GOOG'
+#!/usr/bin/env bash
+# Включить вход через Google: sudo kopilka-google
+set -e
+[ "$(id -u)" -eq 0 ] || { echo "запустите через sudo"; exit 1; }
+URL=$(cat /opt/kopilka/url 2>/dev/null || echo "https://ВАШ-ДОМЕН")
+echo "В Google Cloud → Clients → Web application укажите Authorized redirect URI:"
+echo "    $URL/api/kp/oauth-callback"
+read -rp "Client ID: " ID
+read -rp "Client secret: " SECRET
+[ -n "$ID" ] && [ -n "$SECRET" ] || { echo "нужны оба значения"; exit 1; }
+printf 'KP_GOOGLE_ID=%s\nKP_GOOGLE_SECRET=%s\n' "$ID" "$SECRET" > /etc/kopilka.env
+chmod 600 /etc/kopilka.env
+systemctl restart kopilka
+sleep 3
+if curl -fsS http://127.0.0.1:8090/api/collections/users/auth-methods | grep -q '"google"'; then
+  echo "Готово: в приложении появилась кнопка «Войти через Google»."
+else
+  echo "Не получилось — посмотрите: journalctl -u kopilka -n 30"
+fi
+GOOG
+chmod +x /usr/local/bin/kopilka-google
 
 say "Создаю администратора"
 ADMIN_PASS=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)
@@ -296,6 +336,7 @@ chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
 if command -v ufw >/dev/null 2>&1 && ufw status | grep -q active; then ufw allow 80/tcp >/dev/null; ufw allow "$PUBPORT"/tcp >/dev/null; fi
 
 URL="https://$DOMAIN"; [ "$PUBPORT" = "443" ] || URL="https://$DOMAIN:$PUBPORT"
+echo "$URL" > "$DIR/url"
 sleep 1
 curl -fsS "$URL/api/kp/ping" >/dev/null && OK="да" || OK="не отвечает снаружи — проверьте фаервол хостинга (порт $PUBPORT)"
 
@@ -311,4 +352,5 @@ $(printf '\033[1;32m')Готово!$(printf '\033[0m')
   Логи:                          journalctl -u kopilka -f
 
 В приложении: Настройки → Синхронизация → вставьте адрес сервера → зарегистрируйтесь.
+Вход через Google (по желанию): sudo kopilka-google
 DONE

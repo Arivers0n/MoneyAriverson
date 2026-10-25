@@ -1,6 +1,7 @@
 import Foundation
 import Security
 import SwiftData
+import AuthenticationServices
 import SwiftUI
 
 // MARK: - Текущее пространство (личный или семейный бюджет)
@@ -291,16 +292,62 @@ final class SyncEngine: ObservableObject {
     func login(server addr: String, email: String, password: String, ctx: ModelContext) async throws {
         server = Self.normalize(addr)
         let obj = try await call("/api/collections/users/auth-with-password", ["identity": email, "password": password], auth: false)
+        // Записи, сделанные до входа, переезжают в личный бюджет
+        try await finishLogin(obj, ctx: ctx)
+    }
+
+    // MARK: Вход через Google (OAuth2 в PocketBase)
+
+    struct OAuthProvider {
+        let authURL: String
+        let codeVerifier: String
+        let state: String
+    }
+
+    /// Есть ли на сервере вход через Google.
+    func googleProvider(_ address: String) async -> OAuthProvider? {
+        let s = Self.normalize(address)
+        guard let url = URL(string: s + "/api/collections/users/auth-methods"),
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              let obj = jsonObject(data) as? [String: Any] else { return nil }
+        let list = ((obj["oauth2"] as? [String: Any])?["providers"] as? [[String: Any]]) ?? (obj["authProviders"] as? [[String: Any]]) ?? []
+        guard let g = list.first(where: { jStr($0["name"]) == "google" }) else { return nil }
+        let auth = jStr(g["authURL"]).isEmpty ? jStr(g["authUrl"]) : jStr(g["authURL"])
+        return OAuthProvider(authURL: auth, codeVerifier: jStr(g["codeVerifier"]), state: jStr(g["state"]))
+    }
+
+    @MainActor
+    func loginWithGoogle(server addr: String, ctx: ModelContext) async throws {
+        let base = Self.normalize(addr)
+        guard let p = await googleProvider(base) else {
+            throw APIError(message: "На сервере не включён вход через Google", status: 0)
+        }
+        let redirect = base + "/api/kp/oauth-callback"
+        let enc = redirect.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? redirect
+        guard let url = URL(string: p.authURL + enc) else { throw APIError(message: "Неверный адрес входа", status: 0) }
+        let callback = try await OAuthWeb.run(url: url)
+        let items = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        func q(_ n: String) -> String { items.first { $0.name == n }?.value ?? "" }
+        if !q("error").isEmpty { throw APIError(message: "Google: \(q("error"))", status: 0) }
+        guard q("state") == p.state, !q("code").isEmpty else { throw APIError(message: "Вход отменён или устарел — попробуйте ещё раз", status: 0) }
+        server = base
+        let obj = try await call("/api/collections/users/auth-with-oauth2",
+                                 ["provider": "google", "code": q("code"), "codeVerifier": p.codeVerifier, "redirectURL": redirect], auth: false)
+        try await finishLogin(obj, ctx: ctx)
+    }
+
+    private func finishLogin(_ obj: [String: Any], ctx: ModelContext) async throws {
         guard let t = obj["token"] as? String, let rec = obj["record"] as? [String: Any] else {
             throw APIError(message: "Сервер вернул неожиданный ответ", status: 0)
         }
         Keychain.set("pb-token", t)
         UserDefaults.standard.set(jStr(rec["id"]), forKey: "userID")
-        userName = jStr(rec["name"]); userEmail = jStr(rec["email"])
+        var name = jStr(rec["name"])
+        if name.isEmpty, let meta = obj["meta"] as? [String: Any] { name = jStr(meta["name"]) }
+        userName = name; userEmail = jStr(rec["email"])
         UserDefaults.standard.set(userName, forKey: "userName")
         UserDefaults.standard.set(userEmail, forKey: "userEmail")
         try await loadSpaces()
-        // Записи, сделанные до входа, переезжают в личный бюджет
         if let personal = spaces.first(where: { $0.personal && $0.owner == userID }) {
             adoptLocal(into: personal.id, ctx: ctx)
             switchTo(personal.id)
@@ -485,7 +532,7 @@ final class SyncEngine: ObservableObject {
         if changed { try? ctx.save(); Notifier.reschedule(ctx: ctx) }
     }
 
-    private func applyRemote(_ docs: [[String: Any]], space: String, ctx: ModelContext) {
+    func applyRemote(_ docs: [[String: Any]], space: String, ctx: ModelContext, local: Bool = false) {
         var byKind: [String: [[String: Any]]] = [:]
         for d in docs { byKind[jStr(d["kind"]), default: []].append(d) }
         func merge<T: Synced>(_ t: T.Type, make: () -> T) {
@@ -498,14 +545,15 @@ final class SyncEngine: ObservableObject {
                 let cts = Date(timeIntervalSince1970: jNum(d["cts"]) / 1000)
                 if let m = map[cid] {
                     if m.dirty && m.updatedAt > cts { continue }   // локальная правка новее — отправим её
+                    if local && !m.removed && m.updatedAt > cts { continue }
                     m.apply(d["data"] as? [String: Any] ?? [:])
-                    m.removed = jBool(d["deleted"]); m.updatedAt = cts; m.author = jStr(d["author"]); m.space = space; m.dirty = false
+                    m.removed = jBool(d["deleted"]); m.updatedAt = local ? Date() : cts; m.author = jStr(d["author"]); m.space = space; m.dirty = local
                 } else {
                     if jBool(d["deleted"]) { continue }
                     let m = make()
                     if let u = UUID(uuidString: cid) { m.uid = u }
                     m.apply(d["data"] as? [String: Any] ?? [:])
-                    m.space = space; m.updatedAt = cts; m.author = jStr(d["author"]); m.dirty = false; m.removed = false
+                    m.space = space; m.updatedAt = local ? Date() : cts; m.author = jStr(d["author"]); m.dirty = local; m.removed = false
                     ctx.insert(m)
                     map[cid] = m
                 }
@@ -516,7 +564,7 @@ final class SyncEngine: ObservableObject {
         merge(Recurring.self) { Recurring(name: "", amount: 0, kind: .exp, cat: "other", day: 1, yearly: false, month: 1) }
         merge(Goal.self) { Goal(name: "", target: 0, deadline: nil, hex: "2B47C9") }
         merge(Tx.self) { Tx(kind: .exp, amount: 0, cat: "other", note: "", date: Date()) }
-        if let p = byKind["prefs"]?.last, !UserDefaults.standard.bool(forKey: "prefsDirty:\(space)") {
+        if let p = byKind["prefs"]?.last, local || !UserDefaults.standard.bool(forKey: "prefsDirty:\(space)") {
             let b = jNum((p["data"] as? [String: Any])?["budget"])
             UserDefaults.standard.set(b, forKey: "budget:\(space)")
             CategoryPrefs.shared.applyRemote((p["data"] as? [String: Any])?["cats"], space: space)
@@ -525,7 +573,60 @@ final class SyncEngine: ObservableObject {
                 UserDefaults.standard.set(try? JSONEncoder().encode(v), forKey: "catLimits:\(space)")
             }
             if Space.current == space { UserDefaults.standard.set(b, forKey: "budget") }
+            if local {
+                UserDefaults.standard.set(true, forKey: "prefsDirty:\(space)")
+                UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "prefsTs:\(space)")
+            }
         }
+    }
+}
+
+// MARK: - Резервная копия и полная очистка
+
+enum Backup {
+    /// JSON со всеми записями текущего пространства: счета, долги, платежи, копилки, операции и настройки.
+    @MainActor
+    static func exportFile(ctx: ModelContext) -> URL? {
+        let space = Space.current
+        var docs: [[String: Any]] = []
+        func add<T: Synced>(_ t: T.Type) {
+            for m in ctx.live(t) {
+                docs.append(["cid": m.uid.uuidString, "kind": T.kind, "data": m.payload(), "deleted": false,
+                             "cts": m.updatedAt.timeIntervalSince1970 * 1000, "author": m.author])
+            }
+        }
+        add(Account.self); add(Debt.self); add(Recurring.self); add(Goal.self); add(Tx.self)
+        let limits = (UserDefaults.standard.data(forKey: "catLimits:\(space)")).flatMap { try? JSONDecoder().decode([String: Double].self, from: $0) } ?? [:]
+        docs.append(["cid": "prefs", "kind": "prefs", "deleted": false, "cts": Date().timeIntervalSince1970 * 1000,
+                     "data": ["budget": UserDefaults.standard.double(forKey: "budget"), "catLimits": limits, "cats": CategoryPrefs.storedJSON(space: space)]])
+        let root: [String: Any] = ["app": "kopilka", "version": 1, "created": Date().timeIntervalSince1970, "docs": docs]
+        let data = jsonData(root)
+        guard !data.isEmpty else { return nil }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Копилка \(DF.s(Date(), "yyyy-MM-dd")).json")
+        try? data.write(to: url)
+        return url
+    }
+
+    /// Восстановить из файла. Записи с тем же id обновляются, новые добавляются. Возвращает число записей.
+    @MainActor
+    static func restore(_ data: Data, ctx: ModelContext) -> Int? {
+        guard let root = jsonObject(data) as? [String: Any], jStr(root["app"]) == "kopilka",
+              let docs = root["docs"] as? [[String: Any]] else { return nil }
+        let space = Space.current
+        SyncEngine.shared.applyRemote(docs, space: space, ctx: ctx, local: true)
+        try? ctx.save()
+        SyncEngine.shared.schedulePush()
+        Notifier.reschedule(ctx: ctx)
+        return docs.filter { jStr($0["kind"]) != "prefs" }.count
+    }
+
+    /// Удалить все записи текущего пространства (удаление уйдёт и на другие устройства).
+    @MainActor
+    static func wipe(ctx: ModelContext) {
+        func del<T: Synced>(_ t: T.Type) { for m in ctx.live(t) { m.softDelete() } }
+        del(Tx.self); del(Recurring.self); del(Goal.self); del(Debt.self); del(Account.self)
+        ctx.commit()
+        Notifier.reschedule(ctx: ctx)
     }
 }
 
@@ -555,5 +656,39 @@ extension Keychain {
         add[kSecValueData as String] = Data(value.utf8)
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         SecItemAdd(add as CFDictionary, nil)
+    }
+}
+
+// MARK: - Окно входа Google
+
+@MainActor
+final class OAuthWeb: NSObject, ASWebAuthenticationPresentationContextProviding {
+    private static var current: OAuthWeb?
+    private var session: ASWebAuthenticationSession?
+
+    static func run(url: URL) async throws -> URL {
+        let w = OAuthWeb()
+        current = w
+        defer { current = nil }
+        return try await withCheckedThrowingContinuation { cont in
+            let s = ASWebAuthenticationSession(url: url, callbackURLScheme: "koshelek") { cb, err in
+                if let cb { cont.resume(returning: cb) }
+                else if let e = err as? ASWebAuthenticationSessionError, e.code == .canceledLogin {
+                    cont.resume(throwing: SyncEngine.APIError(message: "Вход отменён", status: -1))
+                } else {
+                    cont.resume(throwing: SyncEngine.APIError(message: err?.localizedDescription ?? "Не удалось войти", status: 0))
+                }
+            }
+            s.presentationContextProvider = w
+            s.prefersEphemeralWebBrowserSession = false
+            w.session = s
+            if !s.start() { cont.resume(throwing: SyncEngine.APIError(message: "Не удалось открыть окно входа", status: 0)) }
+        }
+    }
+
+    nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        MainActor.assumeIsolated {
+            UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first ?? ASPresentationAnchor()
+        }
     }
 }

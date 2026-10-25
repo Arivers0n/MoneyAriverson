@@ -55,19 +55,23 @@ struct TxGroupedList: View {
                 .font(.subheadline).foregroundStyle(.secondary)
                 .padding(.horizontal, 10)
                 .padding(.top, 14).padding(.bottom, 2)
-                ForEach(g.items) { t in
+                ForEach(Array(g.items.enumerated()), id: \.element.id) { i, t in
                     Button { router.show(.editTx(t)) } label: { row(t) }
-                        .buttonStyle(.plain)
+                        .buttonStyle(Pressable(scale: 0.97))
+                        .appearIn(i)
+                        .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .scale(scale: 0.9).combined(with: .opacity)))
                         .contextMenu {
                             Button { router.show(.editTx(t)) } label: { Label("Изменить", systemImage: "pencil") }
                             Button(role: .destructive) {
-                                t.softDelete()
+                                Haptic.warning()
+                                withAnimation(Motion.spring) { t.softDelete() }
                                 Store.container.mainContext.commit()
                             } label: { Label("Удалить", systemImage: "trash") }
                         }
                 }
             }
         }
+        .animation(Motion.spring, value: txs.count)
     }
 
     func dayLabel(_ d: Date) -> String {

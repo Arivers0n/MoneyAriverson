@@ -135,8 +135,14 @@ struct MonthTotals: Identifiable {
     var net: Double { inc - exp }
 }
 
+/// Учитывать ли операцию в итогах (настройка «Долги в итогах»).
+func countsInTotals(_ t: Tx) -> Bool {
+    if Appearance.shared.debtInTotals { return true }
+    return t.cat != "loans" && t.cat != "debtback"
+}
+
 func totals(for month: Date, _ txs: [Tx]) -> MonthTotals {
-    let items = txs.filter { $0.date.sameMonth(month) }
+    let items = txs.filter { $0.date.sameMonth(month) && countsInTotals($0) }
     let inc = items.filter { $0.kind == .inc }.reduce(0) { $0 + $1.amount }
     let exp = items.filter { $0.kind == .exp }.reduce(0) { $0 + $1.amount }
     return MonthTotals(month: month.startOfMonth, inc: inc, exp: exp, items: items)
@@ -150,7 +156,7 @@ struct CatSum: Identifiable {
 
 func byCategory(_ items: [Tx]) -> [CatSum] {
     var d: [String: Double] = [:]
-    for t in items where t.kind == .exp { d[t.cat, default: 0] += t.amount }
+    for t in items where t.kind == .exp && countsInTotals(t) { d[t.cat, default: 0] += t.amount }
     return d.map { CatSum(cat: Catalog.cat($0.key), sum: $0.value) }.sorted { $0.sum > $1.sum }
 }
 

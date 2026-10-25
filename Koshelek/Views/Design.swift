@@ -30,7 +30,7 @@ struct GlassCircle: View {
                 .frame(width: size, height: size)
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(Pressable(scale: 0.88))
         .glass(Circle(), interactive: true)
     }
 }
@@ -57,7 +57,7 @@ struct GlassIconGroup: View {
                         }
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(Pressable(scale: 0.85))
             }
         }
         .padding(.horizontal, 4)
@@ -84,11 +84,12 @@ struct MonthPill: View {
     @Binding var month: Date
     var body: some View {
         HStack(spacing: 4) {
-            Button { withAnimation(.snappy) { month = month.addingMonths(-1) } } label: {
+            Button { Haptic.select(); withAnimation(Motion.snappy) { month = month.addingMonths(-1) } } label: {
                 Image(systemName: "chevron.left").font(.subheadline.weight(.semibold)).frame(width: 30, height: 36)
             }
-            Text(title).font(.body.weight(.medium)).frame(minWidth: 96).contentTransition(.opacity)
-            Button { withAnimation(.snappy) { month = month.addingMonths(1) } } label: {
+            Text(title).font(.body.weight(.medium)).frame(minWidth: 96).contentTransition(.numericText()).id(title)
+                .transition(.push(from: .trailing).combined(with: .opacity))
+            Button { Haptic.select(); withAnimation(Motion.snappy) { month = month.addingMonths(1) } } label: {
                 Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).frame(width: 30, height: 36)
             }
         }
@@ -127,7 +128,7 @@ struct AccountPill: View {
             .padding(4)
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(Pressable(scale: 0.95))
         .glass(Capsule(), interactive: true)
     }
 }
@@ -177,7 +178,7 @@ struct PillToggle: View {
         HStack(spacing: 4) {
             ForEach(options) { o in
                 let on = selection == o.id
-                Button { withAnimation(.snappy) { selection = o.id } } label: {
+                Button { Haptic.select(); withAnimation(Motion.spring) { selection = o.id } } label: {
                     HStack(spacing: 6) {
                         Image(systemName: o.symbol).font(.subheadline.weight(.semibold))
                         if on { Text(o.title).font(.body.weight(.semibold)) }

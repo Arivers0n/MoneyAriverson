@@ -132,3 +132,26 @@ routerAdd("POST", "/api/kp/push", (e) => {
 routerAdd("GET", "/api/kp/ping", (e) => {
     return e.json(200, { ok: true, app: "kopilka", version: 1 })
 })
+
+// Вход через Google: Google возвращает пользователя сюда, а мы передаём код в приложение.
+// В Google Cloud укажите redirect URI: https://ВАШ-ДОМЕН/api/kp/oauth-callback
+routerAdd("GET", "/api/kp/oauth-callback", (e) => {
+    const q = e.request.url.rawQuery || ""
+    return e.redirect(302, "koshelek://oauth?" + q)
+})
+
+// Если в /etc/kopilka.env заданы KP_GOOGLE_ID и KP_GOOGLE_SECRET — включаем вход через Google сами.
+onBootstrap((e) => {
+    e.next()
+    const id = $os.getenv("KP_GOOGLE_ID")
+    const secret = $os.getenv("KP_GOOGLE_SECRET")
+    if (!id || !secret) return
+    try {
+        const c = e.app.findCollectionByNameOrId("users")
+        unmarshal({ oauth2: { enabled: true, mappedFields: { name: "name", avatarURL: "" }, providers: [{ name: "google", clientId: id, clientSecret: secret }] } }, c)
+        e.app.save(c)
+        console.log("Kopilka: вход через Google включён")
+    } catch (err) {
+        console.log("Kopilka: не удалось включить Google:", err)
+    }
+})

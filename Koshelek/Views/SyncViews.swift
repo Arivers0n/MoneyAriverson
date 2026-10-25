@@ -62,6 +62,8 @@ struct AccountView: View {
     @State private var err: String?
     @State private var serverOK: Bool?
     @State private var confirmLogout = false
+    @State private var googleOn = false
+    @State private var googleBusy = false
 
     var body: some View {
         Form {
@@ -99,6 +101,22 @@ struct AccountView: View {
                 } header: { Text("Адрес сервера") } footer: {
                     Text("Адрес, который показал скрипт установки на вашем VPS, например money.example.ru или money.example.ru:8443.")
                 }
+                if googleOn {
+                    Section {
+                        Button(action: google) {
+                            HStack(spacing: 10) {
+                                Spacer()
+                                if googleBusy { ProgressView() } else {
+                                    GoogleG().frame(width: 20, height: 20)
+                                    Text("Войти через Google").fontWeight(.semibold).foregroundStyle(.primary)
+                                }
+                                Spacer()
+                            }
+                            .frame(height: 30)
+                        }
+                        .disabled(googleBusy || busy)
+                    } footer: { Text("Или по почте и паролю:") }
+                }
                 Section {
                     Picker("", selection: $registering) {
                         Text("Вход").tag(false)
@@ -126,6 +144,15 @@ struct AccountView: View {
                 }
             }
         }
+        .onAppear { if !sync.loggedIn && !server.isEmpty { checkServer() } }
+        .onChange(of: server) { _, v in
+            googleOn = false
+            let snap = v
+            Task {
+                try? await Task.sleep(nanoseconds: 700_000_000)
+                if snap == server, !snap.isEmpty { checkServer() }
+            }
+        }
         .navigationTitle(sync.loggedIn ? "Аккаунт" : "Синхронизация")
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("Выйти из аккаунта?", isPresented: $confirmLogout, titleVisibility: .visible) {
@@ -134,7 +161,30 @@ struct AccountView: View {
     }
 
     private func checkServer() {
-        Task { serverOK = await sync.ping(server) }
+        Task {
+            serverOK = await sync.ping(server)
+            let g = serverOK == true ? await sync.googleProvider(server) != nil : false
+            withAnimation(Motion.spring) { googleOn = g }
+        }
+    }
+
+    private func google() {
+        googleBusy = true; err = nil
+        Haptic.press()
+        Task {
+            defer { googleBusy = false }
+            do {
+                try await sync.loginWithGoogle(server: server, ctx: ctx)
+                Haptic.success()
+                Router.shared.say("Вы вошли через Google — данные синхронизируются")
+                dismiss()
+            } catch let e as SyncEngine.APIError where e.status == -1 {
+                // пользователь закрыл окно
+            } catch {
+                Haptic.warning()
+                err = error.localizedDescription
+            }
+        }
     }
 
     private func submit() {
@@ -269,5 +319,29 @@ struct FamilyView: View {
             defer { busy = false }
             do { try await op() } catch { err = error.localizedDescription }
         }
+    }
+}
+
+/// Цветная буква G (нарисована фигурами, без картинок).
+struct GoogleG: View {
+    var body: some View {
+        GeometryReader { g in
+            let w = min(g.size.width, g.size.height)
+            let lw = w * 0.2
+            ZStack {
+                seg(0, 0.125, Color(red: 0.26, green: 0.52, blue: 0.96), lw)
+                seg(0.125, 0.375, Color(red: 0.20, green: 0.66, blue: 0.33), lw)
+                seg(0.375, 0.556, Color(red: 0.98, green: 0.74, blue: 0.02), lw)
+                seg(0.556, 0.875, Color(red: 0.92, green: 0.26, blue: 0.21), lw)
+                Rectangle().fill(Color(red: 0.26, green: 0.52, blue: 0.96))
+                    .frame(width: (w - lw) / 2, height: lw)
+                    .offset(x: (w - lw) / 4)
+            }
+            .padding(lw / 2)
+            .frame(width: w, height: w)
+        }
+    }
+    private func seg(_ a: CGFloat, _ b: CGFloat, _ c: Color, _ lw: CGFloat) -> some View {
+        Circle().trim(from: a, to: b).stroke(c, style: StrokeStyle(lineWidth: lw))
     }
 }

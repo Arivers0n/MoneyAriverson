@@ -12,6 +12,7 @@ struct ChartPoint: Identifiable {
 // MARK: - Анализ: кольцо категорий и тренды
 
 struct StatsView: View {
+    @State private var donutIn = false
     @EnvironmentObject var router: Router
     @Query(sort: \Tx.date, order: .reverse) private var qTxs: [Tx]
     private var allTxs: [Tx] { qTxs.live }
@@ -96,7 +97,7 @@ struct StatsView: View {
                 Circle().stroke(Theme.card, lineWidth: 64).padding(32)
             } else {
                 Chart(shown) { r in
-                    SectorMark(angle: .value("Сумма", r.sum), innerRadius: .ratio(0.62), angularInset: 2.5)
+                    SectorMark(angle: .value("Сумма", donutIn ? r.sum : 0.0001), innerRadius: .ratio(0.62), angularInset: 2.5)
                         .cornerRadius(8)
                         .foregroundStyle(r.cat.color.opacity(selected == nil || selected == r.cat.id ? 1 : 0.3))
                 }
@@ -112,6 +113,12 @@ struct StatsView: View {
             }
         }
         .frame(height: 320)
+        .scaleEffect(donutIn ? 1 : 0.85)
+        .opacity(donutIn ? 1 : 0)
+        .onAppear {
+            guard !donutIn else { return }
+            if let a = Motion.enabled ? Animation.spring(response: 0.7, dampingFraction: 0.8).delay(0.05) : nil { withAnimation(a) { donutIn = true } } else { donutIn = true }
+        }
         .animation(.snappy, value: hidden)
         .animation(.snappy, value: selected)
     }
@@ -132,14 +139,14 @@ struct StatsView: View {
             }
             ForEach(all) { r in
                 let on = !hidden.contains(r.cat.id)
-                Button { withAnimation(.snappy) { selected = selected == r.cat.id ? nil : r.cat.id } } label: {
+                Button { Haptic.select(); withAnimation(.snappy) { selected = selected == r.cat.id ? nil : r.cat.id } } label: {
                     HStack(spacing: 12) {
                         Image(systemName: r.cat.symbol).font(.system(size: 20, weight: .medium)).foregroundStyle(r.cat.color).frame(width: 28)
                         Text(r.cat.name).font(.title3.weight(.medium)).foregroundStyle(r.cat.color)
                         Spacer()
                         Text(Fmt.rubU(r.sum)).font(.title3.weight(.medium))
                         CheckDot(on: on) {
-                            withAnimation(.snappy) { if on { hidden.insert(r.cat.id) } else { hidden.remove(r.cat.id) } }
+                            Haptic.tap(); withAnimation(.snappy) { if on { hidden.insert(r.cat.id) } else { hidden.remove(r.cat.id) } }
                         }
                     }
                     .padding(.horizontal, 16).padding(.vertical, 14)
@@ -337,6 +344,10 @@ struct InsightsView: View {
             VStack(alignment: .leading, spacing: 14) {
                 SheetBar(title: "Инсайты", symbol: "sparkle")
                     .padding(.bottom, 8)
+                MonthOverview(txs: txs, month: $month)
+                if !list.isEmpty || Keychain.hasKey {
+                    Text("Подсказки").font(.title3.weight(.semibold)).padding(.top, 8)
+                }
                 if Keychain.hasKey {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("Совет дня", systemImage: "sparkles").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accent)
@@ -347,11 +358,12 @@ struct InsightsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                 }
-                ForEach(list) { i in
+                ForEach(Array(list.enumerated()), id: \.element.id) { n, i in
                     RowCard {
                         CategoryTile(symbol: i.symbol, color: i.color, size: 42)
                         Text(i.text).font(.subheadline).fixedSize(horizontal: false, vertical: true)
                     }
+                    .appearIn(n)
                 }
                 if list.isEmpty && !Keychain.hasKey {
                     EmptyState(symbol: "sparkle", title: "Пока всё спокойно", text: "Записывайте траты — и здесь появятся подсказки. С ключом Claude API будет ещё совет дня и разбор месяца.")
@@ -361,7 +373,7 @@ struct InsightsView: View {
                         .font(.body.weight(.semibold)).frame(maxWidth: .infinity).frame(height: 52)
                         .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(Pressable(scale: 0.97))
                 .glass(Capsule(), interactive: true)
                 .padding(.top, 6)
                 reviewCard

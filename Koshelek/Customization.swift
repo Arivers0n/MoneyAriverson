@@ -30,6 +30,16 @@ final class Appearance: ObservableObject {
     @Published var bigNumber: String { didSet { save("ap.big", bigNumber) } }     // net | exp | inc
     @Published var compact: Bool { didSet { save("ap.compact", compact) } }
     @Published var hideAmounts: Bool { didSet { save("ap.hide", hideAmounts) } }
+    // Ощущения
+    @Published var haptics: Bool { didSet { d.set(haptics, forKey: "ap.haptics") } }
+    @Published var hapticStrength: String { didSet { d.set(hapticStrength, forKey: "ap.hstr") } }   // soft | normal | strong
+    @Published var motion: String { didSet { d.set(motion, forKey: "ap.motion") } }                 // full | calm | off
+    @Published var confetti: Bool { didSet { d.set(confetti, forKey: "ap.confetti") } }
+    // Подсчёты
+    @Published var showKopecks: Bool { didSet { save("ap.kop", showKopecks) } }
+    @Published var debtInTotals: Bool { didSet { save("ap.debt", debtInTotals) } }
+    @Published var alwaysIncome: Bool { didSet { save("ap.inc", alwaysIncome) } }
+    @Published var firstWeekday: Int { didSet { d.set(firstWeekday, forKey: "ap.week"); cal.firstWeekday = firstWeekday; version += 1 } }
 
     init() {
         scheme = d.string(forKey: "ap.scheme") ?? "system"
@@ -40,6 +50,15 @@ final class Appearance: ObservableObject {
         bigNumber = d.string(forKey: "ap.big") ?? "net"
         compact = d.bool(forKey: "ap.compact")
         hideAmounts = d.bool(forKey: "ap.hide")
+        haptics = d.object(forKey: "ap.haptics") as? Bool ?? true
+        hapticStrength = d.string(forKey: "ap.hstr") ?? "normal"
+        motion = d.string(forKey: "ap.motion") ?? "full"
+        confetti = d.object(forKey: "ap.confetti") as? Bool ?? true
+        showKopecks = d.bool(forKey: "ap.kop")
+        debtInTotals = d.object(forKey: "ap.debt") as? Bool ?? true
+        alwaysIncome = d.object(forKey: "ap.inc") as? Bool ?? true
+        firstWeekday = d.object(forKey: "ap.week") as? Int ?? 2
+        cal.firstWeekday = firstWeekday
     }
 
     private func save(_ k: String, _ v: Any) { d.set(v, forKey: k); version += 1 }
