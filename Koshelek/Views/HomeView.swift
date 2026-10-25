@@ -40,6 +40,7 @@ struct HomeView: View {
     private var scrollOrder: [String] { pinHero ? layout.order.filter { $0 != "summary" } : layout.order }
 
     var body: some View {
+        ZStack(alignment: .bottom) {
         VStack(spacing: 0) {
             topBar.padding(.top, 4).padding(.horizontal, 16)
             if pinHero {
@@ -77,13 +78,24 @@ struct HomeView: View {
             .modifier(OverscrollReader { onPull($0) })
             .scrollIndicators(.hidden)
             .scrollBounceBehavior(.always)
-            .mask(
-                LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: pinHero ? 0.035 : 0)],
-                               startPoint: .top, endPoint: .bottom)
-            )
+            // список уходит под кнопки и плавно растворяется — без отдельной плашки
+            .contentMargins(.bottom, 120, for: .scrollContent)
+            .mask {
+                VStack(spacing: 0) {
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                        .frame(height: pinHero ? 18 : 0)
+                    Color.black
+                    LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.35), location: 0.6), .init(color: .clear, location: 1)],
+                                   startPoint: .top, endPoint: .bottom)
+                        .frame(height: 150)
+                }
+            }
+            .ignoresSafeArea(edges: .bottom)
+        }
+            Group { if layout.editing { editBar } else { bottomButtons } }
+                .transition(.opacity)
         }
         .background(Backdrop())
-        .safeAreaInset(edge: .bottom) { layout.editing ? AnyView(editBar) : AnyView(bottomButtons) }
         .sheet(isPresented: $showAdd) { AddBlockSheet() }
     }
 
