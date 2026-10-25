@@ -30,26 +30,54 @@ struct HomeView: View {
     private var monthTxs: [Tx] { txs.filter { $0.date.sameMonth(month) } }
     private var masked: Bool { ap.hideAmounts && !reveal }
 
+    @State private var pull: CGFloat = 0
+    @State private var pullState: PullState = .idle
+    @State private var pullTick = 0
+    @State private var heroBump = false
+
+    /// Шапка (итог месяца) закреплена, если блок «Итог» есть на экране и не идёт редактирование.
+    private var pinHero: Bool { !layout.editing && layout.order.contains("summary") }
+    private var scrollOrder: [String] { pinHero ? layout.order.filter { $0 != "summary" } : layout.order }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                topBar.padding(.top, 4)
-                VStack(spacing: layout.editing ? 18 : (ap.compact ? 16 : 22)) {
-                    ForEach(layout.order, id: \.self) { id in
-                        block(id)
-                            .modifier(EditableBlock(editing: layout.editing, title: layout.block(id)?.title ?? "") { layout.remove(id) })
-                    }
-                    if layout.editing { editTail }
-                }
-                .padding(.top, 28)
-                .animation(.snappy, value: layout.order)
+        VStack(spacing: 0) {
+            topBar.padding(.top, 4).padding(.horizontal, 16)
+            if pinHero {
+                hero
+                    .padding(.horizontal, 16)
+                    .padding(.top, 28)
+                    .scaleEffect(heroBump ? 1.03 : 1)
+                    .zIndex(1)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 20)
+            ScrollView {
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: 0)
+                        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("homeScroll")).minY } action: { onPull($0) }
+                    if !layout.editing && !layout.order.contains("insights") {
+                        PullPill(title: "Обновить", symbol: "arrow.down", pull: pull, state: pullState, hideWhenIdle: true) {}
+                    }
+                    VStack(spacing: layout.editing ? 18 : (ap.compact ? 16 : 22)) {
+                        ForEach(scrollOrder, id: \.self) { id in
+                            block(id)
+                                .modifier(EditableBlock(editing: layout.editing, title: layout.block(id)?.title ?? "") { layout.remove(id) })
+                        }
+                        if layout.editing { editTail }
+                    }
+                    .padding(.top, pinHero ? 16 : 28)
+                    .animation(.snappy, value: layout.order)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 20)
+            }
+            .coordinateSpace(name: "homeScroll")
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.always)
+            .mask(
+                LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: pinHero ? 0.035 : 0)],
+                               startPoint: .top, endPoint: .bottom)
+            )
         }
-        .scrollIndicators(.hidden)
         .background(Backdrop())
-        .refreshable { await sync.sync(ctx: ctx) }
         .safeAreaInset(edge: .bottom) { layout.editing ? AnyView(editBar) : AnyView(bottomButtons) }
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.7).onEnded { _ in
@@ -59,6 +87,58 @@ struct HomeView: View {
             }
         )
         .sheet(isPresented: $showAdd) { AddBlockSheet() }
+    }
+
+    // MARK: Своё «потяните, чтобы обновить» без колёсика
+
+    static let pullThreshold: CGFloat = 86
+
+    private func onPull(_ y: CGFloat) {
+        let p = max(0, y)
+        pull = p
+        guard !layout.editing else { return }
+        switch pullState {
+        case .idle, .pulling:
+            pullState = p > 4 ? .pulling : .idle
+            let tick = Int(min(p, Self.pullThreshold) / (Self.pullThreshold / 4))
+            if tick > pullTick, tick < 4 { Haptic.select() }
+            pullTick = tick
+            if p >= Self.pullThreshold {
+                Haptic.press()
+                withAnimation(Motion.spring) { pullState = .armed }
+            }
+        case .armed:
+            // палец отпустили — список поехал обратно
+            if p < Self.pullThreshold * 0.6 { startRefresh() }
+        case .refreshing, .done:
+            break
+        }
+    }
+
+    private func startRefresh() {
+        withAnimation(Motion.spring) { pullState = .refreshing }
+        pullTick = 0
+        Task {
+            let started = Date()
+            if sync.loggedIn { await sync.sync(ctx: ctx) }
+            Notifier.reschedule(ctx: ctx)
+            let left = 0.9 - Date().timeIntervalSince(started)
+            if left > 0 { try? await Task.sleep(nanoseconds: UInt64(left * 1_000_000_000)) }
+            if case .error = sync.state { Haptic.warning() } else { Haptic.success() }
+            withAnimation(Motion.spring) { pullState = .done }
+            if Motion.full {
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { heroBump = true }
+                try? await Task.sleep(nanoseconds: 180_000_000)
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) { heroBump = false }
+            }
+            try? await Task.sleep(nanoseconds: 1_300_000_000)
+            withAnimation(Motion.spring) { pullState = .idle }
+        }
+    }
+
+    private var doneText: String {
+        if case .error(let e) = sync.state { return e.count > 26 ? "Нет связи" : e }
+        return sync.loggedIn ? "Синхронизировано" : "Всё актуально"
     }
 
     // MARK: Блоки
@@ -165,14 +245,9 @@ struct HomeView: View {
     }
 
     private var insightsButton: some View {
-        Button { router.show(.insights) } label: {
-            Label("Инсайты", systemImage: "sparkle")
-                .font(.body.weight(.medium))
-                .padding(.horizontal, 18).frame(height: 44)
-                .contentShape(Capsule())
+        PullPill(title: "Инсайты", symbol: "sparkle", pull: pull, state: pullState, doneText: doneText) {
+            router.show(.insights)
         }
-        .buttonStyle(Pressable())
-        .glass(Capsule(), interactive: true)
     }
 
     // MARK: Что требует внимания
@@ -405,5 +480,123 @@ struct AddBlockSheet: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Готово") { dismiss() } } }
         }
         .presentationDetents([.medium, .large])
+    }
+}
+
+// MARK: - Капсула, которая тянется при обновлении
+
+enum PullState: Equatable { case idle, pulling, armed, refreshing, done }
+
+struct PullPill: View {
+    let title: String
+    let symbol: String
+    let pull: CGFloat
+    let state: PullState
+    var hideWhenIdle = false
+    var doneText = "Обновлено"
+    let action: () -> Void
+
+    private var progress: CGFloat { min(1, pull / HomeView.pullThreshold) }
+    private var stretch: CGFloat { state == .pulling || state == .armed ? pull : 0 }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                icon
+                    .font(.body.weight(.semibold))
+                    .frame(width: 22)
+                Text(label)
+                    .font(.body.weight(.medium))
+                    .contentTransition(.interpolate)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(state == .armed ? Color.white : (state == .done ? Theme.inc : Color.primary))
+            .padding(.horizontal, 18 + min(stretch * 0.35, 34))
+            .frame(height: 44 + min(stretch * 0.06, 8))
+            .background {
+                ZStack {
+                    if state == .armed {
+                        Capsule().fill(Theme.accent.gradient)
+                    }
+                    if state == .refreshing && Motion.enabled {
+                        Shimmer().clipShape(Capsule())
+                    }
+                    if state == .pulling {
+                        Capsule()
+                            .trim(from: 0, to: progress)
+                            .stroke(Theme.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .scaleEffect(x: 1, y: 1)
+                            .opacity(0.9)
+                    }
+                }
+            }
+            .contentShape(Capsule())
+        }
+        .buttonStyle(Pressable())
+        .glass(Capsule(), interactive: true)
+        .scaleEffect(state == .armed ? 1.06 : 1)
+        // капсула тянется, но остаётся ближе к шапке — эффект резинки
+        .offset(y: -stretch * 0.45)
+        .opacity(hideWhenIdle && state == .idle ? 0 : 1)
+        .frame(height: hideWhenIdle && state == .idle ? 0 : nil)
+        .animation(Motion.enabled ? .spring(response: 0.3, dampingFraction: 0.7) : nil, value: state)
+        .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.8), value: pull)
+    }
+
+    private var label: String {
+        switch state {
+        case .idle, .pulling: return title
+        case .armed: return "Отпустите"
+        case .refreshing: return "Обновляю…"
+        case .done: return doneText
+        }
+    }
+
+    @ViewBuilder private var icon: some View {
+        switch state {
+        case .idle:
+            Image(systemName: symbol)
+        case .pulling:
+            Image(systemName: symbol)
+                .rotationEffect(.degrees(Double(progress) * 360))
+                .scaleEffect(0.8 + progress * 0.4)
+        case .armed:
+            Image(systemName: "arrow.clockwise")
+        case .refreshing:
+            SpinningSparkle()
+        case .done:
+            Image(systemName: "checkmark")
+                .transition(.scale.combined(with: .opacity))
+        }
+    }
+}
+
+/// Бегущий блик внутри капсулы во время обновления.
+struct Shimmer: View {
+    @State private var x: CGFloat = -1
+    var body: some View {
+        GeometryReader { g in
+            LinearGradient(colors: [.clear, Theme.accent.opacity(0.35), .clear], startPoint: .leading, endPoint: .trailing)
+                .frame(width: g.size.width * 0.6)
+                .offset(x: x * g.size.width)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: false)) { x = 1.2 }
+                }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+struct SpinningSparkle: View {
+    @State private var spin = false
+    var body: some View {
+        Image(systemName: "sparkle")
+            .rotationEffect(.degrees(spin ? 360 : 0))
+            .scaleEffect(spin ? 1.15 : 0.9)
+            .onAppear {
+                guard Motion.enabled else { return }
+                withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: false)) { spin = true }
+            }
     }
 }
