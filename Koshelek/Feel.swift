@@ -104,6 +104,8 @@ struct RollingAmount: View {
 
 /// Плавное появление снизу при первом показе.
 struct AppearIn: ViewModifier {
+    @MainActor static var burstStart = Date.distantPast
+    @MainActor static var lastAppear = Date.distantPast
     var index: Int = 0
     @State private var visible = false
     func body(content: Content) -> some View {
@@ -112,7 +114,12 @@ struct AppearIn: ViewModifier {
             .offset(y: visible ? 0 : 14)
             .onAppear {
                 guard !visible else { return }
-                if let a = Motion.stagger(index) { withAnimation(a) { visible = true } } else { visible = true }
+                // Анимируем только «пачку» появлений при открытии экрана, а не каждую строку при прокрутке
+                let now = Date()
+                if now.timeIntervalSince(Self.lastAppear) > 0.45 { Self.burstStart = now }
+                Self.lastAppear = now
+                let fresh = now.timeIntervalSince(Self.burstStart) < 0.5
+                if fresh, let a = Motion.stagger(index) { withAnimation(a) { visible = true } } else { visible = true }
             }
     }
 }

@@ -25,6 +25,7 @@ struct SettingsView: View {
     @State private var dailyTime = Calendar.current.date(bySettingHour: Notifier.dailyMinutes / 60, minute: Notifier.dailyMinutes % 60, second: 0, of: Date()) ?? Date()
     @State private var backupMsg: String?
     @State private var confirmWipe = false
+    @State private var share: ShareItem?
     @State private var wipeText = ""
 
     var body: some View {
@@ -113,13 +114,13 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    if let url = Backup.exportFile(ctx: ctx) {
-                        ShareLink(item: url) { SettingRow("Сохранить резервную копию", "externaldrive.fill.badge.icloud", .blue) }
-                    }
+                    Button {
+                        if let url = Backup.exportFile(ctx: ctx) { share = ShareItem(url: url) } else { backupMsg = "Не удалось собрать копию." }
+                    } label: { SettingRow("Сохранить резервную копию", "externaldrive.fill.badge.icloud", .blue) }
                     Button { importing = true } label: { SettingRow("Восстановить из копии", "arrow.counterclockwise.circle.fill", .blue.opacity(0.8)) }
-                    if let url = CSV.exportFile(txs: txs, accounts: accs) {
-                        ShareLink(item: url) { SettingRow("Экспорт операций в CSV", "tablecells.fill", .green) }
-                    }
+                    Button {
+                        if let url = CSV.exportFile(txs: txs, accounts: accs) { share = ShareItem(url: url) }
+                    } label: { SettingRow("Экспорт операций в CSV", "tablecells.fill", .green) }
                     Button { importing = true } label: { SettingRow("Импорт CSV", "square.and.arrow.down.fill", .green.opacity(0.8)) }
                     if let m = backupMsg ?? importMsg { Text(m).font(.footnote).foregroundStyle(.secondary) }
                 } header: { Text("Данные") } footer: {
@@ -166,6 +167,7 @@ struct SettingsView: View {
                 importMsg = n > 0 ? "Импортировано операций: \(n)" : "В файле не нашлось операций."
                 if n > 0 { Haptic.success() } else { Haptic.warning() }
             }
+            .sheet(item: $share) { ShareSheet(items: [$0.url]).presentationDetents([.medium, .large]) }
             .alert("Стереть все данные?", isPresented: $confirmWipe) {
                 TextField("Напишите: стереть", text: $wipeText)
                 Button("Отмена", role: .cancel) {}
@@ -267,4 +269,18 @@ struct AutomationView: View {
         .navigationTitle("Автоматизация")
         .navigationBarTitleDisplayMode(.inline)
     }
+}
+
+struct ShareItem: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+/// Системное окно «Поделиться» (для файлов, собранных по нажатию).
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }

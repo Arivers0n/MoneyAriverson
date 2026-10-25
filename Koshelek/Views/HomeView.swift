@@ -52,7 +52,7 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     Color.clear.frame(height: 0)
-                        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("homeScroll")).minY } action: { onPull($0) }
+                        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("homeScroll")).minY } action: { legacyPull($0) }
                     if !layout.editing && !layout.order.contains("insights") {
                         PullPill(title: "Обновить", symbol: "arrow.down", pull: pull, state: pullState, hideWhenIdle: true) {}
                     }
@@ -70,6 +70,7 @@ struct HomeView: View {
                 .padding(.bottom, 20)
             }
             .coordinateSpace(name: "homeScroll")
+            .modifier(OverscrollReader { onPull($0) })
             .scrollIndicators(.hidden)
             .scrollBounceBehavior(.always)
             .mask(
@@ -93,8 +94,17 @@ struct HomeView: View {
 
     static let pullThreshold: CGFloat = 86
 
+    @State private var restY: CGFloat?
+    /// Для iOS 17: считаем от положения покоя, которое запоминаем при первом замере.
+    private func legacyPull(_ y: CGFloat) {
+        if #available(iOS 18.0, *) { return }
+        if restY == nil { restY = y }
+        onPull(y - (restY ?? y))
+    }
+
     private func onPull(_ y: CGFloat) {
         let p = max(0, y)
+        guard abs(p - pull) > 0.5 || p == 0 else { return }
         pull = p
         guard !layout.editing else { return }
         switch pullState {
@@ -153,6 +163,7 @@ struct HomeView: View {
         case "payments": PaymentsBlock(debts: debts, recs: recs, txs: allTxs)
         case "categories": CategoriesBlock(txs: monthTxs)
         case "accounts": AccountsBlock(accs: accs, txs: allTxs)
+        case "quick": QuickBlock(txs: allTxs)
         case "feed": feed
         default: EmptyView()
         }
@@ -522,12 +533,12 @@ struct PullPill: View {
                         Shimmer().clipShape(Capsule())
                     }
                     if state == .pulling {
-                        Capsule()
-                            .trim(from: 0, to: progress)
-                            .stroke(Theme.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                            .scaleEffect(x: 1, y: 1)
-                            .opacity(0.9)
+                        GeometryReader { g in
+                            Capsule()
+                                .fill(Theme.accent.opacity(0.22))
+                                .frame(width: max(g.size.height, g.size.width * progress))
+                        }
+                        .clipShape(Capsule())
                     }
                 }
             }
@@ -598,5 +609,21 @@ struct SpinningSparkle: View {
                 guard Motion.enabled else { return }
                 withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: false)) { spin = true }
             }
+    }
+}
+
+/// Насколько список оттянут вниз за верхний край (iOS 18+ — точно, через геометрию прокрутки).
+struct OverscrollReader: ViewModifier {
+    let onChange: (CGFloat) -> Void
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: CGFloat.self) { g in
+                -(g.contentOffset.y + g.contentInsets.top)
+            } action: { _, v in
+                onChange(v)
+            }
+        } else {
+            content
+        }
     }
 }

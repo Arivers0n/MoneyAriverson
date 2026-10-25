@@ -267,10 +267,24 @@ final class Router: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { self.sheet = r }
         } else { sheet = r }
     }
-    func say(_ t: String) {
+    /// Действие для кнопки «Отменить» в подсказке снизу.
+    @Published var undo: (() -> Void)?
+    private var toastToken = 0
+    func say(_ t: String, undo: (() -> Void)? = nil) {
+        toastToken += 1
+        let token = toastToken
+        self.undo = undo
         toast = t
-        let current = t
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { if self.toast == current { self.toast = nil } }
+        DispatchQueue.main.asyncAfter(deadline: .now() + (undo == nil ? 2.6 : 4.5)) {
+            if self.toastToken == token { self.toast = nil; self.undo = nil }
+        }
+    }
+    func runUndo() {
+        let u = undo
+        undo = nil
+        toast = nil
+        Haptic.tap()
+        u?()
     }
     func handle(url: URL) {
         switch url.host ?? "" {

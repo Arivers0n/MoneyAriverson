@@ -127,9 +127,10 @@ final class HomeLayout: ObservableObject {
         .init(id: "payments", title: "Ближайшие платежи", symbol: "calendar", hint: "Кредиты и подписки на неделе"),
         .init(id: "categories", title: "Категории", symbol: "chart.pie", hint: "Куда уходят деньги"),
         .init(id: "accounts", title: "Счета", symbol: "creditcard", hint: "Балансы карт и наличных"),
+        .init(id: "quick", title: "Частое", symbol: "bolt", hint: "Повторяющиеся траты в одно касание"),
         .init(id: "feed", title: "Операции", symbol: "list.bullet", hint: "Лента трат и доходов"),
     ]
-    static let defaultOrder = ["summary", "insights", "attention", "feed"]
+    static let defaultOrder = ["summary", "insights", "attention", "quick", "feed"]
 
     struct Button: Identifiable, Hashable {
         let id: String
@@ -159,6 +160,13 @@ final class HomeLayout: ObservableObject {
         top = d.stringArray(forKey: "home.top") ?? ["search", "stats", "payments", "budgets"]
         showScan = d.object(forKey: "home.scan") as? Bool ?? true
         showPlus = d.object(forKey: "home.plus") as? Bool ?? true
+        // Новый блок «Частое» один раз добавляем и тем, у кого порядок уже сохранён
+        if !d.bool(forKey: "home.quickAdded") {
+            d.set(true, forKey: "home.quickAdded")
+            if !order.contains("quick") {
+                if let i = order.firstIndex(of: "feed") { order.insert("quick", at: i) } else { order.append("quick") }
+            }
+        }
     }
 
     var hidden: [Block] { Self.blocks.filter { !order.contains($0.id) } }

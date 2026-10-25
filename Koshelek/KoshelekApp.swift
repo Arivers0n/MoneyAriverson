@@ -6,7 +6,20 @@ import UserNotifications
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        // Быстрые действия при удержании иконки на рабочем столе
+        application.shortcutItems = [
+            UIApplicationShortcutItem(type: "voice", localizedTitle: "Записать голосом", localizedSubtitle: "Скажите, что потратили", icon: UIApplicationShortcutIcon(systemImageName: "mic.fill")),
+            UIApplicationShortcutItem(type: "scan", localizedTitle: "Скан чека", localizedSubtitle: nil, icon: UIApplicationShortcutIcon(systemImageName: "doc.viewfinder")),
+            UIApplicationShortcutItem(type: "add", localizedTitle: "Новая операция", localizedSubtitle: nil, icon: UIApplicationShortcutIcon(systemImageName: "plus.circle")),
+            UIApplicationShortcutItem(type: "debts", localizedTitle: "Платежи", localizedSubtitle: nil, icon: UIApplicationShortcutIcon(systemImageName: "calendar")),
+        ]
         return true
+    }
+    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        if let item = options.shortcutItem { SceneDelegate.pending = item.type }
+        let c = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
+        c.delegateClass = SceneDelegate.self
+        return c
     }
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         [.banner, .sound]
@@ -15,6 +28,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         if let s = response.notification.request.content.userInfo["url"] as? String, let url = URL(string: s) {
             await MainActor.run { Router.shared.handle(url: url) }
         }
+    }
+}
+
+final class SceneDelegate: NSObject, UIWindowSceneDelegate {
+    @MainActor static var pending: String?
+    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem) async -> Bool {
+        await MainActor.run { SceneDelegate.open(shortcutItem.type) }
+        return true
+    }
+    @MainActor static func open(_ type: String) {
+        if let url = URL(string: "koshelek://\(type)") { Router.shared.handle(url: url) }
     }
 }
 
@@ -98,8 +122,17 @@ struct RootView: View {
         }
         .overlay(alignment: .bottom) {
             if let t = router.toast {
-                Text(t)
-                    .font(.subheadline.weight(.semibold))
+                HStack(spacing: 14) {
+                    Text(t)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                    if router.undo != nil {
+                        Button { router.runUndo() } label: {
+                            Text("Отменить").font(.subheadline.weight(.bold)).foregroundStyle(Theme.accent)
+                        }
+                        .buttonStyle(Pressable())
+                    }
+                }
                     .padding(.horizontal, 16).padding(.vertical, 10)
                     .foregroundStyle(Color(.systemBackground))
                     .background(Theme.ink, in: Capsule())
@@ -149,6 +182,10 @@ struct RootView: View {
         .animation(.spring(duration: 0.3), value: router.toast)
         .onChange(of: phase) { _, p in
             if p == .active {
+                if let type = SceneDelegate.pending {
+                    SceneDelegate.pending = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { SceneDelegate.open(type) }
+                }
                 Notifier.reschedule(ctx: ctx)
                 Task { await sync.sync(ctx: ctx) }
             } else if p == .background {
