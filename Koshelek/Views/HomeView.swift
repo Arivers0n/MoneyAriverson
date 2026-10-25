@@ -46,7 +46,7 @@ struct HomeView: View {
                 hero
                     .padding(.horizontal, 16)
                     .padding(.top, 28)
-                    .scaleEffect(heroBump ? 1.03 : 1)
+                    .scaleEffect(heroBump ? 1.02 : 1)
                     .contentShape(Rectangle())
                     .simultaneousGesture(editPress)
                     .zIndex(1)
@@ -66,7 +66,7 @@ struct HomeView: View {
                         if layout.editing { editTail }
                     }
                     .padding(.top, pinHero ? 16 : 28)
-                    .animation(.snappy, value: layout.order)
+                    .animation(Motion.snappy, value: layout.order)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
@@ -91,7 +91,7 @@ struct HomeView: View {
         LongPressGesture(minimumDuration: 0.7).onEnded { _ in
             guard !layout.editing else { return }
             Haptic.heavy()
-            withAnimation(.snappy) { layout.editing = true }
+            withAnimation(Motion.snappy) { layout.editing = true }
         }
     }
 
@@ -141,10 +141,10 @@ struct HomeView: View {
             if left > 0 { try? await Task.sleep(nanoseconds: UInt64(left * 1_000_000_000)) }
             if case .error = sync.state { Haptic.warning() } else { Haptic.success() }
             withAnimation(Motion.spring) { pullState = .done }
-            if Motion.full {
-                withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { heroBump = true }
-                try? await Task.sleep(nanoseconds: 180_000_000)
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) { heroBump = false }
+            if Motion.moves {
+                withAnimation(Motion.pressDown) { heroBump = true }
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                withAnimation(Motion.pop) { heroBump = false }
             }
             try? await Task.sleep(nanoseconds: 1_300_000_000)
             withAnimation(Motion.spring) { pullState = .idle }
@@ -303,6 +303,9 @@ struct HomeView: View {
         } else {
             TxGroupedList(txs: monthTxs, accounts: accs)
                 .allowsHitTesting(!layout.editing)
+                // при смене месяца лента мягко сменяется, а не «телепортируется»
+                .id(month)
+                .transition(.opacity.combined(with: .blurReplace))
         }
     }
 
@@ -327,7 +330,7 @@ struct HomeView: View {
             }
             .buttonStyle(.plain)
             .glass(Capsule(), interactive: true)
-            Button { withAnimation(.snappy) { layout.editing = false } } label: {
+            Button { withAnimation(Motion.snappy) { layout.editing = false } } label: {
                 Text("Готово").font(.body.weight(.semibold)).foregroundStyle(Theme.onAccent)
                     .padding(.horizontal, 26).frame(height: 52)
                     .background(Theme.accent, in: Capsule())
@@ -350,8 +353,8 @@ struct HomeView: View {
                     .contentShape(Circle())
             }
             .glass(Circle(), interactive: true)
-            .scaleEffect(micPressed ? 0.92 : 1)
-            .animation(.snappy(duration: 0.15), value: micPressed)
+            .scaleEffect(micPressed && Motion.enabled ? 0.93 : 1)
+            .animation(micPressed ? Motion.pressDown : Motion.pressUp, value: micPressed)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in
@@ -513,7 +516,12 @@ struct PullPill: View {
     let action: () -> Void
 
     private var progress: CGFloat { min(1, pull / HomeView.pullThreshold) }
-    private var stretch: CGFloat { state == .pulling || state == .armed ? pull : 0 }
+    /// Резинка: чем дальше тянете, тем меньше растягивается (как у iOS).
+    private var stretch: CGFloat {
+        guard state == .pulling || state == .armed else { return 0 }
+        let c: CGFloat = 120
+        return c * (1 - 1 / (pull / c + 1))
+    }
 
     var body: some View {
         Button(action: action) {
@@ -527,8 +535,8 @@ struct PullPill: View {
                     .lineLimit(1)
             }
             .foregroundStyle(state == .armed ? Color.white : (state == .done ? Theme.inc : Color.primary))
-            .padding(.horizontal, 18 + min(stretch * 0.35, 34))
-            .frame(height: 44 + min(stretch * 0.06, 8))
+            .padding(.horizontal, 18 + stretch * 0.5)
+            .frame(height: 44 + stretch * 0.08)
             .background {
                 ZStack {
                     if state == .armed {
@@ -551,13 +559,13 @@ struct PullPill: View {
         }
         .buttonStyle(Pressable())
         .glass(Capsule(), interactive: true)
-        .scaleEffect(state == .armed ? 1.06 : 1)
+        .scaleEffect(state == .armed && Motion.moves ? 1.04 : 1)
         // капсула тянется, но остаётся ближе к шапке — эффект резинки
-        .offset(y: -stretch * 0.45)
+        .offset(y: -min(pull, 160) * 0.4 * (state == .pulling || state == .armed ? 1 : 0))
         .opacity(hideWhenIdle && state == .idle ? 0 : 1)
         .frame(height: hideWhenIdle && state == .idle ? 0 : nil)
-        .animation(Motion.enabled ? .spring(response: 0.3, dampingFraction: 0.7) : nil, value: state)
-        .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.8), value: pull)
+        // смена состояния — пружиной; само растяжение идёт за пальцем без задержки
+        .animation(Motion.spring, value: state)
     }
 
     private var label: String {
@@ -597,7 +605,7 @@ struct Shimmer: View {
                 .frame(width: g.size.width * 0.6)
                 .offset(x: x * g.size.width)
                 .onAppear {
-                    withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: false)) { x = 1.2 }
+                    withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: false)) { x = 1.2 }
                 }
         }
         .allowsHitTesting(false)

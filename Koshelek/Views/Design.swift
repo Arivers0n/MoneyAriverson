@@ -30,7 +30,7 @@ struct GlassCircle: View {
                 .frame(width: size, height: size)
                 .contentShape(Circle())
         }
-        .buttonStyle(Pressable(scale: 0.88))
+        .buttonStyle(Pressable(scale: 0.92))
         .glass(Circle(), interactive: true)
     }
 }
@@ -57,7 +57,7 @@ struct GlassIconGroup: View {
                         }
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(Pressable(scale: 0.85))
+                .buttonStyle(Pressable(scale: 0.9))
             }
         }
         .padding(.horizontal, 4)
@@ -82,20 +82,23 @@ struct CategoryTile: View {
 /// Переключатель месяца в капсуле: ‹ Сентябрь ›
 struct MonthPill: View {
     @Binding var month: Date
+    @State private var forward = true
     var body: some View {
         HStack(spacing: 4) {
-            Button { Haptic.select(); withAnimation(Motion.snappy) { month = month.addingMonths(-1) } } label: {
+            Button { forward = false; Haptic.select(); withAnimation(Motion.snappy) { month = month.addingMonths(-1) } } label: {
                 Image(systemName: "chevron.left").font(.subheadline.weight(.semibold)).frame(width: 30, height: 36)
             }
-            Text(title).font(.body.weight(.medium)).frame(minWidth: 96).contentTransition(.numericText()).id(title)
-                .transition(.push(from: .trailing).combined(with: .opacity))
-            Button { Haptic.select(); withAnimation(Motion.snappy) { month = month.addingMonths(1) } } label: {
+            // Направление сдвига совпадает со стрелкой: назад — уезжает вправо, вперёд — влево
+            Text(title).font(.body.weight(.medium)).frame(minWidth: 96).id(title)
+                .transition(Motion.moves ? .push(from: forward ? .trailing : .leading) : .opacity)
+            Button { forward = true; Haptic.select(); withAnimation(Motion.snappy) { month = month.addingMonths(1) } } label: {
                 Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).frame(width: 30, height: 36)
             }
         }
         .foregroundStyle(.primary)
         .padding(.horizontal, 6)
         .cardBG(Capsule())
+        .clipShape(Capsule())
     }
     var title: String {
         month.sameYear(Date()) ? DF.s(month, "LLLL").capitalizedFirst : DF.s(month, "LLL yyyy").replacingOccurrences(of: ".", with: "").capitalizedFirst
@@ -128,7 +131,7 @@ struct AccountPill: View {
             .padding(4)
             .contentShape(Capsule())
         }
-        .buttonStyle(Pressable(scale: 0.95))
+        .buttonStyle(Pressable(scale: 0.96))
         .glass(Capsule(), interactive: true)
     }
 }
@@ -174,18 +177,25 @@ struct PillToggle: View {
     }
     let options: [Option]
     @Binding var selection: Int
+    @Namespace private var ns
     var body: some View {
         HStack(spacing: 4) {
             ForEach(options) { o in
                 let on = selection == o.id
-                Button { Haptic.select(); withAnimation(Motion.spring) { selection = o.id } } label: {
+                Button { Haptic.select(); withAnimation(Motion.snappy) { selection = o.id } } label: {
                     HStack(spacing: 6) {
                         Image(systemName: o.symbol).font(.subheadline.weight(.semibold))
-                        if on { Text(o.title).font(.body.weight(.semibold)) }
+                        if on { Text(o.title).font(.body.weight(.semibold)).transition(.opacity) }
                     }
                     .foregroundStyle(on ? o.color : Color.secondary)
                     .padding(.horizontal, on ? 14 : 12).frame(height: 38)
-                    .background(on ? o.color.opacity(o.color == .primary ? 0.12 : 0.18) : Color.clear, in: Capsule())
+                    .background {
+                        // подложка переезжает к выбранной вкладке, а не мигает
+                        if on {
+                            Capsule().fill(o.color.opacity(o.color == .primary ? 0.12 : 0.18))
+                                .matchedGeometryEffect(id: "pill", in: ns)
+                        }
+                    }
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)

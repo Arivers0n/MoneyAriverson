@@ -44,28 +44,47 @@ enum Haptic {
 // MARK: - Анимации
 
 enum Motion {
-    /// full — всё, calm — без покачиваний и конфетти, off — почти без анимаций.
+    /// full — всё, calm — без движения (только мягкие проявления), off — без анимаций.
+    /// Системное «Уменьшение движения» = calm: убираем перемещения, но оставляем плавность.
     static var level: String {
-        UIAccessibility.isReduceMotionEnabled ? "off" : Appearance.shared.motion
+        let chosen = Appearance.shared.motion
+        if UIAccessibility.isReduceMotionEnabled && chosen == "full" { return "calm" }
+        return chosen
     }
     static var full: Bool { level == "full" }
     static var enabled: Bool { level != "off" }
-    static var spring: Animation? { enabled ? .spring(response: 0.42, dampingFraction: 0.82) : nil }
-    static var snappy: Animation? { enabled ? .snappy(duration: 0.3) : nil }
+    /// Можно ли сдвигать и масштабировать элементы (в «спокойном» режиме — нет).
+    static var moves: Bool { level == "full" }
+
+    // Единые токены движения — все экраны берут кривые отсюда.
+    /// Основная пружина интерфейса (≈ duration 0.4, bounce 0.15).
+    static var spring: Animation? { enabled ? .spring(duration: 0.4, bounce: 0.15) : nil }
+    /// Быстрые переключения: месяц, вкладки, чекбоксы.
+    static var snappy: Animation? { enabled ? .spring(duration: 0.28, bounce: 0.1) : nil }
+    /// Нажатие: палец вниз — мгновенный отклик.
+    static let pressDown: Animation = .easeOut(duration: 0.1)
+    /// Отпускание — пружина возвращает форму.
+    static let pressUp: Animation = .spring(duration: 0.3, bounce: 0.2)
+    /// Праздничный «поп» — редкие моменты (успех, конфетти, быстрая запись).
+    static var pop: Animation? { moves ? .spring(duration: 0.35, bounce: 0.35) : (enabled ? .easeOut(duration: 0.2) : nil) }
+    /// Появление элементов: сильный ease-out (cubic-bezier 0.23, 1, 0.32, 1).
+    static func entrance(_ d: Double = 0.45) -> Animation? { enabled ? .timingCurve(0.23, 1, 0.32, 1, duration: d) : nil }
     static func stagger(_ i: Int) -> Animation? {
-        enabled ? .spring(response: 0.5, dampingFraction: 0.85).delay(Double(min(i, 12)) * 0.03) : nil
+        guard enabled else { return nil }
+        return .timingCurve(0.23, 1, 0.32, 1, duration: 0.45).delay(Double(min(i, 10)) * 0.04)
     }
 }
 
-/// Кнопка, которая мягко «проседает» при нажатии и щёлкает вибрацией.
+/// Кнопка, которая «проседает» при нажатии: вниз — быстро, обратно — пружиной.
+/// Вибрация по умолчанию выключена: частые нажатия не должны жужжать, вибрируют только важные события.
 struct Pressable: ButtonStyle {
-    var scale: CGFloat = 0.94
-    var haptic = true
+    var scale: CGFloat = 0.96
+    var haptic = false
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed && Motion.enabled ? scale : 1)
-            .opacity(configuration.isPressed ? 0.85 : 1)
-            .animation(Motion.enabled ? .spring(response: 0.25, dampingFraction: 0.6) : nil, value: configuration.isPressed)
+            .opacity(configuration.isPressed ? 0.88 : 1)
+            .animation(Motion.enabled ? (configuration.isPressed ? Motion.pressDown : Motion.pressUp) : nil, value: configuration.isPressed)
             .onChange(of: configuration.isPressed) { _, down in
                 if down && haptic { Haptic.tap() }
             }
@@ -74,6 +93,8 @@ struct Pressable: ButtonStyle {
 
 /// Сумма, которая «прокручивается» к новому значению, и при появлении считает с нуля.
 struct RollingAmount: View {
+    /// Счёт «с нуля» — редкий момент: только при первом показе после запуска приложения.
+    @MainActor static var counted = false
     let value: Double
     var font: Font = .system(size: 64, weight: .bold)
     var signed = true
@@ -89,9 +110,10 @@ struct RollingAmount: View {
             .onAppear {
                 guard !appeared else { return }
                 appeared = true
-                if Motion.full && abs(value) > 0 {
+                if Motion.full && abs(value) > 0 && !Self.counted {
+                    Self.counted = true
                     shown = 0
-                    withAnimation(.spring(response: 0.9, dampingFraction: 0.9).delay(0.1)) { shown = value }
+                    withAnimation(.timingCurve(0.23, 1, 0.32, 1, duration: 0.9).delay(0.1)) { shown = value }
                 } else {
                     shown = value
                 }
@@ -111,7 +133,7 @@ struct AppearIn: ViewModifier {
     func body(content: Content) -> some View {
         content
             .opacity(visible ? 1 : 0)
-            .offset(y: visible ? 0 : 14)
+            .offset(y: visible || !Motion.moves ? 0 : 10)
             .onAppear {
                 guard !visible else { return }
                 // Анимируем только «пачку» появлений при открытии экрана, а не каждую строку при прокрутке

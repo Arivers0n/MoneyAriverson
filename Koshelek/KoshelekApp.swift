@@ -137,7 +137,7 @@ struct RootView: View {
                     .foregroundStyle(Color(.systemBackground))
                     .background(Theme.ink, in: Capsule())
                     .padding(.bottom, 110)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(Motion.moves ? .move(edge: .bottom).combined(with: .opacity) : .opacity)
             }
         }
         .overlay {
@@ -170,7 +170,7 @@ struct RootView: View {
                     .padding(26)
                     .cardBG(RoundedRectangle(cornerRadius: 26, style: .continuous))
                     .padding(32)
-                    .transition(.scale(scale: 0.85).combined(with: .opacity))
+                    .transition(Motion.moves ? .scale(scale: 0.94).combined(with: .opacity) : .opacity)
                 }
                 .onAppear { Haptic.success() }
             }
@@ -179,7 +179,7 @@ struct RootView: View {
         .overlay {
             if router.voiceOn { VoiceOverlay() }
         }
-        .animation(.spring(duration: 0.3), value: router.toast)
+        .animation(Motion.spring, value: router.toast)
         .onChange(of: phase) { _, p in
             if p == .active {
                 if let type = SceneDelegate.pending {

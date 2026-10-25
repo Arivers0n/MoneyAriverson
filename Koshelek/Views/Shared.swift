@@ -55,11 +55,14 @@ struct TxGroupedList: View {
                 .font(.subheadline).foregroundStyle(.secondary)
                 .padding(.horizontal, 10)
                 .padding(.top, 14).padding(.bottom, 2)
-                ForEach(Array(g.items.enumerated()), id: \.element.id) { i, t in
+                ForEach(g.items) { t in
                     Button { router.show(.editTx(t)) } label: { row(t) }
-                        .buttonStyle(Pressable(scale: 0.97))
-                        .appearIn(i)
-                        .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .scale(scale: 0.9).combined(with: .opacity)))
+                        .buttonStyle(Pressable(scale: 0.98))
+                        // лента открывается десятки раз в день — без поочерёдного выплывания;
+                        // анимируются только добавление и удаление строки
+                        .transition(Motion.moves
+                            ? .asymmetric(insertion: .scale(scale: 0.96, anchor: .top).combined(with: .opacity), removal: .scale(scale: 0.96).combined(with: .opacity))
+                            : .opacity)
                         .contextMenu {
                             Button { router.show(.editTx(t)) } label: { Label("Изменить", systemImage: "pencil") }
                             Button { TxActions.repeatToday(t) } label: { Label("Повторить сегодня", systemImage: "arrow.clockwise") }
@@ -249,8 +252,8 @@ struct QuickChip: View {
         Button {
             TxActions.repeatToday(t)
             if Motion.enabled {
-                withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) { pop = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { pop = false } }
+                withAnimation(Motion.pressDown) { pop = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { withAnimation(Motion.pop) { pop = false } }
             }
         } label: {
             HStack(spacing: 8) {
@@ -269,8 +272,8 @@ struct QuickChip: View {
             }
             .padding(.leading, 6).padding(.trailing, 12).padding(.vertical, 6)
             .cardBG(Capsule())
-            .scaleEffect(pop ? 1.08 : 1)
+            .scaleEffect(pop && Motion.moves ? 1.06 : 1)
         }
-        .buttonStyle(Pressable(scale: 0.94, haptic: false))
+        .buttonStyle(Pressable(scale: 0.95))
     }
 }

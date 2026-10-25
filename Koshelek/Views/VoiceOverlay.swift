@@ -31,9 +31,10 @@ struct VoiceOverlay: View {
                 .onTapGesture { if phase != .thinking { close() } }
 
             panel
-                .offset(y: appeared ? 0 : 420)
+                .offset(y: appeared || !Motion.moves ? 0 : 420)
+                .opacity(appeared || Motion.moves ? 1 : 0)
         }
-        .animation(Motion.enabled ? .spring(response: 0.38, dampingFraction: 0.86) : .linear(duration: 0.12), value: appeared)
+        .animation(Motion.moves ? .timingCurve(0.32, 0.72, 0, 1, duration: 0.42) : (Motion.enabled ? .easeOut(duration: 0.2) : nil), value: appeared)
         .task {
             Haptic.press()
             appeared = true
@@ -153,7 +154,7 @@ struct VoiceOverlay: View {
             else { phase = .listening; Task { await speech.start(); if !speech.isRecording { phase = .idle } } }
         } label: {
             ZStack {
-                if phase == .listening && Motion.enabled { PulseRing(color: Theme.exp) }
+                if phase == .listening && Motion.moves { PulseRing(color: Theme.exp) }
                 Circle()
                     .fill((phase == .listening ? Theme.exp : Theme.accent).opacity(0.16))
                     .frame(width: 76, height: 76)
@@ -239,7 +240,7 @@ struct SideButton: View {
                 .frame(width: 46, height: 46)
                 .background(Theme.soft, in: Circle())
         }
-        .buttonStyle(Pressable(scale: 0.88))
+        .buttonStyle(Pressable(scale: 0.92))
         .accessibilityLabel(label)
     }
 }

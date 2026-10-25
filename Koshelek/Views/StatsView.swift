@@ -43,7 +43,7 @@ struct StatsView: View {
             VStack(spacing: 22) {
                 SheetBar(title: trends ? "Тренды" : "Категории") {
                     HStack(spacing: 2) {
-                        Button { withAnimation(.snappy) { trends.toggle() } } label: {
+                        Button { withAnimation(Motion.snappy) { trends.toggle() } } label: {
                             Image(systemName: trends ? "chart.pie" : "chart.bar.xaxis").font(.system(size: 19, weight: .medium))
                                 .frame(width: 44, height: 46).contentShape(Rectangle())
                         }
@@ -113,14 +113,14 @@ struct StatsView: View {
             }
         }
         .frame(height: 320)
-        .scaleEffect(donutIn ? 1 : 0.85)
+        .scaleEffect(donutIn || !Motion.moves ? 1 : 0.94)
         .opacity(donutIn ? 1 : 0)
         .onAppear {
             guard !donutIn else { return }
-            if let a = Motion.enabled ? Animation.spring(response: 0.7, dampingFraction: 0.8).delay(0.05) : nil { withAnimation(a) { donutIn = true } } else { donutIn = true }
+            if let a = Motion.entrance(0.5) { withAnimation(a) { donutIn = true } } else { donutIn = true }
         }
-        .animation(.snappy, value: hidden)
-        .animation(.snappy, value: selected)
+        .animation(Motion.snappy, value: hidden)
+        .animation(Motion.snappy, value: selected)
     }
 
     private var categoryList: some View {
@@ -139,14 +139,14 @@ struct StatsView: View {
             }
             ForEach(all) { r in
                 let on = !hidden.contains(r.cat.id)
-                Button { Haptic.select(); withAnimation(.snappy) { selected = selected == r.cat.id ? nil : r.cat.id } } label: {
+                Button { Haptic.select(); withAnimation(Motion.snappy) { selected = selected == r.cat.id ? nil : r.cat.id } } label: {
                     HStack(spacing: 12) {
                         Image(systemName: r.cat.symbol).font(.system(size: 20, weight: .medium)).foregroundStyle(r.cat.color).frame(width: 28)
                         Text(r.cat.name).font(.title3.weight(.medium)).foregroundStyle(r.cat.color)
                         Spacer()
                         Text(Fmt.rubU(r.sum)).font(.title3.weight(.medium))
                         CheckDot(on: on) {
-                            Haptic.tap(); withAnimation(.snappy) { if on { hidden.insert(r.cat.id) } else { hidden.remove(r.cat.id) } }
+                            Haptic.tap(); withAnimation(Motion.snappy) { if on { hidden.insert(r.cat.id) } else { hidden.remove(r.cat.id) } }
                         }
                     }
                     .padding(.horizontal, 16).padding(.vertical, 14)

@@ -171,8 +171,8 @@ final class HomeLayout: ObservableObject {
 
     var hidden: [Block] { Self.blocks.filter { !order.contains($0.id) } }
     func block(_ id: String) -> Block? { Self.blocks.first { $0.id == id } }
-    func remove(_ id: String) { withAnimation(.snappy) { order.removeAll { $0 == id } } }
-    func add(_ id: String) { withAnimation(.snappy) { if !order.contains(id) { order.append(id) } } }
+    func remove(_ id: String) { withAnimation(Motion.snappy) { order.removeAll { $0 == id } } }
+    func add(_ id: String) { withAnimation(Motion.snappy) { if !order.contains(id) { order.append(id) } } }
     func toggleTop(_ id: String) {
         if let i = top.firstIndex(of: id) { top.remove(at: i) }
         else if top.count < Self.maxTop { top.append(id) }

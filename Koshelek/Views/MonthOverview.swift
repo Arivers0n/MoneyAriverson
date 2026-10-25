@@ -138,7 +138,7 @@ struct MonthOverview: View {
         .card()
         .onAppear {
             guard !chartIn else { return }
-            if Motion.enabled { withAnimation(.easeOut(duration: 0.9).delay(0.15)) { chartIn = true } } else { chartIn = true }
+            if let a = Motion.entrance(0.7) { withAnimation(a.delay(0.1)) { chartIn = true } } else { chartIn = true }
         }
     }
 
