@@ -41,6 +41,7 @@ jobs:
             build > build.log 2>&1
           code=$?
           grep -E "error:|BUILD (SUCCEEDED|FAILED)" build.log | sort -u | head -100
+          echo "--- warnings ---"; grep -E "\.swift:[0-9]+:[0-9]+: warning" build.log | sed "s#.*Koshelek/#Koshelek/#" | sort -u | head -150 || true
           exit $code
 
       - name: Ошибки компиляции

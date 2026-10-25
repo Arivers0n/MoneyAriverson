@@ -47,6 +47,8 @@ struct HomeView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 28)
                     .scaleEffect(heroBump ? 1.03 : 1)
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(editPress)
                     .zIndex(1)
             }
             ScrollView {
@@ -68,6 +70,8 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
+                // удержание на пустом месте — режим редактирования (на строках — их меню)
+                .background(Color.clear.contentShape(Rectangle()).gesture(editPress))
             }
             .coordinateSpace(name: "homeScroll")
             .modifier(OverscrollReader { onPull($0) })
@@ -80,14 +84,15 @@ struct HomeView: View {
         }
         .background(Backdrop())
         .safeAreaInset(edge: .bottom) { layout.editing ? AnyView(editBar) : AnyView(bottomButtons) }
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.7).onEnded { _ in
-                guard !layout.editing else { return }
-                Haptic.heavy()
-                withAnimation(.snappy) { layout.editing = true }
-            }
-        )
         .sheet(isPresented: $showAdd) { AddBlockSheet() }
+    }
+
+    private var editPress: some Gesture {
+        LongPressGesture(minimumDuration: 0.7).onEnded { _ in
+            guard !layout.editing else { return }
+            Haptic.heavy()
+            withAnimation(.snappy) { layout.editing = true }
+        }
     }
 
     // MARK: Своё «потяните, чтобы обновить» без колёсика
