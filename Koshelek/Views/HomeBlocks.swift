@@ -85,7 +85,7 @@ struct GoalsBlock: View {
                                         if g.target > 0 { Ring(value: g.saved / g.target, color: c, size: 36) }
                                     }
                                     Text(g.name).font(.subheadline.weight(.semibold)).lineLimit(1)
-                                    Text(Fmt.rubU(g.saved)).font(.title3.weight(.semibold))
+                                    Text(Fmt.rubU(g.saved)).font(.title3.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.55)
                                 }
                                 .padding(14)
                                 .frame(width: 160, alignment: .leading)
@@ -126,7 +126,7 @@ struct PaymentsBlock: View {
                             Text(relDays(x.due).text).font(.footnote).foregroundStyle(x.st == .overdue ? Theme.exp : Color.secondary)
                         }
                         Spacer()
-                        Text(Fmt.rubU(x.amount)).font(.body.weight(.semibold))
+                        Text(Fmt.rubU(x.amount)).font(.body.weight(.semibold)).amountFixed()
                     }
                 }
                 .buttonStyle(.plain)
@@ -141,7 +141,7 @@ struct PaymentsBlock: View {
                         Text(relDays(d).text).font(.footnote).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Text(Fmt.rubU(r.amount)).font(.body.weight(.semibold))
+                    Text(Fmt.rubU(r.amount)).font(.body.weight(.semibold)).amountFixed()
                 }
             }
         }
@@ -177,7 +177,7 @@ struct CategoriesBlock: View {
                     ForEach(rows.prefix(4)) { r in
                         HStack(spacing: 10) {
                             Image(systemName: r.cat.symbol).foregroundStyle(r.cat.color).frame(width: 22)
-                            Text(r.cat.name)
+                            Text(r.cat.name).lineLimit(1)
                             Spacer()
                             Text("\(Int((r.sum / max(total, 1) * 100).rounded()))%").foregroundStyle(.secondary)
                             Text(Fmt.rubU(r.sum)).fontWeight(.medium).frame(minWidth: 80, alignment: .trailing)
@@ -206,7 +206,7 @@ struct AccountsBlock: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 CategoryTile(symbol: "creditcard.fill", color: Color(hex: a.hex), size: 34)
                                 Text(a.name).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                                Text(Fmt.rub(balance(of: a, txs: txs))).font(.headline)
+                                Text(Fmt.rub(balance(of: a, txs: txs))).font(.headline).lineLimit(1).minimumScaleFactor(0.6)
                             }
                             .padding(14)
                             .frame(minWidth: 140, alignment: .leading)

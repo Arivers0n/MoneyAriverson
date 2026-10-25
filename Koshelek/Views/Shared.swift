@@ -51,6 +51,7 @@ struct TxGroupedList: View {
                     Text(dayLabel(g.day))
                     Spacer()
                     Text(Fmt.signed(net)).foregroundStyle(net > 0 ? Theme.inc.opacity(0.8) : Color.secondary.opacity(0.7))
+                        .monospacedDigit().amountFixed()
                 }
                 .font(.subheadline).foregroundStyle(.secondary)
                 .padding(.horizontal, 10)
@@ -95,20 +96,22 @@ struct TxGroupedList: View {
                 }
                 Spacer(minLength: 8)
                 Text(Fmt.rubU(t.amount)).font(.title3.weight(.medium)).foregroundStyle(.secondary)
+                    .monospacedDigit().amountFixed()
             } else {
                 let c = Catalog.cat(t.cat)
                 CategoryTile(symbol: c.symbol, color: c.color)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(c.name).font(.title3.weight(.medium)).lineLimit(1)
-                    let sub = [t.note, accounts.count > 1 ? accName(t.accID) : "", SyncEngine.shared.memberName(t.author) ?? ""]
+                    let sub = [t.note.cleanedNote, accounts.count > 1 ? accName(t.accID) : "", SyncEngine.shared.memberName(t.author) ?? ""]
                         .filter { !$0.isEmpty }.joined(separator: " · ")
                     if !sub.isEmpty { Text(sub).font(.body).foregroundStyle(.secondary).lineLimit(1) }
                 }
                 Spacer(minLength: 8)
-                Text((t.kind == .inc ? "+" : "-") + Fmt.rubU(t.amount))
+                Text((t.kind == .inc ? "+" : "−") + Fmt.rubU(t.amount))
                     .font(.title3.weight(.medium))
+                    .monospacedDigit()
                     .foregroundStyle(t.kind == .inc ? Theme.inc : Color.primary)
-                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .amountFixed()
             }
         }
         .contentShape(Rectangle())
@@ -160,7 +163,7 @@ struct BudgetLimitSheet: View {
 /// Быстрые действия с операциями: повтор, удаление с отменой.
 @MainActor
 enum TxActions {
-    static var ctx: ModelContext { Store.container.mainContext }
+    static var ctx: ModelContext { TestData.shared.context }
 
     @discardableResult
     static func repeatToday(_ t: Tx, toast: Bool = true) -> Tx {
@@ -264,7 +267,7 @@ struct QuickChip: View {
                     .background(c.color.opacity(0.18), in: Circle())
                     .contentTransition(.symbolEffect(.replace))
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(t.note.isEmpty ? c.name : t.note.capitalizedFirst).font(.subheadline.weight(.medium)).lineLimit(1)
+                    Text(t.note.isEmpty ? c.name : t.note.cleanedNote.capitalizedFirst).font(.subheadline.weight(.medium)).lineLimit(1)
                     Text(masked ? "•••" : (t.kind == .inc ? "+" : "") + Fmt.rubU(t.amount))
                         .font(.caption).foregroundStyle(t.kind == .inc ? Theme.inc : .secondary)
                 }

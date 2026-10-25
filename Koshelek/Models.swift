@@ -25,7 +25,7 @@ final class Tx {
         self.kindRaw = kind.rawValue
         self.amount = amount
         self.cat = cat
-        self.note = note
+        self.note = note.cleanedNote
         self.date = date.noon
         self.created = Date()
         self.accID = accID

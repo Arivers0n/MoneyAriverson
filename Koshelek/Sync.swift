@@ -463,7 +463,7 @@ final class SyncEngine: ObservableObject {
     }
 
     func sync(ctx: ModelContext) async {
-        guard loggedIn, !running else { return }
+        guard loggedIn, !running, !TestData.isActive else { return }
         let space = Space.current
         guard space != Space.localID else { return }
         running = true

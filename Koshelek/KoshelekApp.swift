@@ -47,15 +47,18 @@ struct KoshelekApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var router = Router.shared
     @StateObject private var sync = SyncEngine.shared
+    @StateObject private var testData = TestData.shared
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(router)
                 .environmentObject(sync)
+                .modelContainer(testData.container ?? Store.container)
+                .id(testData.mode?.rawValue ?? "real")
+                .safeAreaInset(edge: .top, spacing: 0) { TestDataSwitch() }
                 .onOpenURL { router.handle(url: $0) }
         }
-        .modelContainer(Store.container)
     }
 }
 

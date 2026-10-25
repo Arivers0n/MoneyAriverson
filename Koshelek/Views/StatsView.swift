@@ -298,7 +298,7 @@ struct SearchView: View {
                     EmptyState(symbol: "magnifyingglass", title: "Ничего не нашлось", text: "Попробуйте другое слово или точную сумму.")
                 } else {
                     HStack {
-                        Text("Найдено \(res.count)")
+                        Text(res.count > 100 ? "Найдено \(res.count), показаны первые 100" : "Найдено \(res.count)")
                         Spacer()
                         Text("итого \(Fmt.rub(res.reduce(0) { $0 + $1.signedAmount }))")
                     }

@@ -83,7 +83,7 @@ enum Advisor {
         if cafeCount >= 8 {
             let sum = cur.items.filter { $0.kind == .exp && $0.cat == "cafe" }.reduce(0) { $0 + $1.amount }
             out.append(Insight(tone: .info, symbol: "cup.and.saucer.fill",
-                               text: "\(cafeCount) раз кафе и кофе за месяц — \(Fmt.rubU(sum)). Мелочи складываются: это \(Fmt.rubU(sum * 12)) в год."))
+                               text: "\(cafeCount) \(plural(cafeCount, "раз", "раза", "раз")) кафе и кофе за месяц — \(Fmt.rubU(sum)). Мелочи складываются: это \(Fmt.rubU(sum * 12)) в год."))
         }
 
         // Микрозаймы

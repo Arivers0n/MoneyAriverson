@@ -181,8 +181,8 @@ struct MonthOverview: View {
                                 value: Fmt.rubU(d.value), detail: DF.s(date, "d MMMM, EEEE")))
         }
         let noSpend = (1...days).filter { byDay[$0] == nil }.count
-        out.append(StatFact(id: "zero", symbol: "leaf", color: Theme.inc, title: "Дней без трат",
-                            value: "\(noSpend) из \(days)", detail: noSpend == 0 ? "попробуйте день-ноль" : "так держать"))
+        if !exps.isEmpty { out.append(StatFact(id: "zero", symbol: "leaf", color: Theme.inc, title: "Дней без трат",
+                            value: "\(noSpend) из \(days)", detail: noSpend == 0 ? "попробуйте день-ноль" : "так держать")) }
         if let top = byCategory(c.items).first, c.exp > 0 {
             out.append(StatFact(id: "top", symbol: top.cat.symbol, color: top.cat.color, title: "Больше всего на",
                                 value: top.cat.name, detail: "\(Fmt.rubU(top.sum)) · \(Int((top.sum / c.exp * 100).rounded()))%"))

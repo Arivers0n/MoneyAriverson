@@ -197,6 +197,7 @@ struct HomeView: View {
         }
         return HStack(spacing: 10) {
             AccountPill(title: accountTitle, amount: accountAmount) { router.show(.accounts) }
+                .frame(minWidth: 130, alignment: .leading)
                 .layoutPriority(1)
             Spacer(minLength: 0)
             if layout.editing {
@@ -207,7 +208,12 @@ struct HomeView: View {
                 .buttonStyle(.plain)
                 .glass(Capsule(), interactive: true)
             } else if !items.isEmpty {
-                GlassIconGroup(items: items)
+                // на узких экранах (iPhone SE, mini, крупный шрифт) кнопок становится меньше, а не наезжают друг на друга
+                ViewThatFits(in: .horizontal) {
+                    GlassIconGroup(items: items)
+                    GlassIconGroup(items: Array(items.prefix(3)))
+                    GlassIconGroup(items: Array(items.prefix(2)))
+                }
             }
             GlassCircle(symbol: "gearshape") { router.show(.settings) }
         }
@@ -439,6 +445,7 @@ struct FlowChip: View {
                 .background(color.opacity(0.2), in: Circle())
             Text(text).font(.title3.weight(.medium)).foregroundStyle(textColor)
                 .contentTransition(.numericText())
+                .lineLimit(1).minimumScaleFactor(0.6)
         }
     }
 }

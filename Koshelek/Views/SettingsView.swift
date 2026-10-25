@@ -147,6 +147,12 @@ struct SettingsView: View {
                         Text("Версия \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")").font(.footnote).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture(count: 5) {
+                        TestData.shared.unlocked = true
+                        Haptic.success()
+                        router.say("Проверка на худших данных — переключатель сверху")
+                    }
                     .listRowBackground(Color.clear)
                 }
             }

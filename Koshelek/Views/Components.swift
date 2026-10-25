@@ -73,7 +73,8 @@ struct Ring: View {
             Circle().trim(from: 0, to: max(0, min(1, value)))
                 .stroke(color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Text("\(Int((value * 100).rounded()))%").font(.caption2.weight(.semibold))
+            Text(value >= 10 ? "×\(Int(value))" : "\(Int((value * 100).rounded()))%").font(.caption2.weight(.semibold))
+                .lineLimit(1).minimumScaleFactor(0.6)
         }
         .frame(width: size, height: size)
     }

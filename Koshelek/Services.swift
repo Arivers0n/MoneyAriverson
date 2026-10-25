@@ -141,6 +141,7 @@ enum Notifier {
 
     static func reschedule(ctx: ModelContext) {
         let center = UNUserNotificationCenter.current()
+        if TestData.isActive { return }   // на тестовых данных уведомления не трогаем
         center.removeAllPendingNotificationRequests()
         guard enabled else { scheduleDaily(center); return }
         let debts = ctx.live(Debt.self)

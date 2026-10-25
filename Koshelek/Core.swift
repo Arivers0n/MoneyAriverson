@@ -90,6 +90,19 @@ enum DF {
 
 extension String {
     var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
+    /// Заметка из голоса: «Купил кофе .» → «Купил кофе», лишние пробелы и хвостовые знаки убираются.
+    var cleanedNote: String {
+        var s = self.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        s = s.replacingOccurrences(of: " ([.,!?;:])", with: "$1", options: .regularExpression)
+        s = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        while let last = s.last, ".,;:-—".contains(last) { s.removeLast(); s = s.trimmingCharacters(in: .whitespaces) }
+        return s
+    }
+}
+
+extension View {
+    /// Суммы никогда не обрезаются и не сжимаются — им отдаём место первыми.
+    func amountFixed() -> some View { lineLimit(1).fixedSize(horizontal: true, vertical: false).layoutPriority(1) }
 }
 
 // MARK: - Деньги и слова
