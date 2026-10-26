@@ -19,11 +19,14 @@ die() { printf '\n\033[1;31mОшибка: %s\033[0m\n' "$*" >&2; exit 1; }
 
 say "Проверяю, что домен $DOMAIN смотрит на этот сервер"
 MYIP=$(curl -4 -fsS https://api.ipify.org || true)
-DNSIP=$(getent ahostsv4 "$DOMAIN" | awk 'NR==1{print $1}' || true)
+# Спрашиваем публичный DNS (а не /etc/hosts, где имя сервера часто указывает на 127.0.1.1)
+DNSIP=$(curl -fsS "https://dns.google/resolve?name=$DOMAIN&type=A" 2>/dev/null | grep -o '"data":"[0-9.]*"' | head -1 | cut -d'"' -f4 || true)
+[ -n "$DNSIP" ] || DNSIP=$(getent ahostsv4 "$DOMAIN" | awk '$1 !~ /^127\./ {print $1; exit}' || true)
 echo "IP сервера: ${MYIP:-?}, IP домена: ${DNSIP:-не найден}"
 if [ -n "$MYIP" ] && [ "$MYIP" != "$DNSIP" ]; then
   echo "Внимание: домен пока не указывает на этот сервер. Добавьте A-запись $DOMAIN → $MYIP и дождитесь обновления DNS."
-  read -rp "Продолжить всё равно? [y/N] " a; [ "${a:-n}" = "y" ] || exit 1
+  read -rp "Продолжить всё равно? [y/N] " a
+  case "${a:-n}" in y|Y|yes|д|Д|да|у|У) ;; *) echo "Остановлено."; exit 1 ;; esac
 fi
 
 say "Ставлю нужные пакеты"
