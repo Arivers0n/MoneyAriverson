@@ -28,6 +28,8 @@ struct SettingsView: View {
     @State private var backupMsg: String?
     @State private var confirmWipe = false
     @State private var share: ShareItem?
+    @State private var showOwnKey = Keychain.hasKey
+    @EnvironmentObject var sync: SyncEngine
     @State private var wipeText = ""
 
     var body: some View {
@@ -36,12 +38,11 @@ struct SettingsView: View {
                 SyncSettingsSection()
 
                 Section {
-                    NavigationLink { AppearanceView() } label: { SettingRow("Оформление и темы", "paintpalette.fill", .pink) }
+                    NavigationLink { AppearanceView() } label: { SettingRow("Оформление", "paintpalette.fill", .pink, detail: "темы, значок, экран") }
                     Button { dismiss(); DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { router.show(.customize) } } label: {
                         SettingRow("Главный экран", "square.grid.2x2.fill", .blue)
                     }
                     NavigationLink { CategoriesView() } label: { SettingRow("Категории", "tag.fill", .orange) }
-                    NavigationLink { IconPickerView() } label: { SettingRow("Иконка приложения", "app.badge.fill", .purple) }
                 } header: { Text("Под себя") } footer: {
                     Text("Совет: удержите палец на главном экране — блоки можно убирать и добавлять прямо там.")
                 }
@@ -100,6 +101,8 @@ struct SettingsView: View {
                 } header: { Text("Напоминания") } footer: { Text("О кредитах — за день до платежа в 10:00 и в сам день в 9:00. Нажмите на ежедневное напоминание — сразу откроется голосовой ввод.") }
 
                 Section {
+                    aiStatusRow
+                    DisclosureGroup(isExpanded: $showOwnKey) {
                     SecureField("sk-ant-…", text: $key)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -123,10 +126,11 @@ struct SettingsView: View {
                         if Keychain.hasKey { Button("Удалить", role: .destructive) { key = ""; Keychain.apiKey = nil; keyStatus = "Ключ удалён"; keyOK = false } }
                     }
                     if let keyStatus { Text(keyStatus).font(.footnote).foregroundStyle(keyOK ? Theme.inc : Theme.exp) }
+                    } label: { SettingRow("Свой ключ и шлюз", "key.fill", .gray, detail: Keychain.hasKey ? "используется" : "необязательно") }
                 } header: {
-                    Text("Ключ Claude API")
+                    Text("Умные функции")
                 } footer: {
-                    Text("Нужен, чтобы понимать разговорную речь, сканировать чеки и графики и делать разбор месяца. Ключ создаётся на platform.claude.com → API Keys.\n\nBase URL — адрес своего API-шлюза, совместимого с Claude Messages API. Пусто — стандартный сервер. Модель — идентификатор из API (например, \(APIConfig.defaultSmart)), не название из интерфейса; пусто — быстрая модель для голоса и умная для разборов. Всё хранится в связке ключей iPhone.")
+                    Text("ИИ понимает разговорную речь, читает чеки и делает разбор месяца. После входа в аккаунт он работает через сервер Копилки — ключ вводить не нужно.\n\nСвой ключ — только если хотите платить за ИИ сами. Base URL — адрес шлюза, совместимого с Claude API; модель — идентификатор из API (например, \(APIConfig.defaultSmart)). Хранится в связке ключей iPhone.")
                 }
 
                 Section {
@@ -203,6 +207,21 @@ struct SettingsView: View {
         }
     }
 
+    @ViewBuilder private var aiStatusRow: some View {
+        if Keychain.hasKey {
+            SettingRow("ИИ работает", "sparkles", .purple, detail: "по вашему ключу")
+        } else if Claude.usesServer {
+            SettingRow("ИИ работает", "sparkles", .purple, detail: "через сервер Копилки")
+        } else if !sync.loggedIn {
+            NavigationLink { AccountView() } label: {
+                SettingRow("Войдите в аккаунт", "sparkles", .purple, detail: "и ИИ заработает без ключа")
+            }
+        } else {
+            SettingRow("ИИ на сервере не настроен", "sparkles", .gray, detail: "голос работает упрощённо")
+                .task { await sync.refreshAIStatus() }
+        }
+    }
+
     private func checkKey() {
         // проверяем адрес до сохранения, чтобы не оставить приложение с битым URL
         if !baseURL.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -235,8 +254,9 @@ struct SettingRow: View {
     let symbol: String
     let color: Color
     var destructive = false
-    init(_ title: String, _ symbol: String, _ color: Color, destructive: Bool = false) {
-        self.title = title; self.symbol = symbol; self.color = color; self.destructive = destructive
+    var detail: String? = nil
+    init(_ title: String, _ symbol: String, _ color: Color, destructive: Bool = false, detail: String? = nil) {
+        self.title = title; self.symbol = symbol; self.color = color; self.destructive = destructive; self.detail = detail
     }
     var body: some View {
         HStack(spacing: 12) {
@@ -245,7 +265,10 @@ struct SettingRow: View {
                 .foregroundStyle(.white)
                 .frame(width: 29, height: 29)
                 .background(color.gradient, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            Text(title).foregroundStyle(destructive ? Theme.exp : Color.primary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).foregroundStyle(destructive ? Theme.exp : Color.primary)
+                if let detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
+            }
         }
     }
 }

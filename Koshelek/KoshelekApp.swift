@@ -80,9 +80,11 @@ struct RootView: View {
     @State private var showScan = false
     @State private var showWelcome = !SyncEngine.shared.loggedIn && !UserDefaults.standard.bool(forKey: "welcome.done")
 
+    @State private var scanning: [Data]?
+
     private func startScan() {
         guard Claude.available else {
-            router.say("Для скана нужен ключ Claude API")
+            router.say("Для скана нужен ИИ: войдите в аккаунт")
             router.show(.settings)
             return
         }
@@ -90,9 +92,9 @@ struct RootView: View {
     }
 
     private func scan(_ imgs: [Data]) {
-        router.busy = imgs.count > 1 ? "Claude читает \(imgs.count) \(plural(imgs.count, "картинку", "картинки", "картинок"))…" : "Claude читает чек…"
+        withAnimation(Motion.spring) { scanning = imgs }
         Task {
-            defer { router.busy = nil }
+            defer { withAnimation(Motion.spring) { scanning = nil } }
             do {
                 let items = try await Brain.parseReceipts(imgs, ctx: ctx)
                 if items.isEmpty { router.say("Не нашёл операций на изображении"); return }
@@ -107,6 +109,12 @@ struct RootView: View {
         HomeView()
         .id("\(sync.spaceVersion)-\(ap.version)-\(cats.version)")
         .scanFlow(isPresented: $showScan) { imgs in scan(imgs) }
+        .overlay {
+            if let imgs = scanning {
+                ScanProcessingView(images: imgs, text: imgs.count > 1 ? "Claude читает \(imgs.count) \(plural(imgs.count, "снимок", "снимка", "снимков"))…" : "Claude читает чек…")
+                    .transition(.opacity)
+            }
+        }
         .onChange(of: router.scanRequest) { _, _ in startScan() }
         .sheet(item: $router.sheet) { route in
             switch route {

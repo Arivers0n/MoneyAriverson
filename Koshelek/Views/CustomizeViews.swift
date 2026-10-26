@@ -294,19 +294,9 @@ struct AppearanceView: View {
                 toggleRow("Компактный вид", "Меньше отступов — больше операций на экране", $ap.compact)
                 Divider().padding(.leading, 14)
                 toggleRow("Скрывать суммы", "Цифры появляются по нажатию — удобно при людях", $ap.hideAmounts)
-                Divider().padding(.leading, 14)
-                toggleRow("Показывать копейки", "12 345,67 ₽ вместо 12 346 ₽", $ap.showKopecks)
-                Divider().padding(.leading, 14)
-                toggleRow("Всегда показывать доходы", "Даже если в месяце их ещё нет", $ap.alwaysIncome)
             }
             .cardBG(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            VStack(spacing: 0) {
-                NavigationLink { CustomizeView() } label: { linkRow("Главный экран", "Блоки, порядок, кнопки сверху и снизу", "square.grid.2x2.fill") }
-                Divider().padding(.leading, 56)
-                NavigationLink { CategoriesView() } label: { linkRow("Категории", "Свои категории, цвета и значки", "tag.fill") }
-            }
-            .cardBG(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            Text("Совет: удержите палец на пустом месте главного экрана — блоки можно убирать и добавлять прямо там.")
+            Text("Блоки главного экрана и категории настраиваются в Настройках. Совет: удержите палец на пустом месте главного экрана — блоки можно убирать и добавлять прямо там.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
     }
@@ -320,21 +310,6 @@ struct AppearanceView: View {
         }
         .tint(ap.accentColor)
         .padding(.horizontal, 14).padding(.vertical, 10)
-    }
-
-    private func linkRow(_ title: String, _ hint: String, _ symbol: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: symbol).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
-                .frame(width: 30, height: 30).background(ap.accentColor.gradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.body.weight(.medium)).foregroundStyle(.primary)
-                Text(hint).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 10)
-        .contentShape(Rectangle())
     }
 
     private func group<C: View>(_ title: String, @ViewBuilder _ content: () -> C) -> some View {
