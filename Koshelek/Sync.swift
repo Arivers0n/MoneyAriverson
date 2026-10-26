@@ -192,7 +192,7 @@ final class SyncEngine: ObservableObject {
     @Published var spaceVersion = 0
 
     /// Сервер Копилки по умолчанию — вшит в приложение, чтобы друзьям и семье ничего не вводить.
-    static let defaultServer = "https://2-27-25-140.sslip.io:8443"
+    static let defaultServer = ServerDefaults.url
 
     var server: String {
         get {
@@ -365,6 +365,7 @@ final class SyncEngine: ObservableObject {
             switchTo(personal.id)
         }
         state = .idle
+        await refreshAIStatus()
         await sync(ctx: ctx)
         await joinPending(ctx: ctx)
     }
@@ -383,7 +384,16 @@ final class SyncEngine: ObservableObject {
         }
     }
 
+    /// Включён ли на сервере общий ИИ (тогда ключ в приложении не нужен).
+    func refreshAIStatus() async {
+        guard let obj = try? await call("/api/kp/ai/status") else { return }
+        UserDefaults.standard.set(jBool(obj["enabled"]), forKey: "serverAI")
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "serverAICheck")
+        objectWillChange.send()
+    }
+
     func logout(keepData: Bool) {
+        UserDefaults.standard.set(false, forKey: "serverAI")
         Keychain.set("pb-token", nil)
         state = .off
         objectWillChange.send()
@@ -504,6 +514,8 @@ final class SyncEngine: ObservableObject {
             UserDefaults.standard.set(lastSync, forKey: "lastSync")
             state = .idle
             if spaces.isEmpty || Int.random(in: 0..<10) == 0 { try? await loadSpaces() }
+            let last = UserDefaults.standard.double(forKey: "serverAICheck")
+            if Date().timeIntervalSince1970 - last > 1800 { await refreshAIStatus() }
         } catch {
             state = .error(error.localizedDescription)
         }

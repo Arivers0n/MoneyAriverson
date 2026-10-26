@@ -37,9 +37,10 @@ enum ClaudeError: LocalizedError {
     case noKey, http(Int, String), badReply, network(String), badURL
     var errorDescription: String? {
         switch self {
-        case .noKey: return "Добавьте ключ Claude API в настройках."
+        case .noKey: return "ИИ недоступен: войдите в аккаунт Копилки или добавьте свой ключ в настройках."
         case .http(let code, let msg):
-            if code == 401 { return "Ключ API не подходит. Проверьте его в настройках." }
+            if code == 401 { return msg.contains("Сессия") ? msg : "Ключ API не подходит. Проверьте его в настройках." }
+            if code == 503 && !msg.isEmpty { return msg }
             if code == 429 { return "Слишком много запросов. Попробуйте через минуту." }
             if code == 404 && msg.lowercased().contains("model") { return "Модель не найдена. Проверьте название модели в настройках." }
             if code == 404 { return "По этому Base URL нет API. Проверьте адрес шлюза." }
@@ -96,7 +97,23 @@ enum APIConfig {
     }
 }
 
+/// Адрес сервера Копилки по умолчанию (вшит в приложение).
+enum ServerDefaults {
+    static let url = "https://2-27-25-140.sslip.io:8443"
+    static var current: String {
+        let s = UserDefaults.standard.string(forKey: "server") ?? ""
+        return s.isEmpty ? url : s
+    }
+}
+
 enum Claude {
+    /// ИИ через сервер Копилки: свой ключ не нужен, достаточно войти в аккаунт.
+    static var usesServer: Bool {
+        Keychain.apiKey == nil && UserDefaults.standard.bool(forKey: "serverAI") && Keychain.get("pb-token") != nil
+    }
+    /// Можно ли сейчас пользоваться ИИ (свой ключ или сервер).
+    static var available: Bool { Keychain.hasKey || usesServer }
+
     /// Быстрая модель (разбор голоса, совет дня). Своё название из настроек имеет приоритет.
     static var fastModel: String { APIConfig.model.isEmpty ? APIConfig.defaultFast : APIConfig.model }
     /// Умная модель (разбор месяца, советник).
@@ -113,6 +130,7 @@ enum Claude {
 
     /// Единая точка отправки запросов: адрес, ключ и заголовки берутся из настроек.
     static func send(_ body: [String: Any], timeout: TimeInterval) async throws -> String {
+        if usesServer { return try await sendViaServer(body, timeout: timeout) }
         guard let key = Keychain.apiKey else { throw ClaudeError.noKey }
         var req = URLRequest(url: try APIConfig.endpoint())
         req.httpMethod = "POST"
@@ -130,6 +148,34 @@ enum Claude {
         let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         guard code == 200 else {
             let msg = ((obj?["error"] as? [String: Any])?["message"] as? String) ?? String(data: data.prefix(300), encoding: .utf8) ?? ""
+            throw ClaudeError.http(code, msg)
+        }
+        let blocks = obj?["content"] as? [[String: Any]] ?? []
+        let text = blocks.filter { ($0["type"] as? String) == "text" }.compactMap { $0["text"] as? String }.joined()
+        guard !text.isEmpty else { throw ClaudeError.badReply }
+        return text
+    }
+
+    /// Запрос через свой сервер: ключ лежит на сервере, приложение передаёт только токен входа.
+    private static func sendViaServer(_ body: [String: Any], timeout: TimeInterval) async throws -> String {
+        guard let token = Keychain.get("pb-token"), let url = URL(string: ServerDefaults.current + "/api/kp/ai") else { throw ClaudeError.noKey }
+        var b = body
+        // модель задаёт сервер, если он её настроил; своя модель из настроек имеет приоритет
+        if APIConfig.model.isEmpty { b.removeValue(forKey: "model") }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = timeout + 10
+        req.setValue(token, forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "content-type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: b)
+        let data: Data, resp: URLResponse
+        do { (data, resp) = try await URLSession.shared.data(for: req) }
+        catch { throw ClaudeError.network(error.localizedDescription) }
+        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        guard code == 200 else {
+            if code == 401 { throw ClaudeError.http(401, "Сессия истекла — войдите в аккаунт снова") }
+            let msg = ((obj?["error"] as? [String: Any])?["message"] as? String) ?? (obj?["message"] as? String) ?? ""
             throw ClaudeError.http(code, msg)
         }
         let blocks = obj?["content"] as? [[String: Any]] ?? []
@@ -263,7 +309,7 @@ enum Brain {
     }
 
     static func parseSpeech(_ text: String, ctx: ModelContext) async throws -> [ParsedItem] {
-        guard Keychain.hasKey else { return LocalParser.parse(text) }
+        guard Claude.available else { return LocalParser.parse(text) }
         let prompt = """
         Ты помогаешь вести личный бюджет в рублях. \(todayLine)
         Пользователь рассказал (голосовая диктовка или быстрая запись — разговорная речь, с паразитами, ошибками распознавания и оговорками):

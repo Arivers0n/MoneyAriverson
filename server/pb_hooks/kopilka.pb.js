@@ -188,3 +188,50 @@ code{font-size:22px;letter-spacing:3px;font-weight:700}p{color:#5b6660;line-heig
 <script>setTimeout(function(){location.href=${JSON.stringify(link)}},400)</script></body></html>`
     return e.html(200, html)
 })
+
+// ИИ для всех вошедших: ключ хранится только на сервере (/etc/kopilka.env), в приложение не попадает.
+// KP_AI_KEY — ключ, KP_AI_BASE — адрес API (по умолчанию https://api.anthropic.com), KP_AI_MODEL — модель по умолчанию.
+routerAdd("GET", "/api/kp/ai/status", (e) => {
+    const on = !!$os.getenv("KP_AI_KEY")
+    return e.json(200, { enabled: on, model: $os.getenv("KP_AI_MODEL") || "" })
+}, $apis.requireAuth("users"))
+
+routerAdd("POST", "/api/kp/ai", (e) => {
+    const key = $os.getenv("KP_AI_KEY")
+    if (!key) return e.json(503, { error: { message: "ИИ на сервере не настроен" } })
+    // лимит: 400 запросов на человека в сутки
+    const day = new Date().toISOString().slice(0, 10)
+    const sk = "kpai:" + e.auth.id + ":" + day
+    const n = (e.app.store().get(sk) || 0) + 1
+    if (n > 400) return e.json(429, { error: { message: "Лимит ИИ на сегодня исчерпан" } })
+    e.app.store().set(sk, n)
+
+    const body = e.requestInfo().body || {}
+    const model = $os.getenv("KP_AI_MODEL")
+    if (model) body.model = model   // модель с сервера важнее — шлюз может поддерживать не все
+    if (!body.model) body.model = "claude-haiku-5-5"
+    if (!body.max_tokens || body.max_tokens > 4000) body.max_tokens = Math.min(body.max_tokens || 2048, 4000)
+
+    let base = ($os.getenv("KP_AI_BASE") || "https://api.anthropic.com").replace(/\/+$/, "")
+    if (!/\/v1\/messages$/.test(base)) base = /\/v1$/.test(base) ? base + "/messages" : base + "/v1/messages"
+    let res
+    try {
+        res = $http.send({
+            url: base,
+            method: "POST",
+            body: JSON.stringify(body),
+            headers: {
+                "content-type": "application/json",
+                "x-api-key": key,
+                "authorization": "Bearer " + key,
+                "anthropic-version": "2023-06-01",
+            },
+            timeout: 120,
+        })
+    } catch (err) {
+        return e.json(502, { error: { message: "Нет связи с ИИ: " + err } })
+    }
+    let out = res.json
+    if (!out) { try { out = JSON.parse(toString(res.body)) } catch (_) { out = { error: { message: "Пустой ответ ИИ" } } } }
+    return e.json(res.statusCode, out)
+}, $apis.requireAuth("users"), $apis.bodyLimit(25 << 20))

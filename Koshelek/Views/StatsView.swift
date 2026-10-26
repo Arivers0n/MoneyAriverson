@@ -345,10 +345,10 @@ struct InsightsView: View {
                 SheetBar(title: "Инсайты", symbol: "sparkle")
                     .padding(.bottom, 8)
                 MonthOverview(txs: txs, month: $month)
-                if !list.isEmpty || Keychain.hasKey {
+                if !list.isEmpty || Claude.available {
                     Text("Подсказки").font(.title3.weight(.semibold)).padding(.top, 8)
                 }
-                if Keychain.hasKey {
+                if Claude.available {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("Совет дня", systemImage: "sparkles").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accent)
                         if let tip { Text(tip).font(.body) }
@@ -365,7 +365,7 @@ struct InsightsView: View {
                     }
                     .appearIn(n)
                 }
-                if list.isEmpty && !Keychain.hasKey {
+                if list.isEmpty && !Claude.available {
                     EmptyState(symbol: "sparkle", title: "Пока всё спокойно", text: "Записывайте траты — и здесь появятся подсказки. С ключом Claude API будет ещё совет дня и разбор месяца.")
                 }
                 Button { showChat = true } label: {
@@ -384,7 +384,7 @@ struct InsightsView: View {
         .background(Backdrop())
         .sheet(isPresented: $showChat) { AdvisorChat() }
         .task {
-            guard tip == nil, Keychain.hasKey else { return }
+            guard tip == nil, Claude.available else { return }
             tipLoading = true
             tip = try? await Advisor.dailyTip(ctx: ctx)
             tipLoading = false
@@ -393,12 +393,12 @@ struct InsightsView: View {
 
     private var reviewCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionTitle(text: "Разбор месяца", action: Keychain.hasKey ? (reviewing ? nil : (review.isEmpty ? "Разобрать" : "Ещё раз")) : nil) { runReview() }
+            SectionTitle(text: "Разбор месяца", action: Claude.available ? (reviewing ? nil : (review.isEmpty ? "Разобрать" : "Ещё раз")) : nil) { runReview() }
             if reviewing {
                 HStack(spacing: 10) { ProgressView(); Text("Claude думает…").foregroundStyle(.secondary) }
             } else if !review.isEmpty {
                 Text(review).font(.body).textSelection(.enabled)
-            } else if !Keychain.hasKey {
+            } else if !Claude.available {
                 Text("Добавьте ключ Claude API в настройках — и Claude разберёт месяц: где перерасход, что выросло, и даст советы с суммами.")
                     .font(.subheadline).foregroundStyle(.secondary)
             } else {

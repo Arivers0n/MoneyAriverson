@@ -6,6 +6,8 @@ import UserNotifications
 
 // MARK: - Распознавание речи (на русском)
 
+/// Голос → текст. На iOS 26 — новый движок SpeechAnalyzer (на устройстве, текст появляется мгновенно),
+/// иначе — классический SFSpeechRecognizer (по возможности тоже на устройстве).
 @MainActor
 final class SpeechRecognizer: ObservableObject {
     @Published var transcript = ""
@@ -19,84 +21,115 @@ final class SpeechRecognizer: ObservableObject {
     private var heardThisSession = false
     private var timer: Timer?
 
-    private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "ru-RU"))
+    private let locale = Locale(identifier: "ru-RU")
+    private lazy var recognizer = SFSpeechRecognizer(locale: locale)
     private let engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
+    private var modern: AnyObject?
     private var prefix = ""
 
     func toggle() async {
         if isRecording { stop() } else { await start() }
     }
 
+    /// Заранее спросить разрешения и подготовить модель — чтобы запись стартовала без пауз.
+    static func warmUp() {
+        if #available(iOS 26.0, *) { Task.detached(priority: .background) { await ModernSpeech.prepareAssets() } }
+    }
+
     func start() async {
         error = nil
-        let speech = await withCheckedContinuation { (c: CheckedContinuation<SFSpeechRecognizerAuthorizationStatus, Never>) in
-            SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0) }
+        if SFSpeechRecognizer.authorizationStatus() != .authorized {
+            let s = await withCheckedContinuation { (c: CheckedContinuation<SFSpeechRecognizerAuthorizationStatus, Never>) in
+                SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0) }
+            }
+            guard s == .authorized else {
+                error = "Разрешите распознавание речи: Настройки → Копилка → Распознавание речи."
+                return
+            }
         }
-        guard speech == .authorized else {
-            error = "Разрешите распознавание речи: Настройки → Копилка → Распознавание речи."
-            return
+        if AVAudioApplication.shared.recordPermission != .granted {
+            guard await AVAudioApplication.requestRecordPermission() else {
+                error = "Разрешите доступ к микрофону: Настройки → Копилка → Микрофон."
+                return
+            }
         }
-        let mic = await AVAudioApplication.requestRecordPermission()
-        guard mic else {
-            error = "Разрешите доступ к микрофону: Настройки → Копилка → Микрофон."
-            return
-        }
-        guard let recognizer, recognizer.isAvailable else {
-            error = "Распознавание речи сейчас недоступно. Проверьте интернет."
-            return
-        }
+        prefix = transcript.isEmpty ? "" : transcript.trimmingCharacters(in: .whitespaces) + " "
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.record, mode: .measurement, options: .duckOthers)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
 
-            let req = SFSpeechAudioBufferRecognitionRequest()
-            req.shouldReportPartialResults = true
-            req.addsPunctuation = true
-            request = req
-            prefix = transcript.isEmpty ? "" : transcript.trimmingCharacters(in: .whitespaces) + " "
-
-            let input = engine.inputNode
-            let format = input.outputFormat(forBus: 0)
-            input.removeTap(onBus: 0)
-            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-                req.append(buffer)
-                guard let ch = buffer.floatChannelData?[0] else { return }
-                let n = Int(buffer.frameLength)
-                var sum: Float = 0
-                for i in stride(from: 0, to: n, by: 8) { sum += abs(ch[i]) }
-                let lvl = min(1, sum / Float(max(1, n / 8)) * 12)
-                Task { @MainActor in self?.level = lvl }
+            if #available(iOS 26.0, *), let m = await ModernSpeech.makeIfReady(locale: locale) {
+                modern = m
+                try startEngine { m.feed($0) }
+                m.run { [weak self] text in
+                    Task { @MainActor in self?.update(text) }
+                }
+            } else {
+                try startClassic()
             }
-            engine.prepare()
-            try engine.start()
             isRecording = true
             heardThisSession = false
             lastChange = Date()
             timer?.invalidate()
-            timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
                 Task { @MainActor in self?.tick() }
-            }
-
-            task = recognizer.recognitionTask(with: req) { [weak self] result, err in
-                Task { @MainActor in
-                    guard let self else { return }
-                    if let result {
-                        let text = self.prefix + result.bestTranscription.formattedString
-                        if text != self.transcript { self.lastChange = Date() }
-                        if !result.bestTranscription.formattedString.isEmpty { self.heardThisSession = true }
-                        self.transcript = text
-                        if result.isFinal { self.finish() }
-                    }
-                    if err != nil && self.isRecording { self.finish() }
-                }
             }
         } catch {
             self.error = "Не удалось включить микрофон: \(error.localizedDescription)"
             finish()
         }
+    }
+
+    private func startClassic() throws {
+        guard let recognizer, recognizer.isAvailable else {
+            throw NSError(domain: "speech", code: 1, userInfo: [NSLocalizedDescriptionKey: "распознавание речи сейчас недоступно, проверьте интернет"])
+        }
+        let req = SFSpeechAudioBufferRecognitionRequest()
+        req.shouldReportPartialResults = true
+        req.addsPunctuation = true
+        if recognizer.supportsOnDeviceRecognition { req.requiresOnDeviceRecognition = true }   // быстрее и без интернета
+        request = req
+        try startEngine { req.append($0) }
+        task = recognizer.recognitionTask(with: req) { [weak self] result, err in
+            let text = result?.bestTranscription.formattedString
+            let final = result?.isFinal ?? false
+            Task { @MainActor in
+                guard let self else { return }
+                if let text { self.update(text) }
+                if final || (err != nil && self.isRecording) { self.finish() }
+            }
+        }
+    }
+
+    private func startEngine(_ feed: @escaping (AVAudioPCMBuffer) -> Void) throws {
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        input.removeTap(onBus: 0)
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            feed(buffer)
+            guard let ch = buffer.floatChannelData?[0] else { return }
+            let n = Int(buffer.frameLength)
+            var sum: Float = 0
+            for i in stride(from: 0, to: n, by: 4) { sum += ch[i] * ch[i] }
+            let rms = sqrt(sum / Float(max(1, n / 4)))
+            let lvl = min(1, max(0, (20 * log10(max(rms, 0.000_01)) + 50) / 40))   // −50…−10 дБ → 0…1
+            Task { @MainActor in
+                guard let self else { return }
+                self.level = self.level * 0.55 + lvl * 0.45   // сглаживание
+            }
+        }
+        engine.prepare()
+        try engine.start()
+    }
+
+    private func update(_ text: String) {
+        let full = prefix + text
+        if full != transcript { lastChange = Date() }
+        if !text.trimmingCharacters(in: .whitespaces).isEmpty { heardThisSession = true }
+        transcript = full
     }
 
     func stop() {
@@ -106,7 +139,7 @@ final class SpeechRecognizer: ObservableObject {
 
     private func tick() {
         guard isRecording, autoStop, heardThisSession else { return }
-        if Date().timeIntervalSince(lastChange) > 1.9 {
+        if Date().timeIntervalSince(lastChange) > 1.6 {
             stop()
             onAutoStop?()
         }
@@ -120,9 +153,121 @@ final class SpeechRecognizer: ObservableObject {
         request = nil
         task?.finish()
         task = nil
+        if #available(iOS 26.0, *), let m = modern as? ModernSpeech { m.finish() }
+        modern = nil
         isRecording = false
         level = 0
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+}
+
+/// Новый движок iOS 26: модель на устройстве, «живые» (volatile) результаты почти без задержки.
+@available(iOS 26.0, *)
+final class ModernSpeech: @unchecked Sendable {
+    private let transcriber: SpeechTranscriber
+    private let analyzer: SpeechAnalyzer
+    private let format: AVAudioFormat
+    private let input: AsyncStream<AnalyzerInput>
+    private let cont: AsyncStream<AnalyzerInput>.Continuation
+    private var converter: AVAudioConverter?
+    private var resultsTask: Task<Void, Never>?
+
+    private init(transcriber: SpeechTranscriber, format: AVAudioFormat) {
+        self.transcriber = transcriber
+        self.analyzer = SpeechAnalyzer(modules: [transcriber])
+        self.format = format
+        (input, cont) = AsyncStream<AnalyzerInput>.makeStream()
+    }
+
+    private static func makeTranscriber(_ locale: Locale) -> SpeechTranscriber {
+        SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [.volatileResults], attributeOptions: [])
+    }
+
+    /// Скачать модель русского языка заранее (один раз, в фоне).
+    static func prepareAssets() async {
+        guard let loc = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "ru-RU")) else { return }
+        let t = makeTranscriber(loc)
+        if let req = try? await AssetInventory.assetInstallationRequest(supporting: [t]) {
+            try? await req.downloadAndInstall()
+        }
+    }
+
+    /// Готовый к работе движок — или nil, если модель ещё не скачана (тогда работает классический).
+    static func makeIfReady(locale: Locale) async -> ModernSpeech? {
+        guard let loc = await SpeechTranscriber.supportedLocale(equivalentTo: locale) else { return nil }
+        let installed = await SpeechTranscriber.installedLocales
+        guard installed.contains(where: { $0.identifier(.bcp47) == loc.identifier(.bcp47) }) else {
+            Task.detached(priority: .background) { await prepareAssets() }
+            return nil
+        }
+        let t = makeTranscriber(loc)
+        guard let fmt = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [t]) else { return nil }
+        let m = ModernSpeech(transcriber: t, format: fmt)
+        do { try await m.analyzer.start(inputSequence: m.input) } catch { return nil }
+        return m
+    }
+
+    func run(onText: @escaping (String) -> Void) {
+        let transcriber = self.transcriber
+        resultsTask = Task {
+            var finalized = ""
+            do {
+                for try await r in transcriber.results {
+                    let piece = String(r.text.characters)
+                    if r.isFinal {
+                        finalized = Self.join(finalized, piece)
+                        onText(finalized)
+                    } else {
+                        onText(Self.join(finalized, piece))
+                    }
+                }
+            } catch {}
+        }
+    }
+
+    private static func join(_ a: String, _ b: String) -> String {
+        let b = b.trimmingCharacters(in: .whitespaces)
+        if a.isEmpty { return b }
+        if b.isEmpty { return a }
+        return a + " " + b
+    }
+
+    /// Вызывается из аудиопотока.
+    func feed(_ buffer: AVAudioPCMBuffer) {
+        guard let out = convert(buffer) else { return }
+        cont.yield(AnalyzerInput(buffer: out))
+    }
+
+    private func convert(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+        if buffer.format == format { return buffer }
+        if converter == nil {
+            converter = AVAudioConverter(from: buffer.format, to: format)
+            converter?.primeMethod = .none
+        }
+        guard let converter else { return nil }
+        let ratio = format.sampleRate / buffer.format.sampleRate
+        let cap = AVAudioFrameCount(Double(buffer.frameLength) * ratio + 32)
+        guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: cap) else { return nil }
+        var used = false
+        var err: NSError?
+        converter.convert(to: out, error: &err) { _, status in
+            if used { status.pointee = .noDataNow; return nil }
+            used = true
+            status.pointee = .haveData
+            return buffer
+        }
+        return err == nil ? out : nil
+    }
+
+    func finish() {
+        cont.finish()
+        let analyzer = self.analyzer
+        let task = resultsTask
+        Task {
+            try? await analyzer.finalizeAndFinishThroughEndOfInput()
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            task?.cancel()
+        }
     }
 }
 

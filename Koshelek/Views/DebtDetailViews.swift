@@ -115,7 +115,7 @@ struct DebtForm: View {
     }
 
     private func startScan() {
-        guard Keychain.hasKey else { err = "Для скана нужен ключ Claude API — добавьте его в настройках."; return }
+        guard Claude.available else { err = "Для скана нужен ИИ: войдите в аккаунт или добавьте ключ в настройках."; return }
         showScan = true
     }
 

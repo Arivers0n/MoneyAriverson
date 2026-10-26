@@ -81,7 +81,7 @@ struct RootView: View {
     @State private var showWelcome = !SyncEngine.shared.loggedIn && !UserDefaults.standard.bool(forKey: "welcome.done")
 
     private func startScan() {
-        guard Keychain.hasKey else {
+        guard Claude.available else {
             router.say("Для скана нужен ключ Claude API")
             router.show(.settings)
             return
@@ -207,6 +207,7 @@ struct RootView: View {
         .fontDesign(ap.fontDesign)
         .preferredColorScheme(ap.colorScheme)
         .task {
+            SpeechRecognizer.warmUp()
             if Notifier.enabled { _ = await Notifier.requestPermission() }
             Notifier.reschedule(ctx: ctx)
             // Пока приложение открыто — подтягиваем изменения семьи раз в 20 секунд

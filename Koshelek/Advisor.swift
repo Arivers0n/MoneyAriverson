@@ -276,7 +276,7 @@ struct AdvisorChat: View {
     private func send(_ text: String) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty, !thinking else { return }
-        guard Keychain.hasKey else { err = "Добавьте ключ Claude API в настройках."; return }
+        guard Claude.available else { err = "ИИ недоступен: войдите в аккаунт или добавьте ключ в настройках."; return }
         input = ""; err = nil
         messages.append(ChatMessage(fromUser: true, text: t))
         thinking = true
