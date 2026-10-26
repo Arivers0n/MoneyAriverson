@@ -301,6 +301,9 @@ if [ "$K" = APPLE ]; then
 fi
 read -rp "Client ID: " ID
 read -rp "Client secret: " SECRET
+# убираем мусор, который некоторые терминалы добавляют при вставке (^[[200~ … ^[[201~), и пробелы
+clean() { printf '%s' "$1" | sed 's/\x1b\[20[01]~//g; s/\[20[01]~//g' | tr -d '\033[:space:]'; }
+ID=$(clean "$ID"); SECRET=$(clean "$SECRET")
 [ -n "$ID" ] && [ -n "$SECRET" ] || { echo "нужны оба значения"; exit 1; }
 sed -i "/^KP_${K}_/d" "$ENV"
 printf 'KP_%s_ID=%s\nKP_%s_SECRET=%s\n' "$K" "$ID" "$K" "$SECRET" >> "$ENV"
