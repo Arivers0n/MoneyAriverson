@@ -235,3 +235,12 @@ routerAdd("POST", "/api/kp/ai", (e) => {
     if (!out) { try { out = JSON.parse(toString(res.body)) } catch (_) { out = { error: { message: "Пустой ответ ИИ" } } } }
     return e.json(res.statusCode, out)
 }, $apis.requireAuth("users"), $apis.bodyLimit(25 << 20))
+
+// Сборки Android: храним только три последние, чтобы не забивать диск.
+onRecordAfterCreateSuccess((e) => {
+    e.next()
+    try {
+        const all = e.app.findRecordsByFilter("kp_builds", "id != ''", "-version", 100, 0)
+        for (let i = 3; i < all.length; i++) e.app.delete(all[i])
+    } catch (err) { console.log("Kopilka: не удалось убрать старые сборки:", err) }
+}, "kp_builds")
