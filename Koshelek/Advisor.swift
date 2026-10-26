@@ -184,30 +184,10 @@ struct ChatMessage: Identifiable, Equatable {
 }
 
 extension Claude {
-    static func chat(system: String, messages: [ChatMessage], model: String = smartModel) async throws -> String {
-        guard let key = Keychain.apiKey else { throw ClaudeError.noKey }
+    static func chat(system: String, messages: [ChatMessage], model: String? = nil) async throws -> String {
         let msgs: [[String: Any]] = messages.map { ["role": $0.fromUser ? "user" : "assistant", "content": $0.text] }
-        let body: [String: Any] = ["model": model, "max_tokens": 2000, "system": system, "messages": msgs]
-        var req = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
-        req.httpMethod = "POST"
-        req.timeoutInterval = 120
-        req.setValue(key, forHTTPHeaderField: "x-api-key")
-        req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        req.setValue("application/json", forHTTPHeaderField: "content-type")
-        req.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let data: Data, resp: URLResponse
-        do { (data, resp) = try await URLSession.shared.data(for: req) }
-        catch { throw ClaudeError.network(error.localizedDescription) }
-        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
-        let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-        guard code == 200 else {
-            let msg = ((obj?["error"] as? [String: Any])?["message"] as? String) ?? ""
-            throw ClaudeError.http(code, msg)
-        }
-        let blocks = obj?["content"] as? [[String: Any]] ?? []
-        let text = blocks.filter { ($0["type"] as? String) == "text" }.compactMap { $0["text"] as? String }.joined()
-        guard !text.isEmpty else { throw ClaudeError.badReply }
-        return text
+        let body: [String: Any] = ["model": model ?? smartModel, "max_tokens": 2000, "system": system, "messages": msgs]
+        return try await send(body, timeout: 120)
     }
 }
 

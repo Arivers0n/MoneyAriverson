@@ -34,37 +34,92 @@ enum Keychain {
 // MARK: - Claude API
 
 enum ClaudeError: LocalizedError {
-    case noKey, http(Int, String), badReply, network(String)
+    case noKey, http(Int, String), badReply, network(String), badURL
     var errorDescription: String? {
         switch self {
         case .noKey: return "Добавьте ключ Claude API в настройках."
         case .http(let code, let msg):
             if code == 401 { return "Ключ API не подходит. Проверьте его в настройках." }
             if code == 429 { return "Слишком много запросов. Попробуйте через минуту." }
+            if code == 404 && msg.lowercased().contains("model") { return "Модель не найдена. Проверьте название модели в настройках." }
+            if code == 404 { return "По этому Base URL нет API. Проверьте адрес шлюза." }
             if code == 400 && msg.contains("credit") { return "На балансе API закончились деньги. Пополните его в консоли Anthropic." }
             if code >= 500 { return "Сервис Claude временно недоступен. Попробуйте позже." }
             return "Ошибка Claude (\(code)): \(msg.prefix(140))"
         case .badReply: return "Не удалось разобрать ответ. Попробуйте сказать иначе."
-        case .network(let m): return "Нет связи с Claude: \(m)"
+        case .network(let m): return APIConfig.isCustomBase ? "Нет связи со шлюзом: \(m)" : "Нет связи с Claude: \(m)"
+        case .badURL: return "Неверный Base URL. Нужен адрес вида https://gateway.example.com"
         }
     }
 }
 
-enum Claude {
-    static let fastModel = "claude-haiku-5-5"
-    static let smartModel = "claude-sonnet-5-5"
+/// Настройки подключения к API: свой адрес шлюза и своя модель (хранятся в связке ключей рядом с ключом).
+enum APIConfig {
+    static let defaultBase = "https://api.anthropic.com"
+    static let defaultFast = "claude-haiku-5-5"
+    static let defaultSmart = "claude-sonnet-5-5"
 
-    static func ask(_ prompt: String, images: [Data] = [], model: String = fastModel, maxTokens: Int = 2048) async throws -> String {
-        guard let key = Keychain.apiKey else { throw ClaudeError.noKey }
+    /// Base URL шлюза. Пусто — стандартный сервер Anthropic.
+    static var baseURL: String {
+        get { Keychain.get("anthropic-base-url") ?? "" }
+        set { Keychain.set("anthropic-base-url", newValue.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    }
+    /// Название модели. Пусто — модели по умолчанию (быстрая и умная).
+    static var model: String {
+        get { Keychain.get("anthropic-model") ?? "" }
+        set { Keychain.set("anthropic-model", newValue.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    }
+    static var isCustomBase: Bool { !baseURL.isEmpty }
+
+    /// Полный адрес Messages API. Принимает «https://gw.example.com», «…/v1» и «…/v1/messages».
+    static func endpoint(for base: String = baseURL) throws -> URL {
+        var b = base.trimmingCharacters(in: .whitespacesAndNewlines)
+        if b.isEmpty { b = defaultBase }
+        if !b.lowercased().hasPrefix("http") { b = "https://" + b }
+        while b.hasSuffix("/") { b.removeLast() }
+        let lower = b.lowercased()
+        if lower.hasSuffix("/v1/messages") {
+            // уже полный адрес
+        } else if lower.hasSuffix("/v1") {
+            b += "/messages"
+        } else {
+            b += "/v1/messages"
+        }
+        guard let url = URL(string: b), let scheme = url.scheme?.lowercased(), url.host?.isEmpty == false else {
+            throw ClaudeError.badURL
+        }
+        // iOS пускает только HTTPS (кроме локального адреса для отладки)
+        if scheme != "https" && !(scheme == "http" && ["localhost", "127.0.0.1"].contains(url.host ?? "")) {
+            throw ClaudeError.badURL
+        }
+        return url
+    }
+}
+
+enum Claude {
+    /// Быстрая модель (разбор голоса, совет дня). Своё название из настроек имеет приоритет.
+    static var fastModel: String { APIConfig.model.isEmpty ? APIConfig.defaultFast : APIConfig.model }
+    /// Умная модель (разбор месяца, советник).
+    static var smartModel: String { APIConfig.model.isEmpty ? APIConfig.defaultSmart : APIConfig.model }
+
+    static func ask(_ prompt: String, images: [Data] = [], model: String? = nil, maxTokens: Int = 2048) async throws -> String {
         var content: [[String: Any]] = images.map {
             ["type": "image", "source": ["type": "base64", "media_type": "image/jpeg", "data": $0.base64EncodedString()]]
         }
         content.append(["type": "text", "text": prompt])
-        let body: [String: Any] = ["model": model, "max_tokens": maxTokens, "messages": [["role": "user", "content": content]]]
-        var req = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        let body: [String: Any] = ["model": model ?? fastModel, "max_tokens": maxTokens, "messages": [["role": "user", "content": content]]]
+        return try await send(body, timeout: 90)
+    }
+
+    /// Единая точка отправки запросов: адрес, ключ и заголовки берутся из настроек.
+    static func send(_ body: [String: Any], timeout: TimeInterval) async throws -> String {
+        guard let key = Keychain.apiKey else { throw ClaudeError.noKey }
+        var req = URLRequest(url: try APIConfig.endpoint())
         req.httpMethod = "POST"
-        req.timeoutInterval = 90
+        req.timeoutInterval = timeout
         req.setValue(key, forHTTPHeaderField: "x-api-key")
+        // многие шлюзы ждут ключ в заголовке Authorization
+        if APIConfig.isCustomBase { req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization") }
         req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         req.setValue("application/json", forHTTPHeaderField: "content-type")
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -74,7 +129,7 @@ enum Claude {
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
         let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         guard code == 200 else {
-            let msg = ((obj?["error"] as? [String: Any])?["message"] as? String) ?? String(data: data, encoding: .utf8) ?? ""
+            let msg = ((obj?["error"] as? [String: Any])?["message"] as? String) ?? String(data: data.prefix(300), encoding: .utf8) ?? ""
             throw ClaudeError.http(code, msg)
         }
         let blocks = obj?["content"] as? [[String: Any]] ?? []

@@ -13,6 +13,8 @@ struct SettingsView: View {
     @AppStorage("budget") private var budget: Double = 0
 
     @State private var key = Keychain.apiKey ?? ""
+    @State private var baseURL = APIConfig.baseURL
+    @State private var modelName = APIConfig.model
     @State private var checking = false
     @State private var keyStatus: String?
     @State private var keyOK = false
@@ -101,16 +103,30 @@ struct SettingsView: View {
                     SecureField("sk-ant-…", text: $key)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Base URL (необязательно)").font(.caption).foregroundStyle(.secondary)
+                        TextField(APIConfig.defaultBase, text: $baseURL)
+                            .keyboardType(.URL)
+                            .textContentType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Модель (необязательно)").font(.caption).foregroundStyle(.secondary)
+                        TextField("\(APIConfig.defaultSmart), \(APIConfig.defaultFast)", text: $modelName)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
                     HStack {
                         Button(checking ? "Проверяю…" : "Сохранить и проверить", action: checkKey).disabled(checking || key.isEmpty)
                         Spacer()
-                        if Keychain.hasKey { Button("Удалить", role: .destructive) { key = ""; Keychain.apiKey = nil; keyStatus = "Ключ удалён" } }
+                        if Keychain.hasKey { Button("Удалить", role: .destructive) { key = ""; Keychain.apiKey = nil; keyStatus = "Ключ удалён"; keyOK = false } }
                     }
                     if let keyStatus { Text(keyStatus).font(.footnote).foregroundStyle(keyOK ? Theme.inc : Theme.exp) }
                 } header: {
                     Text("Ключ Claude API")
                 } footer: {
-                    Text("Нужен, чтобы понимать разговорную речь, сканировать чеки и графики и делать разбор месяца. Ключ создаётся на console.anthropic.com → API Keys. Хранится в связке ключей iPhone.")
+                    Text("Нужен, чтобы понимать разговорную речь, сканировать чеки и графики и делать разбор месяца. Ключ создаётся на platform.claude.com → API Keys.\n\nBase URL — адрес своего API-шлюза, совместимого с Claude Messages API. Пусто — стандартный сервер. Модель — идентификатор из API (например, \(APIConfig.defaultSmart)), не название из интерфейса; пусто — быстрая модель для голоса и умная для разборов. Всё хранится в связке ключей iPhone.")
                 }
 
                 Section {
@@ -188,13 +204,24 @@ struct SettingsView: View {
     }
 
     private func checkKey() {
+        // проверяем адрес до сохранения, чтобы не оставить приложение с битым URL
+        if !baseURL.trimmingCharacters(in: .whitespaces).isEmpty {
+            do { _ = try APIConfig.endpoint(for: baseURL) }
+            catch { keyOK = false; keyStatus = error.localizedDescription; Haptic.warning(); return }
+        }
         Keychain.apiKey = key
+        APIConfig.baseURL = baseURL
+        APIConfig.model = modelName
+        baseURL = APIConfig.baseURL; modelName = APIConfig.model
         checking = true; keyStatus = nil
         Task {
             defer { checking = false }
             do {
                 _ = try await Claude.ask("Ответь одним словом: готов", maxTokens: 300)
-                keyOK = true; keyStatus = "Ключ работает ✓"
+                keyOK = true
+                let host = (try? APIConfig.endpoint())?.host ?? "api.anthropic.com"
+                keyStatus = "Работает ✓ · \(host) · \(APIConfig.model.isEmpty ? "модели по умолчанию" : APIConfig.model)"
+                Haptic.success()
             } catch {
                 keyOK = false; keyStatus = error.localizedDescription
             }
