@@ -23,8 +23,22 @@ enum Theme {
     static let exp = Color.dynamic("B8452A", "F0886B")
     static let warn = Color.dynamic("B7791F", "E8B04E")
     static let ink = Color.dynamic("16201C", "E8EEEA")
-    static var bg: Color { Appearance.shared.background == "pure" ? Color(.systemBackground) : Color(.systemGroupedBackground) }
-    static var card: Color { Appearance.shared.background == "pure" ? Color(.secondarySystemBackground) : Color(.secondarySystemGroupedBackground) }
+    static var bg: Color {
+        switch Appearance.shared.background {
+        case "pure": return Color(.systemBackground)
+        case "depth": return .dynamic("EEF1F7", "090B12")
+        case "aurora": return .dynamic("F1F0F8", "06070D")
+        case "midnight": return .dynamic("E9ECF8", "0A1030")
+        default: return Color(.systemGroupedBackground)
+        }
+    }
+    static var card: Color {
+        switch Appearance.shared.background {
+        case "pure": return Color(.secondarySystemBackground)
+        case "depth", "aurora", "midnight": return .dynamic("FFFFFF", "171A24")
+        default: return Color(.secondarySystemGroupedBackground)
+        }
+    }
     static let soft = Color(.tertiarySystemFill)
     static let palette = ["2B47C9", "17805A", "C2621F", "8A4FD0", "1A9BB0", "D04F6E", "9A8A1F", "4E5E9E"]
 }

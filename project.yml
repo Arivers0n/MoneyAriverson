@@ -51,7 +51,7 @@ targets:
         PRODUCT_NAME: Koshelek
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: "YES"
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Night AppIcon-Ocean AppIcon-Sunset AppIcon-Lavender AppIcon-Gold AppIcon-Mono AppIcon-Pink"
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Night AppIcon-Ocean AppIcon-Sunset AppIcon-Lavender AppIcon-Gold AppIcon-Mono AppIcon-Pink AppIcon-Neon AppIcon-Cosmos AppIcon-Aurora AppIcon-Candy AppIcon-Mint AppIcon-Peach AppIcon-Oled AppIcon-Line"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1,2"
     scheme: {}

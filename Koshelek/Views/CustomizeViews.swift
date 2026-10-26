@@ -83,87 +83,359 @@ struct CustomizeView: View {
 
 // MARK: - Оформление
 
+/// «Оформление»: вкладки Тема · Иконки · Экран, живое превью и готовые темы.
 struct AppearanceView: View {
     @ObservedObject private var ap = Appearance.shared
+    @State var tab: Int = 0
+    @State private var naming = false
+    @State private var presetName = ""
+    @Namespace private var ns
 
     var body: some View {
-        Form {
-            Section {
-                ThemePreview()
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                tabs
+                switch tab {
+                case 1: IconGrid()
+                case 2: screenTab
+                default: themeTab
+                }
             }
-            Section("Тема") {
-                Picker("Тема", selection: $ap.scheme) {
-                    Text("Как в системе").tag("system")
-                    Text("Светлая").tag("light")
+            .padding(16)
+            .padding(.bottom, 30)
+            .animation(Motion.snappy, value: tab)
+        }
+        .scrollIndicators(.hidden)
+        .background(Backdrop())
+        .navigationTitle("Оформление")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Название темы", isPresented: $naming) {
+            TextField("Моя тема", text: $presetName)
+            Button("Сохранить") {
+                let n = presetName.trimmingCharacters(in: .whitespaces)
+                ap.saveCurrent(as: n.isEmpty ? "Моя тема" : n)
+                Haptic.success()
+            }
+            Button("Отмена", role: .cancel) {}
+        }
+    }
+
+    // MARK: Вкладки
+
+    private var tabs: some View {
+        HStack(spacing: 4) {
+            ForEach(Array(["Тема", "Иконки", "Экран"].enumerated()), id: \.offset) { i, t in
+                Button {
+                    Haptic.select()
+                    withAnimation(Motion.snappy) { tab = i }
+                } label: {
+                    Text(t)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(tab == i ? Color.primary : Color.secondary)
+                        .frame(maxWidth: .infinity).frame(height: 38)
+                        .background {
+                            if tab == i {
+                                Capsule().fill(Color.primary.opacity(0.1)).matchedGeometryEffect(id: "tab", in: ns)
+                            }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .cardBG(Capsule())
+    }
+
+    // MARK: Тема
+
+    private var themeTab: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            ThemePreview()
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Темы").font(.headline)
+                    Spacer()
+                    Button { presetName = ""; naming = true } label: {
+                        Label("Сохранить текущую", systemImage: "plus").font(.subheadline.weight(.semibold))
+                    }
+                }
+                ScrollView(.horizontal) {
+                    HStack(spacing: 12) {
+                        ForEach(ThemePreset.builtIns + ap.customPresets) { p in
+                            PresetTile(preset: p, selected: ap.isCurrent(p))
+                                .onTapGesture {
+                                    Haptic.select()
+                                    withAnimation(Motion.spring) { ap.apply(p) }
+                                }
+                                .contextMenu {
+                                    if !p.builtIn {
+                                        Button(role: .destructive) { ap.customPresets.removeAll { $0.id == p.id } } label: {
+                                            Label("Удалить тему", systemImage: "trash")
+                                        }
+                                    }
+                                }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .scrollIndicators(.hidden)
+            }
+
+            group("Режим") {
+                Picker("Режим", selection: $ap.scheme.animation(Motion.spring)) {
                     Text("Тёмная").tag("dark")
+                    Text("Светлая").tag("light")
+                    Text("Как в системе").tag("system")
                 }
                 .pickerStyle(.segmented)
             }
-            Section("Акцентный цвет") {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 14) {
+
+            group("Акцентный цвет") {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 6), spacing: 12) {
                     ForEach(Appearance.accents) { a in
-                        Button { withAnimation { ap.accent = a.id } } label: {
-                            VStack(spacing: 6) {
-                                Circle()
-                                    .fill(Color.dynamic(a.light, a.dark))
-                                    .frame(width: 40, height: 40)
-                                    .overlay(Circle().strokeBorder(Color.primary, lineWidth: ap.accent == a.id ? 3 : 0).padding(-4))
-                                Text(a.name).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                            }
+                        Button {
+                            Haptic.select()
+                            withAnimation(Motion.spring) { ap.accent = a.id }
+                        } label: {
+                            Circle()
+                                .fill(Color.dynamic(a.light, a.dark).gradient)
+                                .frame(width: 44, height: 44)
+                                .overlay {
+                                    if ap.accent == a.id {
+                                        Image(systemName: "checkmark").font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                                            .transition(.scale.combined(with: .opacity))
+                                    }
+                                }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(Pressable(scale: 0.9))
+                        .accessibilityLabel(a.name)
                     }
                 }
-                .padding(.vertical, 8)
             }
-            Section("Фон") {
-                Picker("Фон", selection: $ap.background) {
-                    Text("Обычный").tag("grouped")
-                    Text("Чистый чёрный/белый").tag("pure")
-                    Text("С цветным свечением").tag("tint")
+
+            group("Фон") {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 12) {
+                    ForEach(Appearance.backgrounds) { b in
+                        Button {
+                            Haptic.select()
+                            withAnimation(Motion.spring) { ap.background = b.id }
+                        } label: {
+                            VStack(spacing: 6) {
+                                BackdropLayer(style: b.id, accent: ap.accentColor)
+                                    .frame(height: 74)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .strokeBorder(ap.background == b.id ? ap.accentColor : Color.primary.opacity(0.1),
+                                                      lineWidth: ap.background == b.id ? 2.5 : 1))
+                                Text(b.name).font(.caption.weight(.medium)).foregroundStyle(.primary)
+                            }
+                        }
+                        .buttonStyle(Pressable(scale: 0.96))
+                    }
                 }
-                .pickerStyle(.inline)
-                .labelsHidden()
             }
-            Section("Карточки") {
-                Picker("Карточки", selection: $ap.cards) {
-                    Text("Заливка").tag("filled")
+
+            group("Карточки") {
+                Picker("Карточки", selection: $ap.cards.animation(Motion.spring)) {
+                    Text("Сплошные").tag("filled")
                     Text("Стекло").tag("glass")
                     Text("Контур").tag("outline")
                 }
                 .pickerStyle(.segmented)
             }
-            Section("Шрифт") {
-                Picker("Шрифт", selection: $ap.font) {
-                    Text("Обычный").tag("default")
-                    Text("Округлый").tag("rounded")
-                    Text("С засечками").tag("serif")
+
+            group("Шрифт") {
+                VStack(spacing: 8) {
+                    ForEach([("default", "Системный", Font.Design.default), ("rounded", "Скруглённый", .rounded), ("serif", "С засечками", .serif)], id: \.0) { f in
+                        Button {
+                            Haptic.select()
+                            withAnimation(Motion.spring) { ap.font = f.0 }
+                        } label: {
+                            HStack {
+                                Text(f.1).font(.body.weight(.medium))
+                                Spacer()
+                                Text("65 744 ₽").font(.system(.headline, design: f.2)).foregroundStyle(.secondary)
+                                Image(systemName: ap.font == f.0 ? "checkmark.circle.fill" : "circle")
+                                    .font(.title3)
+                                    .foregroundStyle(ap.font == f.0 ? ap.accentColor : Color.secondary)
+                            }
+                            .fontDesign(f.2)
+                            .padding(.horizontal, 14).frame(minHeight: 50)
+                            .cardBG(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .buttonStyle(Pressable(scale: 0.98))
+                        .foregroundStyle(.primary)
+                    }
                 }
-                .pickerStyle(.segmented)
             }
-            Section {
+
+            Button(role: .destructive) { withAnimation(Motion.spring) { ap.reset() } } label: {
+                Text("Сбросить оформление").frame(maxWidth: .infinity)
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    // MARK: Экран
+
+    private var screenTab: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            group("Крупная цифра на главном") {
                 Picker("Крупная цифра", selection: $ap.bigNumber) {
                     Text("Остаток").tag("net")
                     Text("Расходы").tag("exp")
                     Text("Доходы").tag("inc")
                 }
-                Toggle("Компактный вид", isOn: $ap.compact)
-                Toggle("Скрывать суммы на главном", isOn: $ap.hideAmounts)
-            } header: { Text("Главный экран") } footer: {
-                Text("Скрытые суммы показываются по нажатию на цифру — удобно, если открываете приложение при людях.")
+                .pickerStyle(.segmented)
             }
-            Section {
-                Button("Сбросить оформление", role: .destructive) { withAnimation { ap.reset() } }
+            VStack(spacing: 0) {
+                toggleRow("Компактный вид", "Меньше отступов — больше операций на экране", $ap.compact)
+                Divider().padding(.leading, 14)
+                toggleRow("Скрывать суммы", "Цифры появляются по нажатию — удобно при людях", $ap.hideAmounts)
+                Divider().padding(.leading, 14)
+                toggleRow("Показывать копейки", "12 345,67 ₽ вместо 12 346 ₽", $ap.showKopecks)
+                Divider().padding(.leading, 14)
+                toggleRow("Всегда показывать доходы", "Даже если в месяце их ещё нет", $ap.alwaysIncome)
+            }
+            .cardBG(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            VStack(spacing: 0) {
+                NavigationLink { CustomizeView() } label: { linkRow("Главный экран", "Блоки, порядок, кнопки сверху и снизу", "square.grid.2x2.fill") }
+                Divider().padding(.leading, 56)
+                NavigationLink { CategoriesView() } label: { linkRow("Категории", "Свои категории, цвета и значки", "tag.fill") }
+            }
+            .cardBG(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            Text("Совет: удержите палец на пустом месте главного экрана — блоки можно убирать и добавлять прямо там.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+
+    private func toggleRow(_ title: String, _ hint: String, _ v: Binding<Bool>) -> some View {
+        Toggle(isOn: v.animation(Motion.spring)) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.body.weight(.medium))
+                Text(hint).font(.caption).foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Оформление")
-        .navigationBarTitleDisplayMode(.inline)
+        .tint(ap.accentColor)
+        .padding(.horizontal, 14).padding(.vertical, 10)
+    }
+
+    private func linkRow(_ title: String, _ hint: String, _ symbol: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                .frame(width: 30, height: 30).background(ap.accentColor.gradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.body.weight(.medium)).foregroundStyle(.primary)
+                Text(hint).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .contentShape(Rectangle())
+    }
+
+    private func group<C: View>(_ title: String, @ViewBuilder _ content: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.headline)
+            content()
+        }
     }
 }
 
-/// Живой пример того, как будет выглядеть экран.
+/// Миниатюра темы: фон, акцент и полоска «карточки».
+private struct PresetTile: View {
+    let preset: ThemePreset
+    let selected: Bool
+    var body: some View {
+        let info = Appearance.accents.first { $0.id == preset.accent } ?? Appearance.accents[0]
+        let accent = Color.dynamic(info.light, info.dark)
+        let dark: ColorScheme = preset.scheme == "light" ? .light : .dark
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack(alignment: .bottomLeading) {
+                BackdropLayer(style: preset.background, accent: accent)
+                HStack(spacing: 5) {
+                    Circle().fill(accent).frame(width: 14, height: 14)
+                    RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.18)).frame(width: 38, height: 10)
+                }
+                .padding(10)
+            }
+            .environment(\.colorScheme, dark)
+            .frame(width: 108, height: 74)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(selected ? accent : Color.primary.opacity(0.1), lineWidth: selected ? 2.5 : 1))
+            .overlay(alignment: .topTrailing) {
+                if selected {
+                    Image(systemName: "checkmark.circle.fill").font(.body).foregroundStyle(.white, accent).padding(6)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            Text(preset.name).font(.caption.weight(.semibold)).lineLimit(1)
+        }
+        .frame(width: 108)
+        .contentShape(Rectangle())
+    }
+}
+
+/// Сетка иконок приложения: 4 в ряд, отметка выбранной.
+struct IconGrid: View {
+    @State private var current = UIApplication.shared.alternateIconName ?? ""
+    @State private var err: String?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Значок приложения").font(.headline)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 4), spacing: 18) {
+                ForEach(AppIcons.all) { icon in
+                    Button { set(icon.id) } label: {
+                        VStack(spacing: 6) {
+                            Image(icon.preview)
+                                .resizable()
+                                .aspectRatio(1, contentMode: .fit)
+                                .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+                                .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
+                                .overlay(alignment: .topTrailing) {
+                                    if current == icon.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.title3)
+                                            .foregroundStyle(.white, Theme.accent)
+                                            .background(Circle().fill(.white).padding(2))
+                                            .offset(x: 6, y: -6)
+                                            .transition(.scale.combined(with: .opacity))
+                                    }
+                                }
+                                .scaleEffect(current == icon.id && Motion.moves ? 1.04 : 1)
+                            Text(icon.title).font(.caption2.weight(current == icon.id ? .semibold : .regular))
+                                .foregroundStyle(current == icon.id ? Color.primary : Color.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .buttonStyle(Pressable(scale: 0.92))
+                }
+            }
+            .padding(14)
+            .cardBG(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            if let err { Text(err).font(.footnote).foregroundStyle(Theme.exp) }
+            Text("iOS покажет короткое уведомление о смене значка — это нормально.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+
+    private func set(_ id: String) {
+        guard id != current else { return }
+        guard UIApplication.shared.supportsAlternateIcons else { err = "Это устройство не поддерживает смену значка."; return }
+        Haptic.select()
+        UIApplication.shared.setAlternateIconName(id.isEmpty ? nil : id) { e in
+            DispatchQueue.main.async {
+                if let e { err = "Не получилось сменить значок: \(e.localizedDescription)"; Haptic.warning() }
+                else { withAnimation(Motion.spring) { current = id }; err = nil; Haptic.success() }
+            }
+        }
+    }
+}
+
 struct ThemePreview: View {
     @ObservedObject private var ap = Appearance.shared
     var body: some View {
@@ -362,45 +634,5 @@ struct CategoryForm: View {
 // MARK: - Иконка приложения
 
 struct IconPickerView: View {
-    @State private var current = UIApplication.shared.alternateIconName ?? ""
-    @State private var err: String?
-
-    var body: some View {
-        ScrollView {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 18), count: 3), spacing: 22) {
-                ForEach(AppIcons.all) { icon in
-                    Button { set(icon.id) } label: {
-                        VStack(spacing: 8) {
-                            Image(icon.preview)
-                                .resizable()
-                                .aspectRatio(1, contentMode: .fit)
-                                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.primary.opacity(0.1)))
-                                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous)
-                                    .strokeBorder(Theme.accent, lineWidth: current == icon.id ? 3 : 0).padding(-5))
-                            Text(icon.title).font(.footnote.weight(current == icon.id ? .semibold : .regular))
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(20)
-            if let err { Text(err).font(.footnote).foregroundStyle(Theme.exp).padding() }
-            Text("iOS покажет короткое уведомление о смене иконки — это нормально.")
-                .font(.footnote).foregroundStyle(.secondary).padding(.horizontal, 20)
-        }
-        .navigationTitle("Иконка приложения")
-        .navigationBarTitleDisplayMode(.inline)
-        .background(Backdrop())
-    }
-
-    private func set(_ id: String) {
-        guard UIApplication.shared.supportsAlternateIcons else { err = "Это устройство не поддерживает смену иконки."; return }
-        UIApplication.shared.setAlternateIconName(id.isEmpty ? nil : id) { e in
-            DispatchQueue.main.async {
-                if let e { err = "Не получилось сменить иконку: \(e.localizedDescription)" }
-                else { current = id; err = nil }
-            }
-        }
-    }
+    var body: some View { AppearanceView(tab: 1) }
 }

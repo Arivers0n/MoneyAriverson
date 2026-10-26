@@ -18,16 +18,17 @@ struct WelcomeView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Theme.accent.opacity(0.28), Color(.systemBackground), Color(.systemBackground)],
-                           startPoint: .top, endPoint: .bottom)
+            BackdropLayer(style: "aurora", accent: Theme.accent)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 HStack {
+                    Button { skip() } label: {
+                        Image(systemName: "xmark").font(.system(size: 17, weight: .semibold)).foregroundStyle(.secondary)
+                            .frame(width: 40, height: 40)
+                    }
+                    .accessibilityLabel("Позже")
                     Spacer()
-                    Button("Позже") { skip() }
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 22).padding(.top, 8)
 

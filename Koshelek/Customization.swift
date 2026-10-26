@@ -18,8 +18,40 @@ final class Appearance: ObservableObject {
         .init(id: "red", name: "Коралл", light: "C9402E", dark: "FF8A75"),
         .init(id: "orange", name: "Апельсин", light: "C2621F", dark: "FFA35C"),
         .init(id: "gold", name: "Золото", light: "A57A12", dark: "E8C25A"),
+        .init(id: "indigo", name: "Индиго", light: "4B44C8", dark: "8E8CFF"),
+        .init(id: "lime", name: "Лайм", light: "4E7F0E", dark: "A8D65A"),
         .init(id: "graphite", name: "Графит", light: "2F3A36", dark: "D8DED9"),
     ]
+
+    struct BackgroundChoice: Identifiable { let id: String; let name: String }
+    static let backgrounds: [BackgroundChoice] = [
+        .init(id: "grouped", name: "Классика"),
+        .init(id: "depth", name: "Глубина"),
+        .init(id: "aurora", name: "Аврора"),
+        .init(id: "midnight", name: "Полночь"),
+        .init(id: "tint", name: "Свечение"),
+        .init(id: "pure", name: "OLED"),
+    ]
+
+    @Published var customPresets: [ThemePreset] = ThemePreset.loadCustom() {
+        didSet { ThemePreset.saveCustom(customPresets) }
+    }
+
+    /// Текущее оформление как тема.
+    var currentLook: ThemePreset {
+        ThemePreset(name: "", scheme: scheme, accent: accent, background: background, cards: cards, font: font)
+    }
+    func isCurrent(_ p: ThemePreset) -> Bool {
+        p.scheme == scheme && p.accent == accent && p.background == background && p.cards == cards && p.font == font
+    }
+    func apply(_ p: ThemePreset) {
+        scheme = p.scheme; accent = p.accent; background = p.background; cards = p.cards; font = p.font
+    }
+    func saveCurrent(as name: String) {
+        var p = currentLook
+        p.name = name
+        customPresets.append(p)
+    }
 
     @Published var version = 0
     @Published var scheme: String { didSet { save("ap.scheme", scheme) } }        // system | light | dark
@@ -80,18 +112,82 @@ final class Appearance: ObservableObject {
     }
 }
 
+/// Готовая тема: схема, акцент, фон, карточки и шрифт — применяется одним касанием.
+struct ThemePreset: Codable, Identifiable, Equatable {
+    var id = UUID()
+    var name: String
+    var scheme: String
+    var accent: String
+    var background: String
+    var cards: String
+    var font: String
+    var builtIn = false
+
+    static let builtIns: [ThemePreset] = [
+        .init(name: "Классика", scheme: "system", accent: "blue", background: "grouped", cards: "filled", font: "default", builtIn: true),
+        .init(name: "Глубина", scheme: "dark", accent: "blue", background: "depth", cards: "glass", font: "rounded", builtIn: true),
+        .init(name: "Полночь", scheme: "dark", accent: "indigo", background: "midnight", cards: "glass", font: "rounded", builtIn: true),
+        .init(name: "Аврора", scheme: "dark", accent: "violet", background: "aurora", cards: "glass", font: "rounded", builtIn: true),
+        .init(name: "Лес", scheme: "dark", accent: "green", background: "depth", cards: "filled", font: "default", builtIn: true),
+        .init(name: "OLED", scheme: "dark", accent: "sky", background: "pure", cards: "outline", font: "default", builtIn: true),
+        .init(name: "Закат", scheme: "light", accent: "orange", background: "tint", cards: "glass", font: "rounded", builtIn: true),
+        .init(name: "Бумага", scheme: "light", accent: "graphite", background: "pure", cards: "outline", font: "serif", builtIn: true),
+    ]
+
+    static func loadCustom() -> [ThemePreset] {
+        (UserDefaults.standard.data(forKey: "ap.presets")).flatMap { try? JSONDecoder().decode([ThemePreset].self, from: $0) } ?? []
+    }
+    static func saveCustom(_ list: [ThemePreset]) {
+        UserDefaults.standard.set(try? JSONEncoder().encode(list), forKey: "ap.presets")
+    }
+}
+
 /// Фон экранов с учётом выбранного стиля.
 struct Backdrop: View {
     @ObservedObject private var ap = Appearance.shared
     var body: some View {
+        BackdropLayer(style: ap.background, accent: ap.accentColor)
+            .ignoresSafeArea()
+    }
+}
+
+/// Сам фон — используется и на экранах, и в миниатюрах выбора.
+struct BackdropLayer: View {
+    let style: String
+    let accent: Color
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        let dark = scheme == .dark
         ZStack {
-            Theme.bg
-            if ap.background == "tint" {
-                LinearGradient(colors: [ap.accentColor.opacity(0.28), ap.accentColor.opacity(0.06), .clear],
-                               startPoint: .top, endPoint: .center)
+            switch style {
+            case "pure": Color(.systemBackground)
+            case "depth": dark ? Color(hex: "090B12") : Color(hex: "EEF1F7")
+            case "aurora": dark ? Color(hex: "06070D") : Color(hex: "F1F0F8")
+            case "midnight": dark ? Color(hex: "0A1030") : Color(hex: "E9ECF8")
+            default: Color(.systemGroupedBackground)
             }
+            GeometryReader { g in
+                let w = g.size.width
+                switch style {
+                case "tint":
+                    LinearGradient(colors: [accent.opacity(0.28), accent.opacity(0.06), .clear], startPoint: .top, endPoint: .center)
+                case "depth":
+                    Circle().fill(accent).frame(width: w * 0.9).offset(x: -w * 0.35, y: -w * 0.45)
+                        .blur(radius: w * 0.25).opacity(dark ? 0.45 : 0.3)
+                case "aurora":
+                    ZStack {
+                        Circle().fill(accent).frame(width: w * 0.8).offset(x: -w * 0.3, y: -w * 0.35).blur(radius: w * 0.22).opacity(dark ? 0.6 : 0.35)
+                        Circle().fill(Color(hex: "2ECFC4")).frame(width: w * 0.7).offset(x: w * 0.45, y: -w * 0.1).blur(radius: w * 0.22).opacity(dark ? 0.45 : 0.3)
+                    }
+                case "midnight":
+                    LinearGradient(colors: [Color(hex: dark ? "1B2470" : "C9D1F5").opacity(0.7), .clear], startPoint: .top, endPoint: .center)
+                default:
+                    EmptyView()
+                }
+            }
+            .allowsHitTesting(false)
         }
-        .ignoresSafeArea()
+        .clipped()
     }
 }
 
@@ -299,5 +395,13 @@ enum AppIcons {
         .init(id: "AppIcon-Gold", title: "Золото", preview: "Preview-Gold"),
         .init(id: "AppIcon-Mono", title: "Минимал", preview: "Preview-Mono"),
         .init(id: "AppIcon-Pink", title: "Розовый", preview: "Preview-Pink"),
+        .init(id: "AppIcon-Neon", title: "Неон", preview: "Preview-Neon"),
+        .init(id: "AppIcon-Cosmos", title: "Космос", preview: "Preview-Cosmos"),
+        .init(id: "AppIcon-Aurora", title: "Аврора", preview: "Preview-Aurora"),
+        .init(id: "AppIcon-Candy", title: "Конфета", preview: "Preview-Candy"),
+        .init(id: "AppIcon-Mint", title: "Мята", preview: "Preview-Mint"),
+        .init(id: "AppIcon-Peach", title: "Персик", preview: "Preview-Peach"),
+        .init(id: "AppIcon-Oled", title: "OLED", preview: "Preview-Oled"),
+        .init(id: "AppIcon-Line", title: "Линия", preview: "Preview-Line"),
     ]
 }
