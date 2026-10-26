@@ -37,6 +37,7 @@ struct VoiceOverlay: View {
                 bubble
                 controls
             }
+            .frame(maxWidth: 560)
             .padding(.horizontal, 18)
             .padding(.bottom, 26)
             .opacity(appeared ? 1 : 0)

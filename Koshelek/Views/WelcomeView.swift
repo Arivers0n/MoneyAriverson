@@ -81,6 +81,7 @@ struct WelcomeView: View {
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
                 }
+                .frame(maxWidth: 440)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 20)
                 .opacity(appeared ? 1 : 0)

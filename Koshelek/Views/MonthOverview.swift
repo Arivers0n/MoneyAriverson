@@ -23,6 +23,7 @@ struct StatFact: Identifiable {
 struct MonthOverview: View {
     let txs: [Tx]
     @Binding var month: Date
+    var showsMonthPill = true
     @ObservedObject private var ap = Appearance.shared
     @State private var chartIn = false
 
@@ -34,9 +35,11 @@ struct MonthOverview: View {
     var body: some View {
         let c = cur
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                MonthPill(month: $month)
-                Spacer()
+            if showsMonthPill {
+                HStack {
+                    MonthPill(month: $month)
+                    Spacer()
+                }
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text(c.net >= 0 ? "Осталось за месяц" : "Ушли в минус").font(.subheadline).foregroundStyle(.secondary)

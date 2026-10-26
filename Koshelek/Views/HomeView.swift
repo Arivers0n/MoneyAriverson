@@ -40,10 +40,56 @@ struct HomeView: View {
     private var pinHero: Bool { !layout.editing && layout.order.contains("summary") }
     private var scrollOrder: [String] { pinHero ? layout.order.filter { $0 != "summary" } : layout.order }
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
-        ZStack(alignment: .bottom) {
+        GeometryReader { geo in
+            // iPad в ширину — две колонки: лента слева, обзор месяца справа.
+            let wide = sizeClass == .regular && geo.size.width > 900 && !layout.editing
+            let colW = wide ? min(600, geo.size.width * 0.48) : min(geo.size.width, 720)
+            VStack(spacing: 0) {
+                topBar.padding(.top, 4).padding(.horizontal, wide ? 24 : 16)
+                    .frame(maxWidth: wide ? .infinity : 720)
+                HStack(alignment: .top, spacing: 0) {
+                    ZStack(alignment: .bottom) {
+                        mainColumn
+                        Group { if layout.editing { editBar } else { bottomButtons } }
+                            .transition(.opacity)
+                    }
+                    .frame(width: colW)
+                    if wide {
+                        SidePanel(txs: allTxs, month: $month, debts: debts, recs: recs)
+                            .frame(maxWidth: .infinity)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .animation(Motion.spring, value: wide)
+        }
+        .background(Backdrop())
+        .background(shortcuts)
+        .sheet(isPresented: $showAdd) { AddBlockSheet() }
+    }
+
+    /// Сочетания клавиш для клавиатуры iPad.
+    private var shortcuts: some View {
+        Group {
+            Button("") { router.show(.newTx) }.keyboardShortcut("n", modifiers: .command)
+            Button("") { router.show(.search) }.keyboardShortcut("f", modifiers: .command)
+            Button("") { router.startVoice() }.keyboardShortcut("r", modifiers: .command)
+            Button("") { router.show(.stats) }.keyboardShortcut("s", modifiers: [.command, .shift])
+            Button("") { router.show(.settings) }.keyboardShortcut(",", modifiers: .command)
+            Button("") { withAnimation(Motion.snappy) { month = month.addingMonths(-1) } }.keyboardShortcut(.leftArrow, modifiers: .command)
+            Button("") { withAnimation(Motion.snappy) { month = month.addingMonths(1) } }.keyboardShortcut(.rightArrow, modifiers: .command)
+        }
+        .opacity(0)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var mainColumn: some View {
         VStack(spacing: 0) {
-            topBar.padding(.top, 4).padding(.horizontal, 16)
             if pinHero {
                 hero
                     .padding(.horizontal, 16)
@@ -93,11 +139,6 @@ struct HomeView: View {
             }
             .ignoresSafeArea(edges: .bottom)
         }
-            Group { if layout.editing { editBar } else { bottomButtons } }
-                .transition(.opacity)
-        }
-        .background(Backdrop())
-        .sheet(isPresented: $showAdd) { AddBlockSheet() }
     }
 
     private var editPress: some Gesture {
@@ -653,6 +694,31 @@ struct OverscrollReader: ViewModifier {
             }
         } else {
             content
+        }
+    }
+}
+
+/// Правая колонка на iPad: обзор месяца, ближайшие платежи и копилки.
+private struct SidePanel: View {
+    let txs: [Tx]
+    @Binding var month: Date
+    let debts: [Debt]
+    let recs: [Recurring]
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                MonthOverview(txs: txs, month: $month, showsMonthPill: false)
+                PaymentsBlock(debts: debts, recs: recs, txs: txs)
+                GoalsBlock()
+                BudgetsBlock(txs: txs)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 28)
+            .padding(.bottom, 40)
+        }
+        .scrollIndicators(.hidden)
+        .background(alignment: .leading) {
+            Rectangle().fill(Color.primary.opacity(0.06)).frame(width: 1)
         }
     }
 }
