@@ -317,8 +317,8 @@ chmod +x /usr/local/bin/kopilka-login
 ln -sf /usr/local/bin/kopilka-login /usr/local/bin/kopilka-google
 
 say "Создаю администратора"
-ADMIN_PASS=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)
-sudo -u kopilka "$DIR/pocketbase" superuser upsert "$EMAIL" "$ADMIN_PASS" --dir="$DIR/pb_data" >/dev/null
+ADMIN_PASS=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 16 || true)
+runuser -u kopilka -- "$DIR/pocketbase" superuser upsert "$EMAIL" "$ADMIN_PASS" --dir="$DIR/pb_data" >/dev/null || die "не удалось создать администратора"
 
 say "Настраиваю ежедневный бэкап базы (хранится 14 дней)"
 cat > /etc/cron.daily/kopilka-backup <<CRON
@@ -332,7 +332,7 @@ say "Настраиваю HTTPS через Nginx"
 command -v nginx >/dev/null 2>&1 || apt-get install -y -qq nginx >/dev/null
 apt-get install -y -qq certbot python3-certbot-nginx >/dev/null
 
-owner_of() { ss -ltnpH "sport = :$1" 2>/dev/null | grep -o 'users:(("[^"]*' | head -1 | sed 's/users:(("//'; }
+owner_of() { ss -ltnpH "sport = :$1" 2>/dev/null | grep -o 'users:(("[^"]*' | head -1 | sed 's/users:(("//' || true; }
 P80=$(owner_of 80); P443=$(owner_of 443)
 echo "Порт 80 занят: ${P80:-свободен}; порт 443 занят: ${P443:-свободен}"
 if [ -n "$P80" ] && [ "$P80" != "nginx" ]; then
