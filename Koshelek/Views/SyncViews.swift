@@ -99,7 +99,7 @@ struct AccountView: View {
                             .font(.footnote).foregroundStyle(ok ? Theme.inc : Theme.exp)
                     }
                 } header: { Text("Адрес сервера") } footer: {
-                    Text("Адрес, который показал скрипт установки на вашем VPS, например money.example.ru или money.example.ru:8443.")
+                    Text("Уже указан сервер Копилки по умолчанию. Менять нужно, только если вам дали адрес другого сервера.")
                 }
                 if !providers.isEmpty {
                     Section {

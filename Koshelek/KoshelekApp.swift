@@ -78,6 +78,7 @@ struct RootView: View {
 
 
     @State private var showScan = false
+    @State private var showWelcome = !SyncEngine.shared.loggedIn && !UserDefaults.standard.bool(forKey: "welcome.done")
 
     private func startScan() {
         guard Keychain.hasKey else {
@@ -194,6 +195,13 @@ struct RootView: View {
             } else if p == .background {
                 ctx.commitIfNeeded()
             }
+        }
+        .fullScreenCover(isPresented: $showWelcome) {
+            WelcomeView {
+                UserDefaults.standard.set(true, forKey: "welcome.done")
+                showWelcome = false
+            }
+            .tint(ap.accentColor)
         }
         .tint(ap.accentColor)
         .fontDesign(ap.fontDesign)

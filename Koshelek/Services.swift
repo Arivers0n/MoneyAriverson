@@ -305,7 +305,8 @@ final class Router: ObservableObject {
             if !sync.loggedIn {
                 if !server.isEmpty { sync.server = SyncEngine.normalize(server) }
                 say("Сервер уже указан — войдите или зарегистрируйтесь")
-                show(.settings)
+                // при первом запуске экран входа и так открыт; иначе ведём в настройки
+                if UserDefaults.standard.bool(forKey: "welcome.done") { show(.settings) }
             } else if !code.isEmpty {
                 Task { await sync.joinPending(ctx: TestData.shared.context) }
             }

@@ -191,8 +191,14 @@ final class SyncEngine: ObservableObject {
     @Published var userEmail = UserDefaults.standard.string(forKey: "userEmail") ?? ""
     @Published var spaceVersion = 0
 
+    /// Сервер Копилки по умолчанию — вшит в приложение, чтобы друзьям и семье ничего не вводить.
+    static let defaultServer = "https://2-27-25-140.sslip.io:8443"
+
     var server: String {
-        get { UserDefaults.standard.string(forKey: "server") ?? "" }
+        get {
+            let s = UserDefaults.standard.string(forKey: "server") ?? ""
+            return s.isEmpty ? Self.defaultServer : s
+        }
         set { UserDefaults.standard.set(newValue, forKey: "server") }
     }
     var userID: String { UserDefaults.standard.string(forKey: "userID") ?? "" }
