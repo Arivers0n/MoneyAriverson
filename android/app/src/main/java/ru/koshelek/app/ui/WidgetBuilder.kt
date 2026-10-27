@@ -73,7 +73,7 @@ fun WidgetBuilderScreen() {
                     Text("Переименовать", color = p.accent, fontSize = 16.sp)
                 }
                 Divider1()
-                Segmented(WidgetFamilyKind.desktop.map { it.title }, WidgetFamilyKind.desktop.indexOf(family)) { family = WidgetFamilyKind.desktop[it] }
+                Segmented(WidgetFamilyKind.desktop.map { it.title }, WidgetFamilyKind.desktop.indexOf(family), onSel = { family = WidgetFamilyKind.desktop[it] })
             }
 
             // Предпросмотр
@@ -100,9 +100,9 @@ fun WidgetBuilderScreen() {
 
             // Фон
             Group("Фон") {
-                Segmented(WidgetBackgroundKind.entries.map { it.title }, design.background.kind.ordinal) { i ->
+                Segmented(WidgetBackgroundKind.entries.map { it.title }, design.background.kind.ordinal, onSel = { i ->
                     change { it.copy(background = it.background.copy(kind = WidgetBackgroundKind.entries[i])) }
-                }
+                })
                 HexRow("Цвет", design.background.colorA) { h -> change { it.copy(background = it.background.copy(colorA = h)) } }
                 if (design.background.kind == WidgetBackgroundKind.gradient) {
                     HexRow("Второй цвет", design.background.colorB) { h -> change { it.copy(background = it.background.copy(colorB = h)) } }
@@ -113,7 +113,7 @@ fun WidgetBuilderScreen() {
 
             // Раскладка
             Group("Раскладка") {
-                Segmented(WidgetLayoutKind.entries.map { it.title }, design.layout.ordinal) { i -> change { it.copy(layout = WidgetLayoutKind.entries[i]) } }
+                Segmented(WidgetLayoutKind.entries.map { it.title }, design.layout.ordinal, onSel = { i -> change { it.copy(layout = WidgetLayoutKind.entries[i]) } })
                 SliderRow("Отступ от краёв", design.padding, 0.0, 32.0, 1.0, "%.0f") { v -> change { it.copy(padding = v) } }
                 SliderRow("Между колонками", design.spacing, 0.0, 32.0, 1.0, "%.0f") { v -> change { it.copy(spacing = v) } }
             }
@@ -199,7 +199,7 @@ private fun BlockEditor(b: WidgetBlock, onChange: (WidgetBlock) -> Unit) {
         Chips { WidgetFontDesign.entries.forEach { d -> Chip(d.title, d == b.style.design) { st { it.copy(design = d) } } } }
         SliderRow("Размер", b.style.size, WidgetTextStyle.sizeMin, WidgetTextStyle.sizeMax, 1.0, "%.0f пт") { v -> st { it.copy(size = v) } }
         SliderRow("Толщина: ${weightNames[b.style.weight.coerceIn(0, 8)]}", b.style.weight.toDouble(), 0.0, 8.0, 1.0, "%.0f") { v -> st { it.copy(weight = v.toInt()) } }
-        Segmented(WidgetAlign.entries.map { it.title }, b.style.alignment.ordinal) { i -> st { it.copy(alignment = WidgetAlign.entries[i]) } }
+        Segmented(WidgetAlign.entries.map { it.title }, b.style.alignment.ordinal, onSel = { i -> st { it.copy(alignment = WidgetAlign.entries[i]) } })
         SwitchRow("ЗАГЛАВНЫЕ", b.style.uppercase) { v -> st { it.copy(uppercase = v) } }
         SliderRow("Межбуквенный интервал", b.style.tracking, -2.0, 10.0, 0.5, "%.1f") { v -> st { it.copy(tracking = v) } }
         SliderRow("Строк не больше", b.style.lineLimit.toDouble(), 1.0, 6.0, 1.0, "%.0f") { v -> st { it.copy(lineLimit = v.toInt()) } }
