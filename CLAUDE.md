@@ -70,6 +70,14 @@ HabitFlow (репо `Arivers0n/HabitFlow`, трекер привычек) взя
 
 На Android пока **нет**: напоминаний о платежах, бэкапа в файл и восстановления, импорта CSV, создания своих категорий, выбора значка.
 
+## Виджеты со своим дизайном
+- Настройки → «Виджеты»: 6 слотов («Виджет 1…6»), размеры малый/средний/большой (на iPhone ещё три для экрана блокировки — на Android их нет), пресеты, фон, раскладка, блоки (кольцо бюджета, баланс, копилка, платёж, неделя, напарник и др.), живой предпросмотр.
+- Дизайны хранятся на устройстве и **не синхронизируются**. Названия значений в JSON одинаковы на обеих платформах.
+- iOS: `Koshelek/Widgets/` (`Shared/` ещё и компилируется в расширение `KoshelekWidget`: WidgetConfig, WidgetSnapshot, WidgetRenderer, WidgetStorage; `WidgetStore`, `WidgetBuilderView`, `WidgetBlockEditor`). Данные идут через App Group `group.ru.koshelek.app` (запасной путь — общая связка ключей); ESign добавляет права из профиля сертификата. Виджет «Мой виджет» (`KoshelekDesign`) выбирает слот через AppIntent; быстрый виджет `KoshelekQuick` остался.
+- Android: `core/WidgetConfig.kt`, `core/WidgetSnapshot.kt` (те же правила и тексты), `widget/WidgetRender.kt` (рисует в картинку — и виджет, и предпросмотр), `widget/WidgetStore.kt` (дизайны, провайдеры Small/Medium/Large, окно выбора слота), `ui/WidgetBuilder.kt`. Обновление — по изменению данных с паузой 1 с и раз в 30 минут.
+- Правила расчёта и подписи блоков менять **одновременно** в `WidgetSnapshot.swift` и `WidgetSnapshot.kt`; раскладку — в `WidgetRenderer.swift` и `WidgetRender.kt`.
+- Тест `WidgetTest` рисует виджеты в `build/screens/widgets`.
+
 ## Пожелания владельца
 - Приложение только про деньги, не «приложение для жизни».
 - Очень удобный голосовой ввод.

@@ -66,6 +66,7 @@ extension ModelContext {
         do { try save() } catch { print("save error", error) }
         if !autoNotes.isEmpty { Router.shared.say(autoNotes.joined(separator: " · ")) }
         SyncEngine.shared.schedulePush()
+        WidgetStore.shared.scheduleRefresh()
     }
 }
 

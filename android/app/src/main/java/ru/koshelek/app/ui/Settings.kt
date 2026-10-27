@@ -70,7 +70,10 @@ fun SettingsScreen() {
             Group {
                 SettingRow("Оформление", Icons.Rounded.Palette, iosPink, detail = "темы, цвета, главный экран", onClick = { Router.show(Route.Appearance) })
                 Divider1()
-                SettingRow("Напарник", Icons.Rounded.Pets, hexColor("A2845E"), detail = CompanionCatalog.def(CompanionEngine.petId).name, onClick = { Router.show(Route.Companion) })            }
+                SettingRow("Напарник", Icons.Rounded.Pets, hexColor("A2845E"), detail = CompanionCatalog.def(CompanionEngine.petId).name, onClick = { Router.show(Route.Companion) })
+                Divider1()
+                SettingRow("Виджеты", Icons.Rounded.Widgets, iosIndigo, detail = "свой вид", onClick = { Router.show(Route.Widgets) })
+            }
             Group("Отклик") {
                 SettingRow("Вибрация", Icons.Rounded.Vibration, iosIndigo) { Switch(Look.haptics, { Look.haptics = it; Look.save(); Haptic.press() }, colors = sw(p)) }
                 Divider1()

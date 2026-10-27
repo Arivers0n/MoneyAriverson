@@ -20,6 +20,10 @@ targets:
     platform: iOS
     sources:
       - path: Koshelek
+    entitlements:
+      path: Koshelek/Koshelek.entitlements
+      properties:
+        com.apple.security.application-groups: [group.ru.koshelek.app]
     dependencies:
       - target: KoshelekWidget
         embed: true
@@ -60,6 +64,10 @@ targets:
     platform: iOS
     sources:
       - path: KoshelekWidget
+        excludes:
+          - Info.plist
+          - KoshelekWidget.entitlements
+      - path: Koshelek/Widgets/Shared
     info:
       path: KoshelekWidget/Info.plist
       properties:
@@ -68,6 +76,10 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: KoshelekWidget/KoshelekWidget.entitlements
+      properties:
+        com.apple.security.application-groups: [group.ru.koshelek.app]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ru.koshelek.app.widget

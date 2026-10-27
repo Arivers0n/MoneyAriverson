@@ -88,6 +88,7 @@ private fun Sheet(r: Route) {
         Route.Family -> FamilyScreen()
         Route.Appearance -> AppearanceScreen()
         Route.Companion -> CompanionScreen()
+        Route.Widgets -> WidgetBuilderScreen()
         is Route.PetChat -> PetChatScreen(r.petId, r.mood)
     }
 }

@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import ru.koshelek.app.core.Calc
 import ru.koshelek.app.core.Catalog
@@ -28,6 +29,11 @@ class KopilkaApp : Application() {
         Fmt.showKopecks = Look.showKopecks
         Calc.debtInTotals = Look.debtInTotals
         Updater.init(this)
+        // Виджеты на рабочем столе обновляются после любых изменений данных (с паузой в секунду)
+        @OptIn(kotlinx.coroutines.FlowPreview::class)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default).launch {
+            Store.snapshot.debounce(1000).collect { runCatching { ru.koshelek.app.widget.WidgetUpdater.updateAll(this@KopilkaApp) } }
+        }
     }
 }
 

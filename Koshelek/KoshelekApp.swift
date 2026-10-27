@@ -199,9 +199,10 @@ struct RootView: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { SceneDelegate.open(type) }
                 }
                 Notifier.reschedule(ctx: ctx)
-                Task { await sync.sync(ctx: ctx) }
+                Task { await sync.sync(ctx: ctx); WidgetStore.shared.scheduleRefresh() }
             } else if p == .background {
                 ctx.commitIfNeeded()
+                WidgetStore.shared.refresh()
             }
         }
         .fullScreenCover(isPresented: $showWelcome) {
@@ -221,6 +222,7 @@ struct RootView: View {
             // Пока приложение открыто — подтягиваем изменения семьи раз в 20 секунд
             while !Task.isCancelled {
                 await sync.sync(ctx: ctx)
+                WidgetStore.shared.scheduleRefresh()
                 try? await Task.sleep(nanoseconds: 20_000_000_000)
             }
         }

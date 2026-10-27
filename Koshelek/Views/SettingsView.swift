@@ -44,6 +44,7 @@ struct SettingsView: View {
                     }
                     NavigationLink { CategoriesView() } label: { SettingRow("Категории", "tag.fill", .orange) }
                     NavigationLink { PetPickerView() } label: { SettingRow("Напарник", "pawprint.fill", .brown, detail: CompanionCatalog.def(CompanionEngine.petID).name) }
+                    NavigationLink { WidgetBuilderView() } label: { SettingRow("Виджеты", "rectangle.3.group.fill", .indigo, detail: "свой вид") }
                 } header: { Text("Под себя") } footer: {
                     Text("Совет: удержите палец на главном экране — блоки можно убирать и добавлять прямо там.")
                 }

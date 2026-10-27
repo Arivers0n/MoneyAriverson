@@ -37,6 +37,21 @@
                 <data android:scheme="koshelek" />
             </intent-filter>
         </activity>
+        <receiver android:name=".widget.SmallWidget" android:exported="true" android:label="Мой виджет · малый">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_small" />
+        </receiver>
+        <receiver android:name=".widget.MediumWidget" android:exported="true" android:label="Мой виджет · средний">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_medium" />
+        </receiver>
+        <receiver android:name=".widget.LargeWidget" android:exported="true" android:label="Мой виджет · большой">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_large" />
+        </receiver>
+        <activity android:name=".widget.WidgetSlotActivity" android:exported="true" android:theme="@style/Theme.Kopilka">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" /></intent-filter>
+        </activity>
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="ru.koshelek.app.files"

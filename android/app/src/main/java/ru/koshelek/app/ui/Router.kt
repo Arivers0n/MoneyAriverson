@@ -20,6 +20,7 @@ sealed class Route {
     data object Family : Route()
     data object Appearance : Route()
     data object Companion : Route()
+    data object Widgets : Route()
     data class PetChat(val petId: String, val mood: String) : Route()
 }
 
