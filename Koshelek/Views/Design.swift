@@ -38,7 +38,8 @@ struct GlassCircle: View {
 /// Группа иконок в одной стеклянной капсуле.
 struct GlassIconGroup: View {
     struct Item: Identifiable {
-        let id = UUID()
+        /// Постоянный идентификатор: со случайным UUID кнопки пересоздавались при каждой перерисовке экрана.
+        var id: String { symbol }
         let symbol: String
         var dot = false
         let action: () -> Void

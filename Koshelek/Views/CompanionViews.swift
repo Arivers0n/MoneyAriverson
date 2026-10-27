@@ -81,7 +81,8 @@ struct PetView: View {
 
     var body: some View {
         let live = animated && Motion.moves
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !live)) { tl in
+        // 60 кадров/с: при 30 питомец выглядел рваным на фоне остального экрана
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: !live)) { tl in
             let t = live ? tl.date.timeIntervalSinceReferenceDate : 0.3
             let pose = live ? PetMotion.pose(pet.motion, mood: mood, t: t) : PetPose()
             GeometryReader { geo in

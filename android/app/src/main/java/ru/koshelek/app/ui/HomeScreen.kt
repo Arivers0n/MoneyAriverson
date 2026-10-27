@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
@@ -178,23 +179,33 @@ private fun FlowChip(icon: androidx.compose.ui.graphics.vector.ImageVector, colo
     }
 }
 
-/** Капсула «Инсайты»: тянется резинкой при обновлении, звёздочка крутится, в конце — галочка. */
+/**
+ * Капсула «Инсайты»: при оттягивании растягивается только по ширине, звёздочка крутится, в конце — галочка.
+ * Положение и высота не меняются, поэтому капсула не наезжает на соседние блоки и не двигает ленту.
+ */
 @Composable
 private fun PullPill(fraction: Float, refreshing: Boolean, done: String?, onClick: () -> Unit) {
     val p = LocalPal.current
     val armed = fraction >= 1f && !refreshing
     val stretch = (110f * (1 - 1 / (fraction * 0.9f + 1))).coerceAtLeast(0f)
-    val inf = rememberInfiniteTransition(label = "spin")
-    val spin by inf.animateFloat(0f, 360f, infiniteRepeatable(tween(1100, easing = LinearEasing)), label = "spin")
+    // вращение запускается только на время обновления — раньше анимация крутилась постоянно и держала экран «в работе»
+    val spin: State<Float>? = if (refreshing && Look.animated) {
+        rememberInfiniteTransition(label = "spin").animateFloat(0f, 360f, infiniteRepeatable(tween(1100, easing = LinearEasing)), label = "spin")
+    } else null
     val bg by animateColorAsState(when { armed -> p.accent; else -> p.accent.copy(alpha = (fraction.coerceIn(0f, 1f) * 0.16f)) }, label = "pillbg")
     val label = when { done != null -> done; refreshing -> "Обновляю…"; armed -> "Отпустите"; else -> "Инсайты" }
     val fg = when { armed -> p.onAccent; done != null -> p.inc; else -> p.text }
-    Row(Modifier.offset(y = (-stretch * 0.45f).dp).glass(RoundedCornerShape(50)).background(bg, RoundedCornerShape(50))
-        .pressable(onClick, 0.96f).padding(horizontal = (18 + stretch * 0.35f).dp).height((44 + stretch * 0.06f).dp),
+    Row(Modifier.glass(RoundedCornerShape(50)).background(bg, RoundedCornerShape(50))
+        .pressable(onClick, 0.96f).padding(horizontal = (18 + stretch * 0.35f).dp).height(44.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         AnimatedContent(done != null, label = "ico") { isDone ->
             Icon(if (isDone) Icons.Rounded.Check else Icons.Rounded.AutoAwesome, null, tint = fg,
-                modifier = Modifier.size(20.dp).rotate(if (refreshing && Look.animated) spin else fraction.coerceIn(0f, 1f) * 180f).scale(0.9f + fraction.coerceIn(0f, 1f) * 0.2f))
+                modifier = Modifier.size(20.dp).graphicsLayer {
+                    val f = fraction.coerceIn(0f, 1f)
+                    rotationZ = spin?.value ?: (f * 180f)
+                    scaleX = 0.9f + f * 0.2f
+                    scaleY = 0.9f + f * 0.2f
+                })
         }
         AnimatedContent(label, transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) }, label = "lbl") { l ->
             Text(l, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = fg)

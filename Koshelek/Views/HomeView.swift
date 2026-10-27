@@ -30,11 +30,10 @@ struct HomeView: View {
     private var monthTxs: [Tx] { txs.filter { $0.date.sameMonth(month) } }
     private var masked: Bool { ap.hideAmounts && !reveal }
 
-    @State private var pull: CGFloat = 0
-    @State private var pullState: PullState = .idle
-    @State private var pullTick = 0
+    /// Состояние оттягивания живёт в отдельном объекте: его читает только капсула,
+    /// поэтому главный экран не перерисовывается на каждый пиксель свайпа.
+    @State private var pm = PullModel()
     @State private var heroBump = false
-    @State private var refreshStart = Date.distantPast
 
     /// Шапка (итог месяца) закреплена, если блок «Итог» есть на экране и не идёт редактирование.
     private var pinHero: Bool { !layout.editing && layout.order.contains("summary") }
@@ -104,7 +103,7 @@ struct HomeView: View {
                     Color.clear.frame(height: 0)
                         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("homeScroll")).minY } action: { legacyPull($0) }
                     if !layout.editing && !layout.order.contains("insights") {
-                        PullPill(title: "Обновить", symbol: "arrow.down", pull: pull, state: pullState, since: refreshStart, hideWhenIdle: true) {}
+                        PullPill(model: pm, title: "Обновить", symbol: "arrow.down", hideWhenIdle: true) {}
                     }
                     VStack(spacing: layout.editing ? 18 : (ap.compact ? 16 : 22)) {
                         ForEach(scrollOrder, id: \.self) { id in
@@ -163,18 +162,21 @@ struct HomeView: View {
 
     private func onPull(_ y: CGFloat) {
         let p = max(0, y)
-        guard abs(p - pull) > 0.5 || p == 0 else { return }
-        pull = p
+        // обычная прокрутка (p == 0) и мелкая дрожь не должны ничего обновлять
+        if p == pm.pull { return }
+        if p != 0, abs(p - pm.pull) <= 0.5 { return }
+        pm.pull = p
         guard !layout.editing else { return }
-        switch pullState {
+        switch pm.state {
         case .idle, .pulling:
-            pullState = p > 4 ? .pulling : .idle
+            let next: PullState = p > 4 ? .pulling : .idle
+            if pm.state != next { pm.state = next }
             let tick = Int(min(p, Self.pullThreshold) / (Self.pullThreshold / 4))
-            if tick > pullTick, tick < 4 { Haptic.select() }
-            pullTick = tick
+            if tick > pm.tick, tick < 4 { Haptic.select() }
+            if pm.tick != tick { pm.tick = tick }
             if p >= Self.pullThreshold {
                 Haptic.press()
-                withAnimation(Motion.spring) { pullState = .armed }
+                withAnimation(Motion.spring) { pm.state = .armed }
             }
         case .armed:
             // палец отпустили — список поехал обратно
@@ -185,9 +187,9 @@ struct HomeView: View {
     }
 
     private func startRefresh() {
-        refreshStart = Date()
-        withAnimation(Motion.spring) { pullState = .refreshing }
-        pullTick = 0
+        pm.since = Date()
+        withAnimation(Motion.spring) { pm.state = .refreshing }
+        pm.tick = 0
         Task {
             let started = Date()
             if sync.loggedIn { await sync.sync(ctx: ctx) }
@@ -195,14 +197,14 @@ struct HomeView: View {
             let left = 0.9 - Date().timeIntervalSince(started)
             if left > 0 { try? await Task.sleep(nanoseconds: UInt64(left * 1_000_000_000)) }
             if case .error = sync.state { Haptic.warning() } else { Haptic.success() }
-            withAnimation(Motion.spring) { pullState = .done }
+            withAnimation(Motion.spring) { pm.state = .done }
             if Motion.moves {
                 withAnimation(Motion.pressDown) { heroBump = true }
                 try? await Task.sleep(nanoseconds: 120_000_000)
                 withAnimation(Motion.pop) { heroBump = false }
             }
             try? await Task.sleep(nanoseconds: 1_300_000_000)
-            withAnimation(Motion.spring) { pullState = .idle }
+            withAnimation(Motion.spring) { pm.state = .idle }
         }
     }
 
@@ -323,7 +325,7 @@ struct HomeView: View {
     }
 
     private var insightsButton: some View {
-        PullPill(title: "Инсайты", symbol: "sparkle", pull: pull, state: pullState, since: refreshStart, doneText: doneText) {
+        PullPill(model: pm, title: "Инсайты", symbol: "sparkle", doneText: doneText) {
             router.show(.insights)
         }
     }
@@ -366,8 +368,9 @@ struct HomeView: View {
             TxGroupedList(txs: monthTxs, accounts: accs)
                 .allowsHitTesting(!layout.editing)
                 // при смене месяца лента мягко сменяется, а не «телепортируется»
+                // (только растворение: размытие целого списка заметно тормозит)
                 .id(month)
-                .transition(.opacity.combined(with: .blurReplace))
+                .transition(.opacity)
         }
     }
 
@@ -569,19 +572,31 @@ struct AddBlockSheet: View {
 
 enum PullState: Equatable { case idle, pulling, armed, refreshing, done }
 
+/// Состояние «потяните, чтобы обновить». Читает его только сама капсула, а главный экран лишь пишет:
+/// так палец тянет капсулу без пересчёта всего экрана.
+@Observable
+final class PullModel {
+    var pull: CGFloat = 0
+    var state: PullState = .idle
+    var since = Date.distantPast
+    var tick = 0
+}
+
 struct PullPill: View {
+    let model: PullModel
     let title: String
     let symbol: String
-    let pull: CGFloat
-    let state: PullState
-    var since: Date = .distantPast
     var hideWhenIdle = false
     var doneText = "Обновлено"
     let action: () -> Void
 
+    private var pull: CGFloat { model.pull }
+    private var state: PullState { model.state }
+    private var since: Date { model.since }
+
     private var progress: CGFloat { min(1, pull / HomeView.pullThreshold) }
-    /// Резинка: растяжение всегда следует за списком — и когда тянете, и когда он пружинит обратно,
-    /// поэтому нет рывка в момент отпускания.
+    /// Резинка: растяжение только по ширине капсулы. Высота и положение не меняются,
+    /// поэтому капсула никогда не наезжает на соседние блоки и не двигает ленту.
     private var stretch: CGFloat {
         let c: CGFloat = 110
         return c * (1 - 1 / (max(0, pull) / c + 1))
@@ -590,6 +605,26 @@ struct PullPill: View {
     private var busy: Bool { state == .refreshing }
 
     var body: some View {
+        if hideWhenIdle { floating } else { pill }
+    }
+
+    /// Вариант без блока «Инсайты» на экране: капсула появляется в свободном месте над списком,
+    /// которое открывается, пока список оттянут, и остаётся на время обновления.
+    private var floating: some View {
+        let holds = state == .refreshing || state == .done
+        let showing = holds || state != .idle || pull >= 4
+        return Color.clear
+            .frame(height: holds ? 52 : 0)
+            .overlay(alignment: .bottom) {
+                pill
+                    .padding(.bottom, 6)
+                    .opacity(showing ? (holds ? 1 : min(1, pull / 40)) : 0)
+                    .allowsHitTesting(holds)
+            }
+            .animation(Motion.spring, value: holds)
+    }
+
+    private var pill: some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 icon
@@ -603,7 +638,7 @@ struct PullPill: View {
             }
             .foregroundStyle(armedLook ? Color.white : (state == .done ? Theme.inc : Color.primary))
             .padding(.horizontal, 18 + stretch * 0.35)
-            .frame(height: 44 + stretch * 0.06)
+            .frame(height: 44)
             .background {
                 ZStack {
                     // цвет набирается плавно по мере оттягивания
@@ -617,10 +652,6 @@ struct PullPill: View {
         .buttonStyle(Pressable())
         .glass(Capsule(), interactive: true)
         .scaleEffect(armedLook && Motion.moves ? 1.04 : 1)
-        // капсула едет вниз медленнее списка — ощущение, что её растягивает
-        .offset(y: -stretch * 0.45)
-        .opacity(hideWhenIdle && state == .idle && pull < 4 ? 0 : 1)
-        .frame(height: hideWhenIdle && state == .idle && pull < 4 ? 0 : nil)
         // смена состояний — одной мягкой пружиной; растяжение идёт за пальцем без задержки
         .animation(Motion.enabled ? .spring(duration: 0.45, bounce: 0.18) : nil, value: state)
     }

@@ -3,7 +3,8 @@ import SwiftData
 import Charts
 
 struct ChartPoint: Identifiable {
-    let id = UUID()
+    /// Постоянный идентификатор: со случайным UUID столбцы графика пересоздавались при каждой перерисовке.
+    var id: String { "\(month)|\(kind)" }
     let month: String
     let kind: String
     let value: Double
