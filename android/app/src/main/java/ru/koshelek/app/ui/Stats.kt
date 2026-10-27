@@ -315,7 +315,7 @@ fun InsightsScreen() {
     }
     AnimatedVisibility(chat, enter = slideInVertically { it / 3 } + fadeIn(), exit = slideOutVertically { it / 4 } + fadeOut()) {
         androidx.activity.compose.BackHandler { chat = false }
-        AdvisorChat { chat = false }
+        AdvisorChat(onClose = { chat = false })
     }
 }
 
