@@ -192,6 +192,9 @@ extension Claude {
 }
 
 struct AdvisorChat: View {
+    /// Если задан питомец — отвечает его голосом.
+    var pet: CompanionDef? = nil
+    var mood: CompanionMood = .calm
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var dismiss
     @State private var messages: [ChatMessage] = []
@@ -214,8 +217,12 @@ struct AdvisorChat: View {
                     VStack(alignment: .leading, spacing: 14) {
                         if messages.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
-                                Image(systemName: "sparkles").font(.title).foregroundStyle(Theme.accent)
-                                Text("Спросите что угодно о своих деньгах").font(.title3.weight(.semibold))
+                                if let pet {
+                                    PetView(pet: pet, mood: mood).frame(width: 96, height: 96)
+                                } else {
+                                    Image(systemName: "sparkles").font(.title).foregroundStyle(Theme.accent)
+                                }
+                                Text(pet?.greetLine ?? "Спросите что угодно о своих деньгах").font(.title3.weight(.semibold))
                                 Text("Советник видит ваши траты, долги, подписки и копилки — и отвечает с цифрами.")
                                     .font(.subheadline).foregroundStyle(.secondary)
                                 ForEach(suggestions, id: \.self) { s in
@@ -253,7 +260,7 @@ struct AdvisorChat: View {
             }
             .safeAreaInset(edge: .bottom) {
                 HStack(spacing: 8) {
-                    TextField("Спросить советника…", text: $input, axis: .vertical)
+                    TextField(pet == nil ? "Спросить советника…" : "Написать \(pet?.name ?? "")…", text: $input, axis: .vertical)
                         .lineLimit(1...4)
                         .focused($focused)
                         .padding(.horizontal, 14).padding(.vertical, 10)
@@ -267,7 +274,7 @@ struct AdvisorChat: View {
                 .padding(.horizontal, 12).padding(.vertical, 8)
                 .background(.bar)
             }
-            .navigationTitle("Советник")
+            .navigationTitle(pet?.name ?? "Советник")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Готово") { dismiss() } } }
         }
@@ -280,7 +287,7 @@ struct AdvisorChat: View {
         input = ""; err = nil
         messages.append(ChatMessage(fromUser: true, text: t))
         thinking = true
-        let system = Advisor.persona + "\n\nСвежие данные пользователя (JSON): " + Advisor.context(ctx: ctx)
+        let system = (pet.map { AICoach.persona(pet: $0, mood: mood) } ?? Advisor.persona) + "\n\nСвежие данные пользователя (JSON): " + Advisor.context(ctx: ctx)
         let history = Array(messages.suffix(16))
         Task {
             defer { thinking = false }

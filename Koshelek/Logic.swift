@@ -270,6 +270,7 @@ enum Saver {
         }
         ctx.commit()
         Notifier.reschedule(ctx: ctx)
+        if res.count > 0 { CompanionSound.tx() }
         return res
     }
 }

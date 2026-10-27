@@ -422,6 +422,7 @@ struct GoalAddSheet: View {
         if !take && toBudget {
             let acc = accs.first { $0.uid.uuidString == lastAcc }?.uid ?? accs.first?.uid
             ctx.insert(Tx(kind: .exp, amount: v, cat: "savings", note: goal.name, date: Date(), accID: acc))
+            CompanionSound.tx()
         }
         ctx.commit()
         dismiss()

@@ -54,6 +54,7 @@ object Look {
     var compact by b("ap.compact", false)
     var hideAmounts by b("ap.hide", false)
     var haptics by b("ap.haptics", true)
+    var sounds by b("ap.sounds", true)
     var motion by s("ap.motion", "full")
     var showKopecks by b("ap.kop", false)
     var debtInTotals by b("ap.debt", true)
@@ -62,7 +63,7 @@ object Look {
     fun save() {
         Settings.setStr("ap.scheme", scheme); Settings.setStr("ap.accent", accent); Settings.setStr("ap.bg", background)
         Settings.setStr("ap.cards", cards); Settings.setStr("ap.font", font); Settings.setStr("ap.big", bigNumber)
-        Settings.setBool("ap.compact", compact); Settings.setBool("ap.hide", hideAmounts); Settings.setBool("ap.haptics", haptics)
+        Settings.setBool("ap.compact", compact); Settings.setBool("ap.hide", hideAmounts); Settings.setBool("ap.haptics", haptics); Settings.setBool("ap.sounds", sounds)
         Settings.setStr("ap.motion", motion); Settings.setBool("ap.kop", showKopecks); Settings.setBool("ap.debt", debtInTotals)
         Settings.setBool("ap.inc", alwaysIncome)
         Fmt.showKopecks = showKopecks; Calc.debtInTotals = debtInTotals

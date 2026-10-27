@@ -216,6 +216,7 @@ struct HomeView: View {
     @ViewBuilder private func block(_ id: String) -> some View {
         switch id {
         case "summary": hero
+        case "companion": CompanionBlock(txs: allTxs)
         case "insights": insightsButton
         case "attention": attention
         case "budgets": BudgetsBlock(txs: allTxs)

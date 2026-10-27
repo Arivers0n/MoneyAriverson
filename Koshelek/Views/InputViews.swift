@@ -104,6 +104,7 @@ struct TxForm: View {
             t.date = date.noon; t.note = note
         } else {
             ctx.insert(Tx(kind: kind, amount: v, cat: kind == .tr ? "" : cat, note: note, date: date, accID: acc, toID: kind == .tr ? to : nil))
+            CompanionSound.tx()
         }
         if let acc { lastAcc = acc.uuidString }
         ctx.commit()

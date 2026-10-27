@@ -43,6 +43,7 @@ struct SettingsView: View {
                         SettingRow("Главный экран", "square.grid.2x2.fill", .blue)
                     }
                     NavigationLink { CategoriesView() } label: { SettingRow("Категории", "tag.fill", .orange) }
+                    NavigationLink { PetPickerView() } label: { SettingRow("Напарник", "pawprint.fill", .brown, detail: CompanionCatalog.def(CompanionEngine.petID).name) }
                 } header: { Text("Под себя") } footer: {
                     Text("Совет: удержите палец на главном экране — блоки можно убирать и добавлять прямо там.")
                 }
@@ -60,6 +61,8 @@ struct SettingsView: View {
                         Text("Все").tag("full"); Text("Спокойные").tag("calm"); Text("Выключены").tag("off")
                     } label: { SettingRow("Анимации", "sparkles", .teal) }
                     Toggle(isOn: $ap.confetti) { SettingRow("Конфетти за цели", "party.popper.fill", .yellow) }
+                    Toggle(isOn: $ap.sounds) { SettingRow("Звуки", "speaker.wave.2.fill", .purple) }
+                        .onChange(of: ap.sounds) { _, v in if v { CompanionSound.xp() } }
                 } header: { Text("Ощущения") } footer: {
                     Text("«Спокойные» — без покачиваний и счётчиков, только мягкие переходы. Если в iOS включено «Уменьшение движения», анимации выключаются сами.")
                 }

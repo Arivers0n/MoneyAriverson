@@ -78,3 +78,8 @@ HabitFlow (репо `Arivers0n/HabitFlow`, трекер привычек) взя
 ## Коммиты
 - Сообщения коммитов — на русском, коротко о том, что изменилось для пользователя.
 - Работаем прямо в `main` (каждый пуш = новая сборка обеих платформ).
+
+## Напарник (питомец)
+- Каталог питомцев и их тексты генерируются из `tools/companions/spec.py` скриптом `tools/companions/gen_code.py` в `Koshelek/CompanionCatalog.swift` и `core/CompanionCatalog.kt` — руками не править, править spec.py и запускать скрипт.
+- Картинки: `tools/companions/install_assets.py`; звуки синтезируются `make_sounds.py` (в `Koshelek/Sounds` и `res/raw`).
+- Опыт, уровень, настроение и угощения выводятся из операций (`CompanionEngine.swift` ↔ `core/CompanionEngine.kt`, правила одинаковые, счёт с 27.10.2026). Выбранный питомец и число угощений хранятся только на устройстве, в синхронизацию не попадают.

@@ -24,6 +24,7 @@ class KopilkaApp : Application() {
         Store.init(this)
         SyncEngine.init()
         Haptic.init(this)
+        ru.koshelek.app.core.CompanionSound.init(this)
         Fmt.showKopecks = Look.showKopecks
         Calc.debtInTotals = Look.debtInTotals
         Updater.init(this)

@@ -322,7 +322,7 @@ fun InsightsScreen() {
 private data class Msg(val user: Boolean, val text: String, val id: Long = System.nanoTime())
 
 @Composable
-private fun AdvisorChat(onClose: () -> Unit) {
+internal fun AdvisorChat(onClose: () -> Unit, pet: CompanionDef? = null, mood: CompanionMood = CompanionMood.CALM) {
     val p = LocalPal.current
     val scope = rememberCoroutineScope()
     val msgs = remember { mutableStateListOf<Msg>() }
@@ -338,7 +338,7 @@ private fun AdvisorChat(onClose: () -> Unit) {
         if (t.isEmpty() || thinking) return
         if (!Claude.available) { err = "ИИ работает после входа в аккаунт"; return }
         input = ""; err = null; msgs += Msg(true, t); thinking = true
-        val system = Brain.persona + "\n\nСвежие данные пользователя (JSON): " + Brain.context(Store.snapshot.value)
+        val system = (if (pet != null) AICoach.persona(pet, mood, Brain.persona) else Brain.persona) + "\n\nСвежие данные пользователя (JSON): " + Brain.context(Store.snapshot.value)
         val history = msgs.takeLast(16).map { it.user to it.text }
         scope.launch {
             runCatching { Claude.chat(system, history) }.onSuccess { msgs += Msg(false, it.trim()) }.onFailure { err = it.message }
@@ -346,10 +346,10 @@ private fun AdvisorChat(onClose: () -> Unit) {
         }
     }
 
-    SheetScaffold("Советник", Icons.Rounded.Forum, onClose = onClose, bottom = {
+    SheetScaffold(pet?.name ?: "Советник", Icons.Rounded.Forum, onClose = onClose, bottom = {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).background(p.soft)) {
-                KTextField(input, { input = it }, "Спросить советника…", singleLine = false)
+                KTextField(input, { input = it }, if (pet == null) "Спросить советника…" else "Написать ${pet.name}…", singleLine = false)
             }
             Box(Modifier.size(46.dp).clip(CircleShape).background(if (input.isBlank() || thinking) p.soft else p.accent).pressable({ send(input) }, 0.9f), contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.ArrowUpward, "Отправить", tint = if (input.isBlank() || thinking) p.secondary else p.onAccent)
@@ -359,8 +359,9 @@ private fun AdvisorChat(onClose: () -> Unit) {
         LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (msgs.isEmpty()) item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Rounded.AutoAwesome, null, tint = p.accent, modifier = Modifier.size(32.dp))
-                    Text("Спросите что угодно о своих деньгах", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = p.text)
+                    if (pet != null) PetView(pet, mood, Modifier.size(96.dp))
+                    else Icon(Icons.Rounded.AutoAwesome, null, tint = p.accent, modifier = Modifier.size(32.dp))
+                    Text(pet?.greetLine ?: "Спросите что угодно о своих деньгах", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = p.text)
                     Text("Советник видит ваши траты, долги, подписки и копилки — и отвечает с цифрами.", fontSize = 14.sp, color = p.secondary)
                     suggestions.forEach { s ->
                         Text(s, fontSize = 15.sp, color = p.text, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(p.soft).pressable({ send(s) }, 0.98f).padding(12.dp))

@@ -69,13 +69,15 @@ fun SettingsScreen() {
             }
             Group {
                 SettingRow("Оформление", Icons.Rounded.Palette, iosPink, detail = "темы, цвета, главный экран", onClick = { Router.show(Route.Appearance) })
-            }
+                Divider1()
+                SettingRow("Напарник", Icons.Rounded.Pets, hexColor("A2845E"), detail = CompanionCatalog.def(CompanionEngine.petId).name, onClick = { Router.show(Route.Companion) })            }
             Group("Отклик") {
                 SettingRow("Вибрация", Icons.Rounded.Vibration, iosIndigo) { Switch(Look.haptics, { Look.haptics = it; Look.save(); Haptic.press() }, colors = sw(p)) }
                 Divider1()
                 SettingRow("Анимации", Icons.Rounded.AutoAwesome, iosTeal)
                 Segmented(listOf("Все", "Спокойные", "Выкл"), when (Look.motion) { "full" -> 0; "reduced" -> 1; else -> 2 }, { Look.motion = listOf("full", "reduced", "off")[it]; Look.save() })
-            }
+                Divider1()
+                SettingRow("Звуки", Icons.Rounded.MusicNote, hexColor("AF52DE")) { Switch(Look.sounds, { Look.sounds = it; Look.save(); if (it) CompanionSound.xp() }, colors = sw(p)) }            }
             Group("Расчёты") {
                 SettingRow("Показывать копейки", Icons.Rounded.Tag, iosGray) { Switch(Look.showKopecks, { Look.showKopecks = it; Look.save() }, colors = sw(p)) }
                 Divider1()

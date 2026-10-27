@@ -88,6 +88,7 @@ fun HomeScreen() {
                                     }
                                 }
                                 attention(snap)
+                                item { CompanionCard(snap) }
                                 item { QuickBlock(snap.txs, masked) }
                                 feed(monthTxs, snap, masked)
                             }

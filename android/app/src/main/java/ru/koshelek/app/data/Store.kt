@@ -141,6 +141,7 @@ object Store {
         val old = synchronized(this) { docs[key(Space.current, "tx", t.id)] }
         put("tx", t.id, t.payload(old?.data ?: JsonObject(emptyMap())))
         if (old == null) {
+            ru.koshelek.app.core.CompanionSound.tx()
             val notes = applyGoalRules(t)
             if (notes.isNotEmpty()) onNote?.invoke(notes.joinToString(" · "))
         }

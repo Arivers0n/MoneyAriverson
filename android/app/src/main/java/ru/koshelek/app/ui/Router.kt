@@ -19,6 +19,8 @@ sealed class Route {
     data object Account : Route()
     data object Family : Route()
     data object Appearance : Route()
+    data object Companion : Route()
+    data class PetChat(val petId: String, val mood: String) : Route()
 }
 
 /** Навигация и общие состояния экрана (как Router на iPhone). */
