@@ -1,0 +1,334 @@
+import SwiftUI
+import QuickLook
+import UniformTypeIdentifiers
+
+// MARK: - Чат
+
+struct ChatView: View {
+    @EnvironmentObject var store: Store
+    @State private var text = ""
+    @State private var sender: Who = .me
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 8) {
+                        if store.data.messages.isEmpty {
+                            EmptyState(icon: "bubble.left.and.bubble.right", title: "Ваш чат",
+                                       text: "Короткие сообщения друг другу. Для общения между двумя телефонами нужна синхронизация.")
+                        }
+                        ForEach(store.data.messages) { m in
+                            HStack {
+                                if m.from == .me { Spacer(minLength: 50) }
+                                VStack(alignment: m.from == .me ? .trailing : .leading, spacing: 2) {
+                                    Text(m.text).padding(.horizontal, 14).padding(.vertical, 10)
+                                        .background(store.color(m.from), in: RoundedRectangle(cornerRadius: min(store.radius, 20), style: .continuous))
+                                        .foregroundStyle(.white)
+                                    Text(m.date.formatted(.dateTime.hour().minute())).font(.caption2).foregroundStyle(.secondary)
+                                }
+                                if m.from == .partner { Spacer(minLength: 50) }
+                            }
+                            .id(m.id)
+                        }
+                    }
+                    .padding(16)
+                }
+                .onChange(of: store.data.messages.count) { _, _ in
+                    if let last = store.data.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
+                }
+            }
+            HStack(spacing: 10) {
+                Menu {
+                    Button(store.name(.me)) { sender = .me }
+                    Button(store.name(.partner)) { sender = .partner }
+                } label: { Circle().fill(store.color(sender)).frame(width: 28, height: 28) }
+                TextField("Сообщение", text: $text, axis: .vertical).lineLimit(1...4)
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(Pal.card, in: Capsule())
+                Button(action: send) { Image(systemName: "arrow.up.circle.fill").font(.system(size: 32)) }
+                    .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8)
+        }
+        .background(Pal.bg.ignoresSafeArea())
+    }
+
+    private func send() {
+        let t = text.trimmingCharacters(in: .whitespaces)
+        guard !t.isEmpty else { return }
+        store.data.messages.append(ChatMessage(text: t, from: sender))
+        text = ""
+        store.tap()
+    }
+}
+
+// MARK: - Планы
+
+struct PlansView: View {
+    @EnvironmentObject var store: Store
+    @State private var adding = false
+
+    var body: some View {
+        Screen {
+            if store.data.plans.isEmpty {
+                EmptyState(icon: "flag", title: "Общие планы", text: "Поездка, ремонт, большая покупка — разбейте на шаги и двигайтесь вместе.",
+                           action: "Новый план", onTap: { adding = true })
+            }
+            ForEach(store.data.plans) { p in
+                NavigationLink { PlanDetail(plan: store.bind(\.plans, p)) } label: {
+                    let done = p.steps.filter { $0.done }.count
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text(p.emoji).font(.title)
+                            VStack(alignment: .leading) {
+                                Text(p.title).font(.body.weight(.semibold))
+                                if let d = p.target {
+                                    Text(d.formatted(.dateTime.day().month(.wide).year())).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            Text("\(done)/\(p.steps.count)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                        }
+                        ProgressView(value: p.steps.isEmpty ? 0 : Double(done) / Double(p.steps.count)).tint(store.meColor)
+                    }
+                    .padding(14).card()
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .navigationTitle("Планы")
+        .pairToolbar(scope: false, add: { adding = true })
+        .sheet(isPresented: $adding) { AddPlanSheet() }
+    }
+}
+
+struct AddPlanSheet: View {
+    @EnvironmentObject var store: Store
+    @State private var title = ""
+    @State private var emoji = "✈️"
+    @State private var hasDate = false
+    @State private var date = Date()
+
+    var body: some View {
+        FormSheet(title: "Новый план", canSave: !title.trimmingCharacters(in: .whitespaces).isEmpty, onSave: {
+            store.data.plans.append(Plan(title: title, emoji: emoji, target: hasDate ? date : nil))
+        }) {
+            Section {
+                TextField("Название", text: $title)
+                TextField("Эмодзи", text: $emoji)
+                Toggle("Целевая дата", isOn: $hasDate)
+                if hasDate { DatePicker("Дата", selection: $date, displayedComponents: .date) }
+            }
+        }
+    }
+}
+
+struct PlanDetail: View {
+    @EnvironmentObject var store: Store
+    @Binding var plan: Plan
+    @State private var text = ""
+
+    var body: some View {
+        Screen {
+            HStack {
+                TextField("Новый шаг", text: $text).onSubmit(add)
+                Button(action: add) { Image(systemName: "plus.circle.fill").font(.title2) }
+            }
+            .padding(14).card()
+            ForEach($plan.steps) { $s in
+                HStack(spacing: 12) {
+                    Button { s.done.toggle(); store.tap() } label: {
+                        Image(systemName: s.done ? "checkmark.circle.fill" : "circle").font(.title3)
+                            .foregroundStyle(s.done ? store.meColor : Color.secondary)
+                    }.buttonStyle(.plain)
+                    Text(s.title).strikethrough(s.done)
+                    Spacer()
+                }
+                .padding(14).card()
+            }
+        }
+        .navigationTitle("\(plan.emoji) \(plan.title)")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(role: .destructive) {
+                    let id = plan.id
+                    store.data.plans.removeAll { $0.id == id }
+                } label: { Image(systemName: "trash") }
+            }
+        }
+    }
+
+    private func add() {
+        let t = text.trimmingCharacters(in: .whitespaces)
+        guard !t.isEmpty else { return }
+        plan.steps.append(ListEntry(title: t))
+        text = ""
+    }
+}
+
+// MARK: - Заметки
+
+struct NotesView: View {
+    @EnvironmentObject var store: Store
+    @State private var editing: Note?
+
+    var body: some View {
+        let sorted = store.data.notes.sorted { ($0.pinned ? 1 : 0, $0.date) > ($1.pinned ? 1 : 0, $1.date) }
+        Screen {
+            if sorted.isEmpty {
+                EmptyState(icon: "note.text", title: "Общие заметки", text: "Пароли от wifi, размеры, идеи — всё в одном месте.",
+                           action: "Новая заметка", onTap: { editing = Note(title: "") })
+            }
+            ForEach(sorted) { n in
+                Button { editing = n } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(n.title.isEmpty ? "Без названия" : n.title).font(.body.weight(.semibold))
+                            Spacer()
+                            if n.pinned { Image(systemName: "pin.fill").font(.caption).foregroundStyle(store.partnerColor) }
+                        }
+                        if !n.body.isEmpty { Text(n.body).font(.subheadline).foregroundStyle(.secondary).lineLimit(3) }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(14).card()
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .navigationTitle("Заметки")
+        .pairToolbar(scope: false, add: { editing = Note(title: "") })
+        .sheet(item: $editing) { n in NoteEditor(note: n) }
+    }
+}
+
+struct NoteEditor: View {
+    @EnvironmentObject var store: Store
+    @State var note: Note
+
+    var body: some View {
+        FormSheet(title: "Заметка", onSave: {
+            var n = note
+            n.date = Date()
+            if let i = store.data.notes.firstIndex(where: { $0.id == n.id }) { store.data.notes[i] = n }
+            else if !(n.title.isEmpty && n.body.isEmpty) { store.data.notes.append(n) }
+        }) {
+            Section {
+                TextField("Название", text: $note.title)
+                TextField("Текст", text: $note.body, axis: .vertical).lineLimit(5...20)
+                Toggle("Закрепить", isOn: $note.pinned)
+            }
+            if store.data.notes.contains(where: { $0.id == note.id }) {
+                Section {
+                    Button("Удалить", role: .destructive) {
+                        let id = note.id
+                        store.data.notes.removeAll { $0.id == id }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Файлы
+
+struct FilesView: View {
+    @EnvironmentObject var store: Store
+    @State private var importing = false
+    @State private var preview: URL?
+
+    private var dir: URL {
+        let d = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Files")
+        try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+        return d
+    }
+
+    var body: some View {
+        Screen {
+            if store.data.files.isEmpty {
+                EmptyState(icon: "folder", title: "Общие файлы", text: "Билеты, документы, фото. Раздел закрыт Face ID.",
+                           action: "Добавить файл", onTap: { importing = true })
+            }
+            ForEach(store.data.files) { f in
+                HStack(spacing: 12) {
+                    Image(systemName: "doc").font(.title2).foregroundStyle(store.meColor)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(f.name).font(.body.weight(.medium)).lineLimit(1)
+                        Text(f.date.formatted(.dateTime.day().month().year())).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    ShareLink(item: dir.appendingPathComponent(f.stored)) { Image(systemName: "square.and.arrow.up") }
+                    Button(role: .destructive) {
+                        try? FileManager.default.removeItem(at: dir.appendingPathComponent(f.stored))
+                        store.data.files.removeAll { $0.id == f.id }
+                    } label: { Image(systemName: "trash").foregroundStyle(.secondary) }
+                }
+                .padding(14).card()
+                .onTapGesture { preview = dir.appendingPathComponent(f.stored) }
+            }
+        }
+        .pairToolbar(scope: false, add: { importing = true })
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { res in
+            guard case .success(let urls) = res else { return }
+            for u in urls {
+                let ok = u.startAccessingSecurityScopedResource()
+                defer { if ok { u.stopAccessingSecurityScopedResource() } }
+                let stored = UUID().uuidString + "-" + u.lastPathComponent
+                if (try? FileManager.default.copyItem(at: u, to: dir.appendingPathComponent(stored))) != nil {
+                    store.data.files.append(FileItem(name: u.lastPathComponent, stored: stored))
+                }
+            }
+        }
+        .quickLookPreview($preview)
+    }
+}
+
+// MARK: - Карты
+
+struct CardsView: View {
+    @EnvironmentObject var store: Store
+    @State private var adding = false
+
+    var body: some View {
+        Screen {
+            Text("Для скидочных и бонусных карт. Номера банковских карт здесь не храните.")
+                .font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+            if store.data.cards.isEmpty {
+                EmptyState(icon: "creditcard", title: "Общие карты", text: "Карты магазинов и кафе, которыми пользуетесь оба.",
+                           action: "Добавить карту", onTap: { adding = true })
+            }
+            ForEach(store.data.cards) { c in
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack { Text(c.name).font(.headline); Spacer()
+                        Button(role: .destructive) { store.data.cards.removeAll { $0.id == c.id } } label: { Image(systemName: "trash") } }
+                    Text(c.number).font(.title3.monospaced())
+                    if !c.note.isEmpty { Text(c.note).font(.caption) }
+                }
+                .foregroundStyle(.white).padding(18).frame(maxWidth: .infinity, alignment: .leading)
+                .background(LinearGradient(colors: [store.meColor, store.partnerColor], startPoint: .topLeading, endPoint: .bottomTrailing),
+                            in: RoundedRectangle(cornerRadius: store.radius, style: .continuous))
+                .onTapGesture { UIPasteboard.general.string = c.number; store.success() }
+            }
+        }
+        .pairToolbar(scope: false, add: { adding = true })
+        .sheet(isPresented: $adding) { AddCardSheet() }
+    }
+}
+
+struct AddCardSheet: View {
+    @EnvironmentObject var store: Store
+    @State private var name = ""
+    @State private var number = ""
+    @State private var note = ""
+
+    var body: some View {
+        FormSheet(title: "Новая карта", canSave: !name.isEmpty && !number.isEmpty, onSave: {
+            store.data.cards.append(SecureCard(name: name, number: number, note: note))
+        }) {
+            Section {
+                TextField("Название (Магнит, Кофе)", text: $name)
+                TextField("Номер карты лояльности", text: $number)
+                TextField("Заметка", text: $note)
+            }
+        }
+    }
+}

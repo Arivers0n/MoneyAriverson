@@ -1,0 +1,76 @@
+name: Сборка Вдвоём (.ipa)
+
+# Только ветка vdvoem — сборки Кошелька (main) это не затрагивает.
+on:
+  push:
+    branches: [vdvoem]
+    paths: ['Vdvoem/**', '.github/workflows/vdvoem.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vdvoem
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15-intel
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: Vdvoem
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Выбрать самый новый Xcode
+        run: |
+          XC=$(ls -d /Applications/Xcode*.app | grep -v -i beta | sort -V | tail -1)
+          echo "Using $XC"
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+
+      - name: Установить XcodeGen
+        run: brew install xcodegen
+
+      - name: Сгенерировать проект
+        run: xcodegen generate
+
+      - name: Собрать
+        run: |
+          set +e
+          xcodebuild -project Vdvoem.xcodeproj -scheme Vdvoem -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build > build.log 2>&1
+          code=$?
+          grep -E "error:|BUILD (SUCCEEDED|FAILED)" build.log | sort -u | head -100
+          exit $code
+
+      - name: Ошибки компиляции
+        if: failure()
+        run: grep -E "error:" build.log | sort -u | head -80 || true
+
+      - name: Упаковать .ipa
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Vdvoem.app Payload/
+          zip -qry Vdvoem.ipa Payload
+          ls -lh Vdvoem.ipa
+          size=$(stat -f%z Vdvoem.ipa)
+          if [ "$size" -lt 300000 ]; then echo "ipa подозрительно маленький: $size байт"; exit 1; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vdvoem-ipa
+          path: Vdvoem/Vdvoem.ipa
+
+      - name: Выложить в релиз «vdvoem-latest»
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: vdvoem-latest
+          name: Вдвоём — последняя сборка
+          body: "Неподписанный .ipa. Подпишите своим сертификатом (ESign). Сборка ${{ github.sha }}."
+          files: Vdvoem/Vdvoem.ipa
+          make_latest: false
