@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Рисует значки приложения (1024 px) в Vdvoem/Assets.xcassets. Запуск: python3 Vdvoem/tools/make_icons.py"""
 import json, math, os
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageChops
+ImageChopsSubtract = ImageChops.subtract
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Assets.xcassets")
 S = 1024
@@ -67,26 +68,67 @@ def shape_mask(kind):
         return m.crop((S // 2, S // 2, S // 2 + S, S // 2 + S))
     return m.resize((S, S), Image.LANCZOS)
 
+def blob(im, color, box, blur):
+    layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(layer).ellipse(box, fill=color)
+    return Image.alpha_composite(im, layer.filter(ImageFilter.GaussianBlur(blur)))
+
+def sparkle(d, cx, cy, r, alpha=230):
+    pts = []
+    for i in range(8):
+        rr = r if i % 2 == 0 else r * 0.22
+        a = -math.pi / 2 + i * math.pi / 4
+        pts.append((cx + rr * math.cos(a), cy + rr * math.sin(a)))
+    d.polygon(pts, fill=(255, 255, 255, alpha))
+
 def make(name, a, b, kind):
+    ca, cb = rgb(a), rgb(b)
     im = gradient(a, b).convert("RGBA")
-    # мягкий блик сверху
-    glow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    ImageDraw.Draw(glow).ellipse((-200, -500, S+200, 420), fill=(255, 255, 255, 40))
-    im = Image.alpha_composite(im, glow.filter(ImageFilter.GaussianBlur(40)))
+    # цветные световые пятна для глубины
+    im = blob(im, ca + (200,), (-250, -300, 650, 500), 110)
+    im = blob(im, tuple(min(255, int(v * 1.25)) for v in cb) + (170,), (420, 520, 1250, 1300), 120)
+    im = blob(im, (255, 255, 255, 70), (150, -150, 900, 350), 90)
+
     mask = shape_mask(kind)
-    shadow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    shadow.putalpha(mask.filter(ImageFilter.GaussianBlur(26)).point(lambda v: int(v * 0.28)))
-    shifted = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    shifted.paste(shadow, (0, 18))
-    im = Image.alpha_composite(im, shifted)
-    white = Image.new("RGBA", (S, S), (255, 255, 255, 255))
-    white.putalpha(mask)
-    im = Image.alpha_composite(im, white)
-    d = os.path.join(ROOT, name + ".appiconset")
-    os.makedirs(d, exist_ok=True)
-    im.convert("RGB").save(os.path.join(d, "icon.png"))
+    # тень фигуры
+    sh = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    sh.putalpha(mask.filter(ImageFilter.GaussianBlur(34)).point(lambda v: int(v * 0.40)))
+    moved = Image.new("RGBA", (S, S), (0, 0, 0, 0)); moved.paste(sh, (0, 26))
+    im = Image.alpha_composite(im, moved)
+
+    # объёмная фигура: градиент белый -> светлый оттенок + внутренний блик
+    fig = Image.new("RGBA", (S, S))
+    px = fig.load()
+    tint = tuple(int(255 - (255 - v) * 0.30) for v in ca)
+    for y in range(S):
+        t = y / (S - 1)
+        col = tuple(int(255 * (1 - t) + tint[k] * t) for k in range(3))
+        for x in range(S):
+            px[x, y] = col + (255,)
+    fig.putalpha(mask)
+    im = Image.alpha_composite(im, fig)
+    # внутренняя тень снизу и блик сверху
+    inner = mask.filter(ImageFilter.GaussianBlur(14))
+    rim = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    rim.putalpha(Image.eval(ImageChopsSubtract(mask, inner), lambda v: min(255, v * 2)))
+    rimc = Image.new("RGBA", (S, S), tuple(max(0, int(v * 0.65)) for v in cb) + (255,))
+    rimc.putalpha(rim.getchannel("A").point(lambda v: int(v * 0.35)))
+    im = Image.alpha_composite(im, rimc)
+    gloss = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(gloss).ellipse((S*0.22, S*0.12, S*0.78, S*0.46), fill=(255, 255, 255, 120))
+    gm = Image.new("L", (S, S), 0); gm.paste(mask, (0, 0))
+    gloss.putalpha(Image.fromarray(__import__("numpy").minimum(__import__("numpy").array(gloss.getchannel("A")), __import__("numpy").array(gm))))
+    im = Image.alpha_composite(im, gloss.filter(ImageFilter.GaussianBlur(30)))
+    # искры
+    sp = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(sp)
+    sparkle(d, 800, 230, 62); sparkle(d, 230, 760, 42, 200); sparkle(d, 850, 700, 26, 170); sparkle(d, 190, 270, 22, 160)
+    im = Image.alpha_composite(im, sp.filter(ImageFilter.GaussianBlur(0.8)))
+    d2 = os.path.join(ROOT, name + ".appiconset")
+    os.makedirs(d2, exist_ok=True)
+    im.convert("RGB").save(os.path.join(d2, "icon.png"))
     json.dump({"images": [{"filename": "icon.png", "idiom": "universal", "platform": "ios", "size": "1024x1024"}],
-               "info": {"author": "xcode", "version": 1}}, open(os.path.join(d, "Contents.json"), "w"), indent=2)
+               "info": {"author": "xcode", "version": 1}}, open(os.path.join(d2, "Contents.json"), "w"), indent=2)
 
 os.makedirs(ROOT, exist_ok=True)
 json.dump({"info": {"author": "xcode", "version": 1}}, open(os.path.join(ROOT, "Contents.json"), "w"))
