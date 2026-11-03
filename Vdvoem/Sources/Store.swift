@@ -26,6 +26,14 @@ final class Store: ObservableObject {
         location.attach(self)
         WidgetBridge.shared.update(self)
         seedCountersIfNeeded()
+        UIDevice.current.isBatteryMonitoringEnabled = true
+        NotificationCenter.default.addObserver(forName: UIDevice.batteryLevelDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.updateBattery() }
+        }
+        NotificationCenter.default.addObserver(forName: UIDevice.batteryStateDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.updateBattery() }
+        }
+        updateBattery()
     }
 
     func applyTheme() {

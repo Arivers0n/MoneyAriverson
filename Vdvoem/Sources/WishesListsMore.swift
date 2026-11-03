@@ -223,23 +223,16 @@ struct MoreView: View {
         return !(a?.me.isEmpty ?? true)
     }
 
-    private static let hues = ["F43F5E", "8B5CF6", "0EA5E9", "10B981", "F59E0B", "EC4899", "6366F1", "14B8A6", "E8590C", "3B82F6"]
-
-    private func hue(_ m: Module) -> Color {
-        let idx = Module.allCases.firstIndex(of: m) ?? 0
-        return Color(hex: Self.hues[idx % Self.hues.count])
-    }
-
     var body: some View {
         Screen {
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(store.more) { m in
                     NavigationLink { ModuleView(module: m) } label: {
-                        tile(m.title, m.icon, hue(m), locked: m.locked, dot: m == .question && !answeredToday)
+                        tile(m.title, m.subtitle, m.art, m.hex, locked: m.locked, dot: m == .question && !answeredToday)
                     }
                     .buttonStyle(.plain)
                 }
-                NavigationLink { SettingsView() } label: { tile("Настройки", "gearshape.fill", Color(hex: "64748B"), locked: false, dot: false) }
+                NavigationLink { SettingsView() } label: { tile("Настройки", "Вид, пара, защита", "⚙️", "AEB8C8", locked: false, dot: false) }
                     .buttonStyle(.plain)
             }
             .padding(.top, 4)
@@ -263,20 +256,27 @@ struct MoreView: View {
         .pairToolbar()
     }
 
-    private func tile(_ title: String, _ icon: String, _ c: Color, locked: Bool, dot: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundStyle(.white)
-                    .frame(width: 48, height: 48)
-                    .background(LinearGradient(colors: [c, c.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                                in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: c.opacity(0.4), radius: 8, y: 5)
-                Spacer()
-                if dot { Circle().fill(store.partnerColor).frame(width: 10, height: 10) }
-                if locked { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.tertiary) }
+    private func tile(_ title: String, _ sub: String, _ art: String, _ hex: String, locked: Bool, dot: Bool) -> some View {
+        let c = Color(hex: hex)
+        return ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(title).font(.system(size: 17, weight: .heavy, design: .rounded)).foregroundStyle(.primary).lineLimit(2).minimumScaleFactor(0.8)
+                    Spacer(minLength: 0)
+                    if dot { Circle().fill(store.partnerColor).frame(width: 10, height: 10) }
+                    if locked { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.secondary) }
+                }
+                Text(sub).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
+                Spacer(minLength: 0)
             }
-            Text(title).font(.subheadline.weight(.bold)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            Text(art).font(.system(size: 54)).shadow(color: c.opacity(0.6), radius: 10, y: 6).rotationEffect(.degrees(-6))
         }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading).card()
+        .padding(14).frame(height: 138)
+        .background(LinearGradient(colors: [c.opacity(0.55), c.opacity(0.22)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    in: RoundedRectangle(cornerRadius: max(store.radius, 20), style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: max(store.radius, 20), style: .continuous).stroke(.white.opacity(0.5), lineWidth: 1))
+        .shadow(color: c.opacity(0.28), radius: 10, y: 6)
     }
+
 }

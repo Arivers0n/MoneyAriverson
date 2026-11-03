@@ -196,3 +196,50 @@ struct GameMatch: Identifiable, Codable, Hashable {
     var last = -1
     var updated = Date()
 }
+
+// MARK: - Сигналы, питомец, батарея
+
+struct SignalKind: Identifiable, Hashable {
+    let id: String
+    let emoji: String
+    let title: String
+    let hex: String
+}
+
+let signalKinds: [SignalKind] = [
+    SignalKind(id: "miss", emoji: "💗", title: "Скучаю по тебе", hex: "FF5C8A"),
+    SignalKind(id: "hug", emoji: "🤗", title: "Обнимаю", hex: "FFB02E"),
+    SignalKind(id: "kiss", emoji: "😘", title: "Целую", hex: "FF7A9C"),
+    SignalKind(id: "think", emoji: "💭", title: "Думаю о тебе", hex: "8C7BF2"),
+    SignalKind(id: "hi", emoji: "👋", title: "Привет!", hex: "34C38F"),
+    SignalKind(id: "love", emoji: "😍", title: "Люблю", hex: "F43F5E")
+]
+
+func signalKind(_ id: String) -> SignalKind { signalKinds.first { $0.id == id } ?? signalKinds[0] }
+
+struct SignalItem: Identifiable, Codable, Hashable {
+    var id = UUID()
+    var who: Who
+    var kind: String
+    var date = Date()
+}
+
+/// Общий питомец пары. Один документ на пару (id «pet»).
+struct PetState: Identifiable, Codable, Hashable {
+    var id = "pet"
+    var name = "Малыш"
+    var born = Date()
+    var lastFed = Date()
+    var lastPlayed = Date()
+    var lastCuddled = Date.distantPast
+    var fedBy: Who = .me
+    var colorIndex = 0
+}
+
+struct BatteryInfo: Identifiable, Codable, Hashable {
+    var id: String                 // who.rawValue
+    var who: Who
+    var level: Double              // 0...1
+    var charging: Bool
+    var updated: Date
+}

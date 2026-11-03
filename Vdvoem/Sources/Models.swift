@@ -41,6 +41,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
     case chat, plans, files, cards, question, compat, games, capsule, vote, radar, notes
     case days, mood, dates
     case today, memories, places
+    case signal, pet
 
     var id: String { rawValue }
 
@@ -67,6 +68,8 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .today: return "Сегодня"
         case .memories: return "Фотолента"
         case .places: return "Карта"
+        case .signal: return "Сигнал"
+        case .pet: return "Питомец"
         }
     }
 
@@ -93,12 +96,88 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .today: return "sun.max"
         case .memories: return "photo.on.rectangle.angled"
         case .places: return "map"
+        case .signal: return "heart.circle"
+        case .pet: return "pawprint"
+        }
+    }
+
+    /// Крупная картинка раздела (эмодзи рисуются системой в цвете и объёме).
+    var art: String {
+        switch self {
+        case .tasks: return "✅"
+        case .calendar: return "🗓️"
+        case .wishes: return "🎁"
+        case .lists: return "🛒"
+        case .chat: return "💬"
+        case .plans: return "🧭"
+        case .files: return "🔐"
+        case .cards: return "💳"
+        case .question: return "🤔"
+        case .compat: return "💞"
+        case .games: return "🎮"
+        case .capsule: return "⏳"
+        case .vote: return "🗳️"
+        case .radar: return "📡"
+        case .notes: return "📝"
+        case .days: return "💑"
+        case .mood: return "🫙"
+        case .dates: return "🍷"
+        case .today: return "🌤️"
+        case .memories: return "📸"
+        case .places: return "🗺️"
+        case .signal: return "💌"
+        case .pet: return "🐣"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .tasks: return "Дела на двоих"
+        case .calendar: return "Даты и события"
+        case .wishes: return "Хотелки и подарки"
+        case .lists: return "Покупки и списки"
+        case .chat: return "Ваша переписка"
+        case .plans: return "Планы и мечты"
+        case .files: return "Закрытые файлы"
+        case .cards: return "Карты магазинов"
+        case .question: return "Один вопрос в день"
+        case .compat: return "Насколько вы подходите"
+        case .games: return "Играйте по сети"
+        case .capsule: return "Письмо в будущее"
+        case .vote: return "Решите вместе"
+        case .radar: return "Идеи для подарка"
+        case .notes: return "Общие заметки"
+        case .days: return "Сколько дней вместе"
+        case .mood: return "Банка настроения"
+        case .dates: return "Идеи для свиданий"
+        case .today: return "Статус, сон, трекер"
+        case .memories: return "Общие фото"
+        case .places: return "Метки и расстояние"
+        case .signal: return "Отправьте «скучаю»"
+        case .pet: return "Растите вместе"
+        }
+    }
+
+    var hex: String {
+        switch self {
+        case .tasks, .lists: return "7DD3A8"
+        case .calendar, .days: return "FFB38A"
+        case .wishes, .signal: return "FF8FB1"
+        case .chat, .memories: return "8EC5FF"
+        case .plans, .places: return "A5E8D0"
+        case .files, .cards: return "B7A6FF"
+        case .question, .compat: return "FFD36E"
+        case .games, .vote: return "C9A7FF"
+        case .capsule, .dates: return "FFA8A8"
+        case .radar, .notes: return "9ADCF2"
+        case .today, .mood: return "BFE98A"
+        case .pet: return "FFCF8A"
         }
     }
 
     var locked: Bool { self == .files || self == .cards }
 
-    var isNew: Bool { self == .days || self == .mood || self == .dates || self == .today || self == .memories || self == .places }
+    var isNew: Bool { self == .signal || self == .pet || self == .days || self == .mood || self == .dates || self == .today || self == .memories || self == .places }
 }
 
 // MARK: - Данные
@@ -162,7 +241,7 @@ struct Profile: Codable {
 }
 
 extension Module {
-    static let defaultOrder: [Module] = [.today, .chat, .memories, .places, .tasks, .calendar, .wishes, .lists,
+    static let defaultOrder: [Module] = [.today, .chat, .memories, .places, .signal, .pet, .tasks, .calendar, .wishes, .lists,
                                          .plans, .files, .cards, .question, .compat, .games, .capsule, .vote,
                                          .radar, .notes, .days, .mood, .dates]
 }
@@ -339,6 +418,9 @@ struct AppData: Codable {
     var pins: [MapPin] = []
     var places: [PlacePoint] = []
     var matches: [GameMatch] = []
+    var signals: [SignalItem] = []
+    var pets: [PetState] = []
+    var batteries: [BatteryInfo] = []
 
     init() {}
 
@@ -373,6 +455,9 @@ struct AppData: Codable {
         pins = v(.pins, [])
         places = v(.places, [])
         matches = v(.matches, [])
+        signals = v(.signals, [])
+        pets = v(.pets, [])
+        batteries = v(.batteries, [])
     }
 }
 

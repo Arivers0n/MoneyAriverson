@@ -84,6 +84,7 @@ struct TodayView: View {
                 if let theirs = store.statusNow(.partner) { statusHero(theirs, who: .partner) }
                 tiles
                 infoRow
+                batteryRow
                 historyBlock
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
@@ -191,20 +192,16 @@ struct TodayView: View {
 
     private var tiles: some View {
         HStack(spacing: 12) {
-            tile("Сон", "moon.stars.fill", "7C6BE0", detail: sleepDetail) { SleepView() }
-            tile("Трекер", "chart.bar.fill", "F59E0B", detail: trackerDetail) { TrackerView() }
-            tile("Банка", "flask.fill", "46C2A5", detail: jarDetail) { JarView() }
+            tile("Сон", "😴", "9DB7FF", detail: sleepDetail) { SleepView() }
+            tile("Трекер", "📊", "FFC25C", detail: trackerDetail) { TrackerView() }
+            tile("Банка", "🫙", "7EE0C0", detail: jarDetail) { JarView() }
         }
     }
 
     private func tile<D: View>(_ title: String, _ icon: String, _ hex: String, detail: String, @ViewBuilder dest: @escaping () -> D) -> some View {
         NavigationLink { dest() } label: {
             VStack(alignment: .leading, spacing: 10) {
-                Image(systemName: icon).font(.system(size: 20, weight: .bold)).foregroundStyle(.white)
-                    .frame(width: 42, height: 42)
-                    .background(LinearGradient(colors: [Color(hex: hex), Color(hex: hex).opacity(0.65)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                                in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .shadow(color: Color(hex: hex).opacity(0.4), radius: 6, y: 4)
+                ArtTile(emoji: icon, hex: hex, size: 46)
                 Text(title).font(.subheadline.weight(.bold)).foregroundStyle(.primary)
                 Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2).frame(height: 30, alignment: .topLeading)
             }
@@ -248,6 +245,37 @@ struct TodayView: View {
             }
             .padding(14).frame(maxWidth: .infinity, alignment: .leading).card()
         }
+    }
+
+    // Батарея
+
+    private var batteryRow: some View {
+        HStack(spacing: 12) {
+            ForEach(Who.allCases, id: \.self) { w in
+                let b = store.data.batteries.first { $0.who == w }
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label(store.name(w), systemImage: b?.charging == true ? "battery.100.bolt" : "battery.75")
+                            .font(.caption.weight(.semibold)).foregroundStyle(store.color(w)).lineLimit(1)
+                        Spacer()
+                        Text(b.map { "\(Int($0.level * 100))%" } ?? "—").font(.subheadline.weight(.heavy).monospacedDigit())
+                    }
+                    GeometryReader { g in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.primary.opacity(0.1))
+                            Capsule().fill(LinearGradient(colors: [batteryColor(b?.level ?? 0), batteryColor(b?.level ?? 0).opacity(0.7)], startPoint: .leading, endPoint: .trailing))
+                                .frame(width: max(8, g.size.width * CGFloat(b?.level ?? 0)))
+                        }
+                    }
+                    .frame(height: 10)
+                }
+                .padding(14).frame(maxWidth: .infinity).card()
+            }
+        }
+    }
+
+    private func batteryColor(_ l: Double) -> Color {
+        l < 0.2 ? Color(hex: "EF4444") : (l < 0.5 ? Color(hex: "F5B83D") : Color(hex: "34C38F"))
     }
 
     // История статусов

@@ -22,7 +22,7 @@ struct VdvoemApp: App {
             .environmentObject(store)
             .environmentObject(store.sync)
             .onChange(of: phase) { _, new in
-                if new == .active { store.sync.resume() }
+                if new == .active { store.sync.resume(); store.updateBattery() }
                 else { store.flushSave() }
             }
             .environment(\.locale, Locale(identifier: "ru_RU"))
@@ -38,54 +38,20 @@ struct RootView: View {
     @EnvironmentObject var store: Store
     @State private var tab = 0
 
-    private var items: [(title: String, icon: String)] {
-        store.bar.map { ($0.title, $0.icon) } + [("Ещё", "ellipsis")]
-    }
-
     var body: some View {
-        ZStack {
+        TabView(selection: $tab) {
             ForEach(Array(store.bar.enumerated()), id: \.element) { i, m in
                 NavigationStack { ModuleView(module: m) }
-                    .opacity(tab == i ? 1 : 0)
-                    .allowsHitTesting(tab == i)
+                    .tabItem { Label(m.title, systemImage: m.icon) }
+                    .tag(i)
             }
             NavigationStack { MoreView() }
-                .opacity(tab == store.bar.count ? 1 : 0)
-                .allowsHitTesting(tab == store.bar.count)
+                .tabItem { Label("Ещё", systemImage: "square.grid.2x2") }
+                .tag(store.bar.count)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { bar }
-        .animation(.easeInOut(duration: 0.18), value: tab)
-    }
-
-    private var bar: some View {
-        HStack(spacing: 4) {
-            ForEach(Array(items.enumerated()), id: \.offset) { i, it in
-                let on = tab == i
-                Button {
-                    if tab != i { store.tap() }
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) { tab = i }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: it.icon).font(.system(size: 18, weight: .semibold))
-                            .symbolVariant(on ? .fill : .none)
-                        if on { Text(it.title).font(.footnote.weight(.bold)).lineLimit(1) }
-                    }
-                    .foregroundStyle(on ? Color.white : Color.primary.opacity(0.6))
-                    .padding(.horizontal, on ? 16 : 12).frame(height: 46)
-                    .background {
-                        if on { Capsule().fill(LinearGradient(colors: [store.meColor, store.meColor.opacity(0.75)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .shadow(color: store.meColor.opacity(0.4), radius: 8, y: 4) }
-                    }
-                    .frame(maxWidth: on ? nil : .infinity)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(6)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(Color.white.opacity(0.35), lineWidth: 1))
-        .shadow(color: .black.opacity(0.12), radius: 18, y: 8)
-        .padding(.horizontal, 18).padding(.bottom, 6)
+        .tabBarCollapses()
+        .overlay { SignalOverlay() }
+        .onChange(of: tab) { _, _ in store.tap() }
     }
 }
 
@@ -114,6 +80,8 @@ struct ModuleView: View {
             case .today: TodayView()
             case .memories: MemoriesView()
             case .places: PlacesView()
+            case .signal: SignalView()
+            case .pet: PetView()
             case .dates: DatesView()
             }
         }

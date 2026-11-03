@@ -185,6 +185,11 @@ private func makeAdapters() -> [Adapter] {
         adapter("places", \AppData.places) { p in
             var x = p; x.who = p.who.flipped; x.id = x.who.rawValue; return x
         },
+        adapter("signals", \AppData.signals) { s in var x = s; x.who = s.who.flipped; return x },
+        adapter("pets", \AppData.pets) { p in var x = p; x.fedBy = p.fedBy.flipped; return x },
+        adapter("batteries", \AppData.batteries) { b in
+            var x = b; x.who = b.who.flipped; x.id = x.who.rawValue; return x
+        },
         adapter("matches", \AppData.matches) { m in
             var x = m
             x.turn = m.turn.flipped

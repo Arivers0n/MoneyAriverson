@@ -133,13 +133,19 @@ struct JarView: View {
     @StateObject private var model = JarModel()
     @State private var note = ""
     @State private var selected: JarBall?
+    @State private var mode = 0
 
     private var today: [JarBall] { store.data.jar.filter { Calendar.current.isDateInToday($0.date) } }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                jar
+                Picker("Вид", selection: $mode) {
+                    Text("Банка").tag(0)
+                    Text("Пузырёк").tag(1)
+                }
+                .pickerStyle(.segmented)
+                if mode == 0 { jar } else { bubbles }
                 caption
                 picker
                 stats
@@ -181,6 +187,31 @@ struct JarView: View {
             Text("Наклоняйте телефон или касайтесь шариков").font(.caption2).foregroundStyle(.secondary).offset(y: 22)
         }
         .padding(.bottom, 22)
+    }
+
+    private var bubbles: some View {
+        HStack(spacing: 12) {
+            ForEach(Who.allCases, id: \.self) { w in
+                let balls = store.data.jar.filter { $0.who == w && Date().timeIntervalSince($0.date) < 86400 }
+                VStack(spacing: 10) {
+                    Text(store.name(w)).font(.caption.weight(.bold)).foregroundStyle(store.color(w))
+                    MoodBubble(balls: balls).frame(height: 140)
+                    HStack(spacing: 4) {
+                        ForEach(jarMoods) { m in
+                            let n = balls.filter { $0.mood == m.id }.count
+                            let pct = balls.isEmpty ? 0 : Int((Double(n) / Double(balls.count) * 100).rounded())
+                            VStack(spacing: 1) {
+                                Text(m.emoji).font(.system(size: 14))
+                                Text("\(pct)%").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+                .padding(12).frame(maxWidth: .infinity).card()
+            }
+        }
+        .padding(.bottom, 4)
     }
 
     @ViewBuilder private var caption: some View {
@@ -255,5 +286,46 @@ struct JarView: View {
                 .padding(12).card()
             }
         }
+    }
+}
+
+/// Переливающийся пузырь: цвета настроений за сутки, чем больше шариков — тем шире цвет.
+struct MoodBubble: View {
+    let balls: [JarBall]
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
+            let t = tl.date.timeIntervalSinceReferenceDate
+            let stops = gradientStops()
+            ZStack {
+                Circle().fill(AngularGradient(gradient: Gradient(stops: stops), center: .center, angle: .degrees(t * 18)))
+                    .blur(radius: 4)
+                Circle().fill(RadialGradient(colors: [.white.opacity(0.0), .white.opacity(0.35)], center: .center, startRadius: 20, endRadius: 70))
+                Circle().fill(.white.opacity(0.55)).frame(width: 34, height: 18).rotationEffect(.degrees(-30)).offset(x: -32, y: -42)
+                Circle().stroke(.white.opacity(0.7), lineWidth: 2)
+            }
+            .aspectRatio(1, contentMode: .fit)
+            .shadow(color: stops.first?.color.opacity(0.5) ?? .clear, radius: 14, y: 8)
+            .scaleEffect(1 + CGFloat(sin(t * 1.4)) * 0.02)
+        }
+    }
+
+    private func gradientStops() -> [Gradient.Stop] {
+        guard !balls.isEmpty else {
+            return [.init(color: Color.gray.opacity(0.25), location: 0), .init(color: Color.gray.opacity(0.12), location: 1)]
+        }
+        var out: [Gradient.Stop] = []
+        var acc = 0.0
+        let total = Double(balls.count)
+        for m in jarMoods {
+            let n = Double(balls.filter { $0.mood == m.id }.count)
+            if n == 0 { continue }
+            let c = Color(hex: m.hex)
+            out.append(.init(color: c, location: acc))
+            acc += n / total
+            out.append(.init(color: c, location: min(acc, 1)))
+        }
+        if let f = out.first { out.append(.init(color: f.color, location: 1)) }
+        return out
     }
 }
