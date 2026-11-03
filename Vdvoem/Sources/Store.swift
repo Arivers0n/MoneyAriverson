@@ -3,8 +3,9 @@ import UserNotifications
 
 @MainActor
 final class Store: ObservableObject {
-    @Published var data: AppData { didSet { save() } }
+    @Published var data: AppData { didSet { save(); sync.dataChanged(data) } }
     @Published var scope: Scope = .we
+    let sync = SyncEngine()
     private let url: URL
 
     init() {
@@ -16,6 +17,7 @@ final class Store: ObservableObject {
         } else {
             data = AppData()
         }
+        sync.attach(self)
     }
 
     private func save() {

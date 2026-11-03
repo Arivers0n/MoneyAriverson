@@ -240,31 +240,11 @@ private struct FeaturesStep: View {
 }
 
 private struct PairStep: View {
-    @EnvironmentObject var store: Store
     var body: some View {
-        Title(big: "Подключите вторую половинку", small: "Отправьте свой код. Пока синхронизация не подключена, коды только сохраняются.")
-        VStack(spacing: 8) {
-            Text("ВАШ КОД").font(.caption.weight(.semibold)).foregroundStyle(.secondary).tracking(1)
-            Text(store.p.pairCode).font(.system(size: 40, weight: .bold, design: .monospaced)).tracking(6)
-            ShareLink(item: "Присоединяйся ко мне в «Вдвоём». Мой код: \(store.p.pairCode)") {
-                Label("Отправить код", systemImage: "square.and.arrow.up")
-            }
-            .padding(.top, 4)
-        }
-        .frame(maxWidth: .infinity).padding(20).card()
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Код партнёра").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-            TextField("ABC123", text: $store.data.profile.partnerCode)
-                .textInputAutocapitalization(.characters).autocorrectionDisabled()
-                .font(.title3.monospaced())
-        }
-        .padding(16).card()
-        .onAppear {
-            if store.p.pairCode.isEmpty {
-                let chars = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
-                store.data.profile.pairCode = String((0..<6).map { _ in chars.randomElement()! })
-            }
-        }
+        Title(big: "Подключите вторую половинку", small: "Один создаёт код, второй вводит его. После этого всё — задачи, чат, статусы и игры — появляется у обоих сразу.")
+        PairPanel()
+        Text("Этот шаг можно пропустить и подключиться позже в настройках.")
+            .font(.footnote).foregroundStyle(.secondary)
     }
 }
 

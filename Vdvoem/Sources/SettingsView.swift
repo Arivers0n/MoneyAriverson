@@ -68,11 +68,9 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
 
-            group("Пара") {
-                HStack { Text("Ваш код"); Spacer(); Text(store.p.pairCode.isEmpty ? "—" : store.p.pairCode).font(.body.monospaced()).foregroundStyle(.secondary) }
-                Divider()
-                TextField("Код партнёра", text: $store.data.profile.partnerCode)
-                    .textInputAutocapitalization(.characters).autocorrectionDisabled()
+            VStack(alignment: .leading, spacing: 8) {
+                Text("ПАРА").font(.caption.weight(.semibold)).foregroundStyle(.secondary).tracking(1)
+                PairPanel()
             }
 
             group("Безопасность и уведомления") {

@@ -4,6 +4,7 @@ import LocalAuthentication
 @main
 struct VdvoemApp: App {
     @StateObject private var store = Store()
+    @Environment(\.scenePhase) private var phase
 
     var body: some Scene {
         WindowGroup {
@@ -19,6 +20,8 @@ struct VdvoemApp: App {
                 }
             }
             .environmentObject(store)
+            .environmentObject(store.sync)
+            .onChange(of: phase) { _, new in if new == .active { store.sync.resume() } }
             .environment(\.locale, Locale(identifier: "ru_RU"))
             .fontDesign(store.p.design.design)
             .preferredColorScheme(store.scheme)
