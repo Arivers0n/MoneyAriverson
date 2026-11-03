@@ -223,31 +223,38 @@ struct MoreView: View {
         return !(a?.me.isEmpty ?? true)
     }
 
+    private static let hues = ["F43F5E", "8B5CF6", "0EA5E9", "10B981", "F59E0B", "EC4899", "6366F1", "14B8A6", "E8590C", "3B82F6"]
+
+    private func hue(_ m: Module) -> Color {
+        let idx = Module.allCases.firstIndex(of: m) ?? 0
+        return Color(hex: Self.hues[idx % Self.hues.count])
+    }
+
     var body: some View {
         Screen {
-            VStack(spacing: 0) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(store.more) { m in
-                    NavigationLink { ModuleView(module: m) } label: { row(m.title, m.icon, locked: m.locked, dot: m == .question && !answeredToday) }
-                        .buttonStyle(.plain)
-                    Divider().padding(.leading, 62)
+                    NavigationLink { ModuleView(module: m) } label: {
+                        tile(m.title, m.icon, hue(m), locked: m.locked, dot: m == .question && !answeredToday)
+                    }
+                    .buttonStyle(.plain)
                 }
-                NavigationLink { SettingsView() } label: { row("Настройки", "gearshape", locked: false, dot: false) }
+                NavigationLink { SettingsView() } label: { tile("Настройки", "gearshape.fill", Color(hex: "64748B"), locked: false, dot: false) }
                     .buttonStyle(.plain)
             }
-            .card()
+            .padding(.top, 4)
 
             NavigationLink { ReorderView() } label: {
                 HStack(spacing: 14) {
-                    Image(systemName: "arrow.up.arrow.down").font(.title2).frame(width: 34)
+                    Image(systemName: "arrow.up.arrow.down").font(.title3).frame(width: 34)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Изменить порядок").font(.headline)
-                        Text("что в баре и как идёт этот список").font(.footnote.monospaced()).foregroundStyle(.secondary)
+                        Text("что в нижней панели и как идёт этот список").font(.footnote).foregroundStyle(.secondary)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").foregroundStyle(.tertiary)
                 }
-                .padding(16)
-                .overlay(RoundedRectangle(cornerRadius: store.radius, style: .continuous).stroke(Color.primary.opacity(0.1)))
+                .padding(16).card()
             }
             .buttonStyle(.plain)
             .padding(.top, 6)
@@ -256,16 +263,20 @@ struct MoreView: View {
         .pairToolbar()
     }
 
-    private func row(_ title: String, _ icon: String, locked: Bool, dot: Bool) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon).font(.title3).frame(width: 34).foregroundStyle(.secondary)
-            Text(title).font(.body)
-            Spacer()
-            if dot { Circle().fill(store.partnerColor).frame(width: 10, height: 10) }
-            if locked { Image(systemName: "lock").foregroundStyle(.tertiary) }
-            Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+    private func tile(_ title: String, _ icon: String, _ c: Color, locked: Bool, dot: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundStyle(.white)
+                    .frame(width: 48, height: 48)
+                    .background(LinearGradient(colors: [c, c.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: c.opacity(0.4), radius: 8, y: 5)
+                Spacer()
+                if dot { Circle().fill(store.partnerColor).frame(width: 10, height: 10) }
+                if locked { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.tertiary) }
+            }
+            Text(title).font(.subheadline.weight(.bold)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.8)
         }
-        .padding(.horizontal, 16).padding(.vertical, 18)
-        .contentShape(Rectangle())
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading).card()
     }
 }
