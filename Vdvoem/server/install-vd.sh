@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Добавляет на уже работающий сервер маршруты и коллекции приложения «Вдвоём».
-# Ничего не переустанавливает и не трогает файлы Кошелька и HabitFlow: только два новых файла.
+# Ничего не переустанавливает и не трогает файлы Кошелька и HabitFlow: только файлы vdvoem*.
+# Можно запускать повторно — это безопасно.
 # Запуск:  sudo bash /root/install-vd.sh
 set -euo pipefail
 
@@ -17,8 +18,15 @@ BK="$DIR/backups/before-vdvoem-$(date +%F-%H%M).db"
 sqlite3 "$DIR/pb_data/data.db" ".backup '$BK'"
 echo "Копия: $BK"
 
-say "Кладу два новых файла"
-cat > "$DIR/pb_migrations/1762200000_vdvoem_init.js" <<'VDEOF'
+NEW=""
+put() { # put <путь>  (содержимое со stdin)
+  [ -e "$1" ] || NEW="$NEW $1"
+  cat > "$1"
+}
+
+say "Кладу файлы «Вдвоём»"
+
+put "$DIR/pb_migrations/1762200000_vdvoem_init.js" <<'VDEOF'
 /// <reference path="../pb_data/types.d.ts" />
 // Коллекции приложения «Вдвоём». Свои аккаунты (vd_users) — с Кошельком и HabitFlow ничего не пересекается.
 // Запись данных — только через /api/vd/push; чтение и подписка (real-time) — только участникам своей пары.
@@ -90,7 +98,36 @@ migrate((app) => {
     }
 })
 VDEOF
-cat > "$DIR/pb_hooks/vdvoem.pb.js" <<'VDEOF'
+
+put "$DIR/pb_migrations/1762200001_vdvoem_media.js" <<'VDEOF'
+/// <reference path="../pb_data/types.d.ts" />
+// Фото «Вдвоём»: файлы хранятся в vd_media. Загрузка — только через /api/vd/media (проверяется пара).
+// Файлы отдаются по адресу /api/files/vd_media/<id>/<имя> — имя случайное и не угадывается.
+
+migrate((app) => {
+    const pairs = app.findCollectionByNameOrId("vd_pairs")
+    const media = new Collection({
+        type: "base",
+        name: "vd_media",
+        listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null,
+        fields: [
+            { type: "relation", name: "pair", collectionId: pairs.id, maxSelect: 1, required: true, cascadeDelete: true },
+            { type: "text", name: "author", max: 40 },
+            {
+                type: "file", name: "file", maxSelect: 1, maxSize: 15 * 1024 * 1024,
+                mimeTypes: ["image/jpeg", "image/png", "image/heic", "image/webp"],
+                thumbs: ["480x0", "1080x0"], protected: false,
+            },
+            { type: "autodate", name: "created", onCreate: true, onUpdate: false },
+        ],
+    })
+    app.save(media)
+}, (app) => {
+    try { app.delete(app.findCollectionByNameOrId("vd_media")) } catch (_) {}
+})
+VDEOF
+
+put "$DIR/pb_hooks/vdvoem.pb.js" <<'VDEOF'
 /// <reference path="../pb_data/types.d.ts" />
 // Маршруты «Вдвоём». Все требуют вход пользователя из коллекции vd_users.
 
@@ -229,15 +266,31 @@ routerAdd("POST", "/api/vd/push", (e) => {
     return e.json(200, { saved: saved, skipped: skipped })
 }, $apis.requireAuth("vd_users"))
 
+// Загрузка фото в пару: multipart, поле "file". Ответ: { id, file }.
+routerAdd("POST", "/api/vd/media", (e) => {
+    const pair = vdPairOf(e.app, e.auth.id)
+    if (!pair) throw new BadRequestError("Сначала соединитесь с партнёром")
+    const files = e.findUploadedFiles("file")
+    if (!files || files.length === 0) throw new BadRequestError("Нет файла")
+    const col = e.app.findCollectionByNameOrId("vd_media")
+    const rec = new Record(col)
+    rec.set("pair", pair.id)
+    rec.set("author", e.auth.id)
+    rec.set("file", files[0])
+    e.app.save(rec)
+    return e.json(200, { id: rec.id, file: rec.getString("file") })
+}, $apis.requireAuth("vd_users"))
+
 routerAdd("GET", "/api/vd/ping", (e) => {
-    return e.json(200, { ok: true, app: "vdvoem", version: 1 })
+    return e.json(200, { ok: true, app: "vdvoem", version: 2 })
 })
 VDEOF
+
 chown -R kopilka:kopilka "$DIR/pb_hooks" "$DIR/pb_migrations" 2>/dev/null || true
 
 rollback() {
   printf '\n\033[1;31mСервер не поднялся после добавления «Вдвоём». Откатываю.\033[0m\n'
-  rm -f "$DIR/pb_hooks/vdvoem.pb.js" "$DIR/pb_migrations/1762200000_vdvoem_init.js"
+  for f in $NEW; do rm -f "$f"; done
   systemctl stop kopilka || true
   cp "$BK" "$DIR/pb_data/data.db"
   systemctl start kopilka || true

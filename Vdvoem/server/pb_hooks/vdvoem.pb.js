@@ -136,6 +136,21 @@ routerAdd("POST", "/api/vd/push", (e) => {
     return e.json(200, { saved: saved, skipped: skipped })
 }, $apis.requireAuth("vd_users"))
 
+// Загрузка фото в пару: multipart, поле "file". Ответ: { id, file }.
+routerAdd("POST", "/api/vd/media", (e) => {
+    const pair = vdPairOf(e.app, e.auth.id)
+    if (!pair) throw new BadRequestError("Сначала соединитесь с партнёром")
+    const files = e.findUploadedFiles("file")
+    if (!files || files.length === 0) throw new BadRequestError("Нет файла")
+    const col = e.app.findCollectionByNameOrId("vd_media")
+    const rec = new Record(col)
+    rec.set("pair", pair.id)
+    rec.set("author", e.auth.id)
+    rec.set("file", files[0])
+    e.app.save(rec)
+    return e.json(200, { id: rec.id, file: rec.getString("file") })
+}, $apis.requireAuth("vd_users"))
+
 routerAdd("GET", "/api/vd/ping", (e) => {
-    return e.json(200, { ok: true, app: "vdvoem", version: 1 })
+    return e.json(200, { ok: true, app: "vdvoem", version: 2 })
 })

@@ -41,7 +41,19 @@ struct SettingsView: View {
                     get: { Color(hex: store.p.partnerHex) }, set: { store.data.profile.partnerHex = $0.hex }), supportsOpacity: false)
             }
 
-            group("Внешний вид") { LookControls() }
+            NavigationLink { AppearanceView() } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "paintpalette.fill").font(.title3).foregroundStyle(store.meColor)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Оформление").font(.headline).foregroundStyle(.primary)
+                        Text("Темы, обои чата, значок приложения").font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+                }
+                .padding(16).card()
+            }
+            .buttonStyle(.plain)
 
             group("Функции") {
                 ForEach(Module.allCases) { m in
@@ -71,6 +83,16 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("ПАРА").font(.caption.weight(.semibold)).foregroundStyle(.secondary).tracking(1)
                 PairPanel()
+            }
+
+            group("Геопозиция") {
+                Toggle("Показывать расстояние между нами", isOn: $store.data.profile.shareLocation)
+                Text("Точные координаты видны только партнёру. Обновляются, когда вы заметно перемещаетесь.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                if store.location.denied && store.p.shareLocation {
+                    Text("Доступ к геопозиции выключен: Настройки iPhone → Вдвоём → Геопозиция.")
+                        .font(.footnote).foregroundStyle(.orange)
+                }
             }
 
             group("Безопасность и уведомления") {

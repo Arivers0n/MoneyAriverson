@@ -21,11 +21,15 @@ struct VdvoemApp: App {
             }
             .environmentObject(store)
             .environmentObject(store.sync)
-            .onChange(of: phase) { _, new in if new == .active { store.sync.resume() } }
+            .onChange(of: phase) { _, new in
+                if new == .active { store.sync.resume() }
+                else { store.flushSave() }
+            }
             .environment(\.locale, Locale(identifier: "ru_RU"))
             .fontDesign(store.p.design.design)
             .preferredColorScheme(store.scheme)
             .tint(store.meColor)
+            .id(store.p.themeID)
         }
     }
 }
@@ -66,7 +70,10 @@ struct ModuleView: View {
             case .radar: RadarView()
             case .notes: NotesView()
             case .days: DaysView()
-            case .mood: MoodView()
+            case .mood: JarView()
+            case .today: TodayView()
+            case .memories: MemoriesView()
+            case .places: PlacesView()
             case .dates: DatesView()
             }
         }

@@ -3,27 +3,56 @@ import UserNotifications
 
 @MainActor
 final class Store: ObservableObject {
-    @Published var data: AppData { didSet { save(); sync.dataChanged(data) } }
+    @Published var data: AppData { didSet { save(); sync.dataChanged(data); Theme.current = ThemeDef.find(data.profile.themeID); location.apply() } }
     @Published var scope: Scope = .we
     let sync = SyncEngine()
+    let location = LocationService()
     private let url: URL
 
     init() {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         url = dir.appendingPathComponent("vdvoem.json")
         if let d = try? Data(contentsOf: url),
-           let a = try? JSONDecoder().decode(AppData.self, from: d) {
+           var a = try? JSONDecoder().decode(AppData.self, from: d) {
+            for i in a.cards.indices where a.cards[i].number.isEmpty {
+                a.cards[i].number = Keychain.get("card." + a.cards[i].id.uuidString) ?? ""
+            }
             data = a
         } else {
             data = AppData()
         }
+        Theme.current = ThemeDef.find(data.profile.themeID)
         sync.attach(self)
+        location.attach(self)
+        seedCountersIfNeeded()
     }
 
+    private var saveTask: Task<Void, Never>?
+
+    /// Запись на диск с паузой 0,3 с и вне главного потока: частые правки не тормозят экран.
     private func save() {
-        if let d = try? JSONEncoder().encode(data) {
-            try? d.write(to: url, options: .atomic)
+        saveTask?.cancel()
+        let snapshot = data
+        let target = url
+        saveTask = Task.detached(priority: .utility) {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            if Task.isCancelled { return }
+            Store.write(snapshot, to: target)
         }
+    }
+
+    /// Немедленная запись (при сворачивании приложения).
+    func flushSave() {
+        saveTask?.cancel()
+        Store.write(data, to: url)
+    }
+
+    /// Номера карт хранятся в Keychain, в файле данных их нет.
+    nonisolated static func write(_ d: AppData, to url: URL) {
+        var copy = d
+        for c in copy.cards where !c.number.isEmpty { Keychain.set("card." + c.id.uuidString, c.number) }
+        copy.cards = copy.cards.map { var x = $0; x.number = ""; return x }
+        if let b = try? JSONEncoder().encode(copy) { try? b.write(to: url, options: .atomic) }
     }
 
     func resetAll() { data = AppData(); scope = .we }

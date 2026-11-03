@@ -168,6 +168,29 @@ private func makeAdapters() -> [Adapter] {
         adapter("moods", \AppData.moods) { m in
             var x = m; x.who = m.who.flipped; x.id = m.day + x.who.rawValue; return x
         },
+        adapter("statuses", \AppData.statuses) { s in var x = s; x.who = s.who.flipped; return x },
+        adapter("sleeps", \AppData.sleeps) { s in
+            var x = s; x.who = s.who.flipped; x.id = s.day + x.who.rawValue; return x
+        },
+        adapter("counters", \AppData.counters) { $0 },
+        adapter("tracks", \AppData.tracks) { t in var x = t; x.who = t.who.flipped; return x },
+        adapter("jar", \AppData.jar) { j in var x = j; x.who = j.who.flipped; return x },
+        adapter("photos", \AppData.photos) { p in var x = p; x.who = p.who.flipped; return x },
+        adapter("reactions", \AppData.reactions) { r in
+            var x = r; x.who = r.who.flipped; x.id = r.photo.uuidString + x.who.rawValue; return x
+        },
+        adapter("pins", \AppData.pins) { p in var x = p; x.who = p.who.flipped; return x },
+        adapter("places", \AppData.places) { p in
+            var x = p; x.who = p.who.flipped; x.id = x.who.rawValue; return x
+        },
+        adapter("matches", \AppData.matches) { m in
+            var x = m
+            x.turn = m.turn.flipped
+            x.starter = m.starter.flipped
+            x.winner = m.winner?.flipped
+            x.board = m.board.map { $0 == 1 ? 2 : ($0 == 2 ? 1 : $0) }
+            return x
+        },
     ]
 }
 
@@ -383,6 +406,29 @@ final class SyncEngine: ObservableObject {
         }
         guard (200..<300).contains(code) else { throw SyncError.server(Self.errText(d, code)) }
         return d
+    }
+
+    /// Загрузка фото на сервер (multipart). Возвращает id записи и имя файла.
+    func upload(jpeg: Data, retry: Bool = true) async throws -> (id: String, file: String) {
+        if token.isEmpty { try await login() }
+        guard let url = URL(string: VDConfig.base + "/api/vd/media") else { throw SyncError.server("Неверный адрес сервера") }
+        let boundary = "vd-" + UUID().uuidString
+        var body = Data()
+        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"photo.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n".utf8))
+        body.append(jpeg)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+        var r = URLRequest(url: url)
+        r.httpMethod = "POST"
+        r.timeoutInterval = 90
+        r.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        r.setValue(token, forHTTPHeaderField: "Authorization")
+        let (d, resp) = try await URLSession.shared.upload(for: r, from: body)
+        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if code == 401 && retry { token = ""; return try await upload(jpeg: jpeg, retry: false) }
+        guard (200..<300).contains(code) else { throw SyncError.server(Self.errText(d, code)) }
+        let o = try JSONSerialization.jsonObject(with: d) as? [String: Any]
+        guard let id = o?["id"] as? String, let file = o?["file"] as? String else { throw SyncError.server("Сервер не принял фото") }
+        return (id, file)
     }
 
     // MARK: Пара

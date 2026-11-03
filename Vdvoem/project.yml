@@ -22,6 +22,9 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSFaceIDUsageDescription: Защита закрытых разделов и приложения
+        NSLocationWhenInUseUsageDescription: Чтобы партнёр видел расстояние между вами (по вашему желанию)
+        NSPhotoLibraryUsageDescription: Чтобы добавлять общие фото в ленту
+        NSCameraUsageDescription: Чтобы снимать общие фото
         ITSAppUsesNonExemptEncryption: false
     settings:
       base:

@@ -27,12 +27,6 @@ extension Color {
     }
 }
 
-enum Pal {
-    static let bg = Color(light: Color(hex: "F4F3F0"), dark: Color(hex: "0D0E12"))
-    static let card = Color(light: .white, dark: Color(hex: "1A1B20"))
-    static let field = Color(light: Color(hex: "ECEBE7"), dark: Color(hex: "24262D"))
-}
-
 struct ColorPair: Identifiable {
     let id: String
     let me: String
@@ -110,7 +104,7 @@ struct Screen<Content: View>: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 30)
         }
-        .background(Pal.bg.ignoresSafeArea())
+        .background(ThemeBackground())
     }
 }
 

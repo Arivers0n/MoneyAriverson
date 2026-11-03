@@ -7,7 +7,16 @@ import UniformTypeIdentifiers
 struct ChatView: View {
     @EnvironmentObject var store: Store
     @State private var text = ""
+    @EnvironmentObject var sync: SyncEngine
     @State private var sender: Who = .me
+
+    private func bubbleRadius() -> CGFloat {
+        switch store.p.bubbleStyle {
+        case 1: return 12
+        case 2: return 5
+        default: return 20
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,26 +32,30 @@ struct ChatView: View {
                                 if m.from == .me { Spacer(minLength: 50) }
                                 VStack(alignment: m.from == .me ? .trailing : .leading, spacing: 2) {
                                     Text(m.text).padding(.horizontal, 14).padding(.vertical, 10)
-                                        .background(store.color(m.from), in: RoundedRectangle(cornerRadius: min(store.radius, 20), style: .continuous))
+                                        .background(store.color(m.from), in: RoundedRectangle(cornerRadius: bubbleRadius(), style: .continuous))
                                         .foregroundStyle(.white)
                                     Text(m.date.formatted(.dateTime.hour().minute())).font(.caption2).foregroundStyle(.secondary)
                                 }
                                 if m.from == .partner { Spacer(minLength: 50) }
                             }
                             .id(m.id)
+                            .transition(.scale(scale: 0.85, anchor: m.from == .me ? .bottomTrailing : .bottomLeading).combined(with: .opacity))
                         }
                     }
                     .padding(16)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: store.data.messages.count)
                 }
                 .onChange(of: store.data.messages.count) { _, _ in
                     if let last = store.data.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
                 }
             }
             HStack(spacing: 10) {
-                Menu {
-                    Button(store.name(.me)) { sender = .me }
-                    Button(store.name(.partner)) { sender = .partner }
-                } label: { Circle().fill(store.color(sender)).frame(width: 28, height: 28) }
+                if sync.status == .notPaired {
+                    Menu {
+                        Button(store.name(.me)) { sender = .me }
+                        Button(store.name(.partner)) { sender = .partner }
+                    } label: { Circle().fill(store.color(sender)).frame(width: 28, height: 28) }
+                }
                 TextField("Сообщение", text: $text, axis: .vertical).lineLimit(1...4)
                     .padding(.horizontal, 14).padding(.vertical, 10)
                     .background(Pal.card, in: Capsule())
@@ -51,13 +64,13 @@ struct ChatView: View {
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
         }
-        .background(Pal.bg.ignoresSafeArea())
+        .background(WallpaperView(id: store.p.wallpaper))
     }
 
     private func send() {
         let t = text.trimmingCharacters(in: .whitespaces)
         guard !t.isEmpty else { return }
-        store.data.messages.append(ChatMessage(text: t, from: sender))
+        store.data.messages.append(ChatMessage(text: t, from: sync.status == .notPaired ? sender : .me))
         text = ""
         store.tap()
     }

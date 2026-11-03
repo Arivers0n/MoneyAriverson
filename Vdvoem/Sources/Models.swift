@@ -40,6 +40,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
     case tasks, calendar, wishes, lists
     case chat, plans, files, cards, question, compat, games, capsule, vote, radar, notes
     case days, mood, dates
+    case today, memories, places
 
     var id: String { rawValue }
 
@@ -61,8 +62,11 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .radar: return "Подарочный радар"
         case .notes: return "Заметки"
         case .days: return "Наши даты"
-        case .mood: return "Настроение"
+        case .mood: return "Банка настроения"
         case .dates: return "Идеи свиданий"
+        case .today: return "Сегодня"
+        case .memories: return "Фотолента"
+        case .places: return "Карта"
         }
     }
 
@@ -86,12 +90,15 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .days: return "heart.text.square"
         case .mood: return "face.smiling"
         case .dates: return "sparkles"
+        case .today: return "sun.max"
+        case .memories: return "photo.on.rectangle.angled"
+        case .places: return "map"
         }
     }
 
     var locked: Bool { self == .files || self == .cards }
 
-    var isNew: Bool { self == .days || self == .mood || self == .dates }
+    var isNew: Bool { self == .days || self == .mood || self == .dates || self == .today || self == .memories || self == .places }
 }
 
 // MARK: - Данные
@@ -106,15 +113,54 @@ struct Profile: Codable {
     var radius: Double = 22
     var design: DesignStyle = .rounded
     var haptics = true
-    var order: [Module] = [.tasks, .calendar, .wishes, .lists, .chat, .plans, .files, .cards,
-                           .question, .compat, .games, .capsule, .vote, .radar, .notes,
-                           .days, .mood, .dates]
+    var order: [Module] = Module.defaultOrder
     var disabled: [Module] = []
     var onboarded = false
     var pairCode = ""
     var partnerCode = ""
     var lockApp = false
     var notifications = false
+    var themeID = "classic"
+    var wallpaper = "none"
+    var iconID = ""
+    var shareLocation = false
+    var bubbleStyle = 0
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func v<T: Decodable>(_ k: CodingKeys, _ d: T) -> T { (try? c.decodeIfPresent(T.self, forKey: k)) ?? d }
+        myName = v(.myName, "")
+        partnerName = v(.partnerName, "")
+        start = v(.start, Date())
+        myHex = v(.myHex, "4C9AF0")
+        partnerHex = v(.partnerHex, "D870A8")
+        theme = v(.theme, .dark)
+        radius = v(.radius, 22)
+        design = v(.design, .rounded)
+        haptics = v(.haptics, true)
+        var ord: [Module] = v(.order, Module.defaultOrder)
+        for m in Module.defaultOrder where !ord.contains(m) { ord.append(m) }
+        order = ord
+        disabled = v(.disabled, [])
+        onboarded = v(.onboarded, false)
+        pairCode = v(.pairCode, "")
+        partnerCode = v(.partnerCode, "")
+        lockApp = v(.lockApp, false)
+        notifications = v(.notifications, false)
+        themeID = v(.themeID, "classic")
+        wallpaper = v(.wallpaper, "none")
+        iconID = v(.iconID, "")
+        shareLocation = v(.shareLocation, false)
+        bubbleStyle = v(.bubbleStyle, 0)
+    }
+}
+
+extension Module {
+    static let defaultOrder: [Module] = [.today, .chat, .memories, .places, .tasks, .calendar, .wishes, .lists,
+                                         .plans, .files, .cards, .question, .compat, .games, .capsule, .vote,
+                                         .radar, .notes, .days, .mood, .dates]
 }
 
 struct TaskItem: Identifiable, Codable, Hashable {
@@ -263,6 +309,51 @@ struct AppData: Codable {
     var compat: CompatResult? = nil
     var pointsMe = 0
     var pointsPartner = 0
+    var statuses: [StatusItem] = []
+    var sleeps: [SleepEntry] = []
+    var counters: [TrackerCounter] = []
+    var tracks: [TrackerEvent] = []
+    var jar: [JarBall] = []
+    var photos: [PhotoItem] = []
+    var reactions: [PhotoReaction] = []
+    var pins: [MapPin] = []
+    var places: [PlacePoint] = []
+    var matches: [GameMatch] = []
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func v<T: Decodable>(_ k: CodingKeys, _ d: T) -> T { (try? c.decodeIfPresent(T.self, forKey: k)) ?? d }
+        profile = v(.profile, Profile())
+        tasks = v(.tasks, [])
+        events = v(.events, [])
+        wishes = v(.wishes, [])
+        lists = v(.lists, [])
+        messages = v(.messages, [])
+        plans = v(.plans, [])
+        notes = v(.notes, [])
+        polls = v(.polls, [])
+        capsules = v(.capsules, [])
+        cards = v(.cards, [])
+        files = v(.files, [])
+        gifts = v(.gifts, [])
+        answers = v(.answers, [])
+        moods = v(.moods, [])
+        compat = try? c.decodeIfPresent(CompatResult.self, forKey: .compat)
+        pointsMe = v(.pointsMe, 0)
+        pointsPartner = v(.pointsPartner, 0)
+        statuses = v(.statuses, [])
+        sleeps = v(.sleeps, [])
+        counters = v(.counters, [])
+        tracks = v(.tracks, [])
+        jar = v(.jar, [])
+        photos = v(.photos, [])
+        reactions = v(.reactions, [])
+        pins = v(.pins, [])
+        places = v(.places, [])
+        matches = v(.matches, [])
+    }
 }
 
 extension Date {
