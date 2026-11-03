@@ -1,158 +1,285 @@
 import SwiftUI
 
+// MARK: - Общие украшения
+
+/// Плавно «дышащий» значок: покачивается и слегка вращается.
+struct FloatingGlyph: View {
+    let symbol: String
+    var size: CGFloat = 90
+    var color: Color = .white
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
+            let t = tl.date.timeIntervalSinceReferenceDate
+            Image(systemName: symbol)
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(color)
+                .shadow(color: .black.opacity(0.25), radius: 12, y: 10)
+                .offset(y: CGFloat(sin(t * 1.6)) * 7)
+                .rotationEffect(.degrees(sin(t * 1.1) * 4))
+        }
+    }
+}
+
+/// Стеклянные пузыри вокруг центра (как в ориентирах).
+struct BubbleField: View {
+    let colors: [Color]
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
+            let t = tl.date.timeIntervalSinceReferenceDate
+            ZStack {
+                ForEach(0..<7, id: \.self) { i in
+                    let r = CGFloat(10 + (i * 7) % 22)
+                    let ang = Double(i) * 0.9 + t * (0.18 + Double(i % 3) * 0.05)
+                    let rad: CGFloat = 70 + CGFloat((i * 13) % 40)
+                    Circle()
+                        .fill(RadialGradient(colors: [.white.opacity(0.9), colors[i % colors.count].opacity(0.75)],
+                                             center: .init(x: 0.3, y: 0.3), startRadius: 1, endRadius: r * 1.4))
+                        .frame(width: r * 2, height: r * 2)
+                        .offset(x: CGFloat(cos(ang)) * rad * 1.3, y: CGFloat(sin(ang)) * rad * 0.8)
+                }
+            }
+        }
+    }
+}
+
+struct Avatar: View {
+    @EnvironmentObject var store: Store
+    let who: Who
+    var size: CGFloat = 54
+    var body: some View {
+        let st = store.statusNow(who)
+        let ring = st.map { Color(hex: statusKind($0.kind).hex) } ?? store.color(who)
+        ZStack(alignment: .bottomTrailing) {
+            ZStack {
+                Circle().fill(LinearGradient(colors: [store.color(who), store.color(who).opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                Text(String(store.name(who).prefix(1)).uppercased())
+                    .font(.system(size: size * 0.42, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+            }
+            .frame(width: size, height: size)
+            .overlay(Circle().stroke(ring, lineWidth: 3).padding(-4))
+            if let st {
+                Image(systemName: statusKind(st.kind).symbol).font(.system(size: size * 0.24, weight: .bold))
+                    .foregroundStyle(.white).frame(width: size * 0.42, height: size * 0.42)
+                    .background(ring, in: Circle()).overlay(Circle().stroke(Pal.bg, lineWidth: 2))
+                    .offset(x: 4, y: 4)
+            }
+        }
+        .padding(6)
+    }
+}
+
 // MARK: - Экран «Сегодня»
 
 struct TodayView: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var sync: SyncEngine
     @State private var showStatus = false
+    @State private var history = false
 
     var body: some View {
-        Screen {
-            statusCard(.partner)
-            statusCard(.me)
-            distanceCard
-            NavigationLink { SleepView() } label: { sleepCard }.buttonStyle(.plain)
-            NavigationLink { TrackerView() } label: { trackerCard }.buttonStyle(.plain)
-            NavigationLink { JarView() } label: { jarCard }.buttonStyle(.plain)
+        ScrollView {
+            VStack(spacing: 16) {
+                header
+                if let mine = store.statusNow(.me) { statusHero(mine, who: .me) } else { askCard }
+                if let theirs = store.statusNow(.partner) { statusHero(theirs, who: .partner) }
+                tiles
+                infoRow
+                historyBlock
+            }
+            .padding(.horizontal, 16).padding(.bottom, 24)
         }
-        .navigationTitle("Сегодня")
+        .scrollIndicators(.hidden)
+        .background(ThemeBackground())
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showStatus) { StatusSheet().environmentObject(store) }
-        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.data.statuses)
+        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: store.data.statuses)
         .onAppear { store.location.refresh() }
     }
 
-    // Статус
+    // Шапка с аватарами
 
-    private func statusCard(_ w: Who) -> some View {
-        let s = store.statusNow(w)
-        let k = s.map { statusKind($0.kind) }
-        let tint = k.map { Color(hex: $0.hex) } ?? store.color(w)
+    private var header: some View {
+        HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Сегодня").font(.system(size: 34, weight: .heavy, design: .rounded))
+                Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            Spacer()
+            HStack(spacing: -6) {
+                VStack(spacing: 0) { Avatar(who: .me); Text("Я").font(.caption2.weight(.semibold)) }
+                VStack(spacing: 0) { Avatar(who: .partner); Text(store.name(.partner)).font(.caption2.weight(.semibold)).lineLimit(1) }
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    // Что случилось?
+
+    private var askCard: some View {
+        VStack(spacing: 8) {
+            Text("Что случилось?")
+                .font(.system(size: 26, weight: .heavy, design: .rounded))
+                .foregroundStyle(LinearGradient(colors: [store.meColor, store.partnerColor], startPoint: .leading, endPoint: .trailing))
+            Text("Поделитесь, чем занимаетесь, — \(store.name(.partner)) увидит сразу")
+                .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            ZStack {
+                BubbleField(colors: [store.meColor, store.partnerColor, Color(hex: "FFB02E"), Color(hex: "46C2A5")])
+                FloatingGlyph(symbol: "face.smiling.inverse", size: 84, color: store.meColor)
+            }
+            .frame(height: 190)
+            Button { showStatus = true; store.tap() } label: {
+                Label("Статус", systemImage: "plus").font(.headline).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 15)
+                    .background(LinearGradient(colors: [store.meColor, store.meColor.opacity(0.75)], startPoint: .top, endPoint: .bottom), in: Capsule())
+                    .shadow(color: store.meColor.opacity(0.4), radius: 10, y: 6)
+            }
+            .padding(.horizontal, 28)
+        }
+        .padding(.vertical, 20).frame(maxWidth: .infinity).card()
+    }
+
+    // Большая карточка статуса
+
+    private func statusHero(_ s: StatusItem, who: Who) -> some View {
+        let k = statusKind(s.kind)
+        let c = Color(hex: k.hex)
+        let big = who == .me
         return Button {
-            if w == .me { showStatus = true; store.tap() }
+            if who == .me { showStatus = true; store.tap() }
         } label: {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle().fill(tint.opacity(0.18)).frame(width: 56, height: 56)
-                    Image(systemName: k?.symbol ?? "plus").font(.system(size: 24, weight: .semibold)).foregroundStyle(tint)
-                        .contentTransition(.symbolEffect(.replace))
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(store.name(w)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Text(s?.title ?? (w == .me ? "Выбрать статус" : "Статус не задан"))
-                        .font(.title3.weight(.bold)).foregroundStyle(.primary)
-                    if let s {
-                        let extra = [s.place, s.note].filter { !$0.isEmpty }.joined(separator: " · ")
-                        Text(extra.isEmpty ? s.started.agoText : extra + " · " + s.started.agoText)
-                            .font(.footnote).foregroundStyle(.secondary).lineLimit(2)
-                    } else if w == .me {
-                        Text("Партнёр увидит его сразу").font(.footnote).foregroundStyle(.secondary)
+            ZStack(alignment: .bottomLeading) {
+                LinearGradient(colors: [c, c.opacity(0.55), Color.black.opacity(0.55)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                Circle().fill(.white.opacity(0.10)).frame(width: 220).offset(x: 140, y: -90)
+                Circle().fill(.white.opacity(0.08)).frame(width: 140).offset(x: -90, y: -50)
+                VStack {
+                    HStack {
+                        Label("Статус · 24 часа", systemImage: "clock").font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10).padding(.vertical, 5).background(.white.opacity(0.18), in: Capsule())
+                        Spacer()
+                        HStack(spacing: 6) {
+                            Circle().fill(store.color(who)).frame(width: 10, height: 10)
+                            Text(who == .me ? "Я" : store.name(who)).font(.caption.weight(.bold))
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 5).background(.white.opacity(0.18), in: Capsule())
+                    }
+                    Spacer()
+                    FloatingGlyph(symbol: k.symbol, size: big ? 92 : 64)
+                    Spacer()
+                    HStack(alignment: .bottom) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(s.title).font(.system(size: big ? 30 : 24, weight: .heavy, design: .rounded))
+                            let extra = [s.place, s.note].filter { !$0.isEmpty }.joined(separator: " · ")
+                            Text(extra.isEmpty ? s.started.agoText : extra + " · " + s.started.agoText)
+                                .font(.footnote).opacity(0.85).lineLimit(2)
+                        }
+                        Spacer()
                     }
                 }
-                Spacer()
-                if w == .me { Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary) }
+                .foregroundStyle(.white).padding(16)
             }
-            .padding(14).card()
+            .frame(height: big ? 290 : 200)
+            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+            .shadow(color: c.opacity(0.4), radius: 16, y: 10)
+        }
+        .buttonStyle(.plain)
+        .transition(.scale(scale: 0.94).combined(with: .opacity))
+    }
+
+    // Быстрые разделы
+
+    private var tiles: some View {
+        HStack(spacing: 12) {
+            tile("Сон", "moon.stars.fill", "7C6BE0", detail: sleepDetail) { SleepView() }
+            tile("Трекер", "chart.bar.fill", "F59E0B", detail: trackerDetail) { TrackerView() }
+            tile("Банка", "flask.fill", "46C2A5", detail: jarDetail) { JarView() }
+        }
+    }
+
+    private func tile<D: View>(_ title: String, _ icon: String, _ hex: String, detail: String, @ViewBuilder dest: @escaping () -> D) -> some View {
+        NavigationLink { dest() } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: icon).font(.system(size: 20, weight: .bold)).foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(LinearGradient(colors: [Color(hex: hex), Color(hex: hex).opacity(0.65)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: Color(hex: hex).opacity(0.4), radius: 6, y: 4)
+                Text(title).font(.subheadline.weight(.bold)).foregroundStyle(.primary)
+                Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2).frame(height: 30, alignment: .topLeading)
+            }
+            .padding(12).frame(maxWidth: .infinity, alignment: .leading).card()
         }
         .buttonStyle(.plain)
     }
 
-    private var distanceCard: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "location.fill").font(.title2).foregroundStyle(store.meColor)
-                .frame(width: 56)
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Между вами").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+    private var sleepDetail: String {
+        if let e = store.lastSleep(of: .me) { return hoursText(e.hours) }
+        return "Записать сон"
+    }
+    private var trackerDetail: String {
+        let n = store.data.counters.reduce(0) { $0 + store.count($1.id, who: nil) }
+        return n == 0 ? "Пока пусто" : "Сегодня: \(n)"
+    }
+    private var jarDetail: String {
+        let n = store.data.jar.filter { Calendar.current.isDateInToday($0.date) }.count
+        return n == 0 ? "Бросить шарик" : "Шариков: \(n)"
+    }
+
+    // Расстояние и дни
+
+    private var infoRow: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Между нами", systemImage: "location.fill").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 if let d = store.distanceKm() {
-                    Text(d.kmText).font(.title3.weight(.bold))
+                    Text(d.kmText).font(.system(size: 26, weight: .heavy, design: .rounded))
                 } else {
-                    Text(store.p.shareLocation ? "Ждём геопозицию партнёра" : "Расстояние скрыто")
-                        .font(.headline)
-                    if !store.p.shareLocation {
-                        Text("Включите в Настройки → Пара → Показывать местоположение")
-                            .font(.footnote).foregroundStyle(.secondary)
-                    }
+                    Text(store.p.shareLocation ? "Ждём партнёра" : "Скрыто").font(.headline)
+                    if !store.p.shareLocation { Text("Включите в настройках").font(.caption2).foregroundStyle(.secondary) }
                 }
             }
-            Spacer()
-        }
-        .padding(14).card()
-    }
-
-    // Сон
-
-    private var sleepCard: some View {
-        let mine = store.lastSleep(of: .me)
-        let theirs = store.lastSleep(of: .partner)
-        return HStack(spacing: 14) {
-            Image(systemName: "moon.stars.fill").font(.title2).foregroundStyle(Color(hex: "7C6BE0")).frame(width: 56)
+            .padding(14).frame(maxWidth: .infinity, alignment: .leading).card()
             VStack(alignment: .leading, spacing: 4) {
-                Text("Сон").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                HStack(spacing: 14) {
-                    sleepChip(.me, mine)
-                    sleepChip(.partner, theirs)
+                Label("Вместе", systemImage: "heart.fill").font(.caption.weight(.semibold)).foregroundStyle(store.partnerColor)
+                let days = max(0, Calendar.current.dateComponents([.day], from: store.p.start, to: Date()).day ?? 0)
+                Text("\(days)").font(.system(size: 26, weight: .heavy, design: .rounded))
+                Text("дней").font(.caption2).foregroundStyle(.secondary)
+            }
+            .padding(14).frame(maxWidth: .infinity, alignment: .leading).card()
+        }
+    }
+
+    // История статусов
+
+    private var historyBlock: some View {
+        VStack(spacing: 8) {
+            Button { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { history.toggle() } } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.down").rotationEffect(.degrees(history ? 180 : 0))
+                    Text("История").font(.subheadline.weight(.semibold))
                 }
+                .foregroundStyle(.secondary)
             }
-            Spacer()
-            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
-        }
-        .padding(14).card()
-    }
-
-    private func sleepChip(_ w: Who, _ e: SleepEntry?) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(store.color(w)).frame(width: 8, height: 8)
-            if let e {
-                Text(hoursText(e.hours)).font(.subheadline.weight(.bold))
-            } else {
-                Text("—").font(.subheadline).foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    // Трекер
-
-    private var trackerCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("ТРЕКЕР СЕГОДНЯ").font(.caption.weight(.semibold)).foregroundStyle(.secondary).tracking(1)
-                Spacer()
-                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
-            }
-            HStack(spacing: 8) {
-                ForEach(store.data.counters.prefix(4)) { c in
-                    VStack(spacing: 4) {
-                        Text(c.emoji).font(.title2)
-                        Text("\(store.count(c.id, who: nil))").font(.headline.monospacedDigit())
+            if history {
+                let items = store.data.statuses.sorted { $0.started > $1.started }.prefix(12)
+                if items.isEmpty { Text("Статусов пока не было").font(.footnote).foregroundStyle(.secondary) }
+                ForEach(Array(items)) { s in
+                    let k = statusKind(s.kind)
+                    HStack(spacing: 12) {
+                        Image(systemName: k.symbol).foregroundStyle(Color(hex: k.hex)).frame(width: 36, height: 36)
+                            .background(Color(hex: k.hex).opacity(0.15), in: Circle())
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("\(store.name(s.who)) — \(s.title)").font(.subheadline.weight(.semibold))
+                            if !s.note.isEmpty { Text(s.note).font(.caption).foregroundStyle(.secondary) }
+                        }
+                        Spacer()
+                        Text(s.started.agoText).font(.caption).foregroundStyle(.secondary)
                     }
-                    .frame(maxWidth: .infinity).padding(.vertical, 10)
-                    .background(Color(hex: c.hex).opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .padding(10).card()
                 }
             }
         }
-        .padding(14).card()
-    }
-
-    // Банка
-
-    private var jarCard: some View {
-        let today = store.data.jar.filter { Calendar.current.isDateInToday($0.date) }
-        return HStack(spacing: 14) {
-            Image(systemName: "flask.fill").font(.title2).foregroundStyle(Color(hex: "46C2A5")).frame(width: 56)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Банка настроения").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                HStack(spacing: -6) {
-                    ForEach(today.suffix(8)) { b in
-                        Circle().fill(Color(hex: jarMoods[min(b.mood, jarMoods.count - 1)].hex))
-                            .frame(width: 22, height: 22)
-                            .overlay(Circle().stroke(Pal.card, lineWidth: 2))
-                    }
-                    if today.isEmpty { Text("Сегодня шариков ещё нет").font(.subheadline).foregroundStyle(.secondary) }
-                }
-            }
-            Spacer()
-            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
-        }
-        .padding(14).card()
     }
 }
 
@@ -233,6 +360,36 @@ struct StatusSheet: View {
 
 // MARK: - Сон
 
+struct SleepRing: View {
+    let hours: Double?
+    let quality: Int
+    let color: Color
+    var size: CGFloat = 130
+    @State private var shown = false
+
+    var body: some View {
+        let q = min(max(quality, 1), 5)
+        let c = hours == nil ? Color.gray.opacity(0.4) : Color(hex: sleepHexes[q])
+        ZStack {
+            Circle().stroke(c.opacity(0.18), lineWidth: size * 0.11)
+            Circle().trim(from: 0, to: shown ? CGFloat(min((hours ?? 0) / 10, 1)) : 0)
+                .stroke(c, style: StrokeStyle(lineWidth: size * 0.11, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            VStack(spacing: 0) {
+                if let hours {
+                    Text(String(format: "%.1f", hours).replacingOccurrences(of: ".", with: ","))
+                        .font(.system(size: size * 0.26, weight: .heavy, design: .rounded))
+                    Text("часов").font(.system(size: size * 0.09)).foregroundStyle(.secondary)
+                } else {
+                    Text("—").font(.system(size: size * 0.3, weight: .bold)).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .frame(width: size, height: size)
+        .onAppear { withAnimation(.easeOut(duration: 0.9)) { shown = true } }
+    }
+}
+
 struct SleepView: View {
     @EnvironmentObject var store: Store
     @State private var bed = Calendar.current.date(bySettingHour: 23, minute: 0, second: 0, of: Date().addingTimeInterval(-86400)) ?? Date()
@@ -243,70 +400,78 @@ struct SleepView: View {
     private var hours: Double { max(0, wake.timeIntervalSince(bed) / 3600) }
 
     var body: some View {
-        Screen {
-            HStack(spacing: 12) {
-                ForEach(Who.allCases, id: \.self) { w in
-                    let e = store.lastSleep(of: w)
-                    VStack(spacing: 6) {
-                        Text(store.name(w)).font(.caption.weight(.semibold)).foregroundStyle(store.color(w))
-                        if let e {
-                            Text(hoursText(e.hours)).font(.headline)
-                            Text(sleepTitles[min(max(e.quality, 1), 5)])
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 10).padding(.vertical, 4)
-                                .background(Color(hex: sleepHexes[min(max(e.quality, 1), 5)]).opacity(0.2), in: Capsule())
-                        } else {
-                            Text("нет данных").font(.subheadline).foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity).padding(.vertical, 16).card()
-                }
-            }
-
-            SectionTitle("Записать мой сон")
+        ScrollView {
             VStack(spacing: 14) {
-                DatePicker("Лёг(ла)", selection: $bed, displayedComponents: [.date, .hourAndMinute])
-                DatePicker("Проснулся(ась)", selection: $wake, displayedComponents: [.date, .hourAndMinute])
-                HStack {
-                    Text("Всего").foregroundStyle(.secondary)
-                    Spacer()
-                    Text(hoursText(hours)).font(.headline)
-                }
-                HStack(spacing: 8) {
-                    ForEach(1...5, id: \.self) { q in
-                        Button {
-                            quality = q; manualQuality = true; store.tap()
-                        } label: {
-                            Text(sleepTitles[q]).font(.caption2.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.6)
-                                .frame(maxWidth: .infinity).padding(.vertical, 9)
-                                .background(Color(hex: sleepHexes[q]).opacity(quality == q ? 0.3 : 0.1), in: Capsule())
-                                .overlay(Capsule().stroke(quality == q ? Color(hex: sleepHexes[q]) : .clear, lineWidth: 1.5))
+                HStack(spacing: 12) {
+                    ForEach(Who.allCases, id: \.self) { w in
+                        let e = store.lastSleep(of: w)
+                        VStack(spacing: 8) {
+                            Text(store.name(w)).font(.caption.weight(.bold)).foregroundStyle(store.color(w))
+                            SleepRing(hours: e?.hours, quality: e?.quality ?? 3, color: store.color(w), size: 118)
+                            if let e {
+                                Text(sleepTitles[min(max(e.quality, 1), 5)]).font(.caption.weight(.bold))
+                                    .padding(.horizontal, 12).padding(.vertical, 4)
+                                    .background(Color(hex: sleepHexes[min(max(e.quality, 1), 5)]).opacity(0.2), in: Capsule())
+                            } else {
+                                Text("нет данных").font(.caption).foregroundStyle(.secondary)
+                            }
                         }
-                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity).padding(.vertical, 16).card()
                     }
                 }
-                Button {
-                    store.saveSleep(bed: bed, wake: wake, quality: quality)
-                } label: { Text("Сохранить").bigButton().opacity(hours < 0.5 ? 0.4 : 1) }
-                    .disabled(hours < 0.5)
-            }
-            .padding(16).card()
-            .onChange(of: hours) { _, h in if !manualQuality { quality = sleepQuality(forHours: h) } }
 
-            SectionTitle("Последние 7 дней")
-            VStack(spacing: 8) {
-                ForEach(lastDays(), id: \.self) { day in
-                    HStack(spacing: 10) {
-                        Text(shortDay(day)).font(.caption).foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
-                        VStack(spacing: 4) {
-                            bar(store.sleep(of: .me, day: day), .me)
-                            bar(store.sleep(of: .partner, day: day), .partner)
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Записать мой сон").font(.headline)
+                    DatePicker("Лёг(ла)", selection: $bed, displayedComponents: [.date, .hourAndMinute])
+                    DatePicker("Проснулся(ась)", selection: $wake, displayedComponents: [.date, .hourAndMinute])
+                    HStack {
+                        Text("Всего").foregroundStyle(.secondary)
+                        Spacer()
+                        Text(hoursText(hours)).font(.headline)
+                    }
+                    HStack(spacing: 6) {
+                        ForEach(1...5, id: \.self) { q in
+                            Button {
+                                quality = q; manualQuality = true; store.tap()
+                            } label: {
+                                Text(sleepTitles[q]).font(.caption2.weight(.bold)).lineLimit(1).minimumScaleFactor(0.6)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                                    .foregroundStyle(quality == q ? .white : .primary)
+                                    .background(quality == q ? Color(hex: sleepHexes[q]) : Color(hex: sleepHexes[q]).opacity(0.14), in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    Button {
+                        store.saveSleep(bed: bed, wake: wake, quality: quality)
+                    } label: { Text("Сохранить").bigButton().opacity(hours < 0.5 ? 0.4 : 1) }
+                        .disabled(hours < 0.5)
+                }
+                .padding(16).card()
+                .onChange(of: hours) { _, h in if !manualQuality { quality = sleepQuality(forHours: h) } }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Последние 7 дней").font(.headline)
+                    HStack(alignment: .bottom, spacing: 8) {
+                        ForEach(lastDays(), id: \.self) { day in
+                            VStack(spacing: 6) {
+                                HStack(alignment: .bottom, spacing: 3) {
+                                    column(store.sleep(of: .me, day: day), .me)
+                                    column(store.sleep(of: .partner, day: day), .partner)
+                                }
+                                .frame(height: 110, alignment: .bottom)
+                                Text(shortDay(day)).font(.system(size: 9)).foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
                         }
                     }
                 }
+                .padding(16).card()
             }
-            .padding(16).card()
+            .padding(.horizontal, 16).padding(.bottom, 24)
         }
+        .scrollIndicators(.hidden)
+        .background(ThemeBackground())
         .navigationTitle("Сон")
         .animation(.easeInOut(duration: 0.2), value: quality)
         .onAppear {
@@ -318,19 +483,15 @@ struct SleepView: View {
         }
     }
 
-    private func bar(_ e: SleepEntry?, _ w: Who) -> some View {
-        GeometryReader { g in
-            let frac = min(1, (e?.hours ?? 0) / 12)
-            ZStack(alignment: .leading) {
-                Capsule().fill(Pal.field)
-                if e != nil { Capsule().fill(store.color(w)).frame(width: max(8, g.size.width * frac)) }
-            }
-        }
-        .frame(height: 8)
+    private func column(_ e: SleepEntry?, _ w: Who) -> some View {
+        let h = CGFloat(min((e?.hours ?? 0) / 12, 1)) * 110
+        return RoundedRectangle(cornerRadius: 5, style: .continuous)
+            .fill(e == nil ? Color.gray.opacity(0.15) : store.color(w))
+            .frame(width: 12, height: max(6, h))
     }
 
     private func lastDays() -> [String] {
-        (0..<7).map { Calendar.current.date(byAdding: .day, value: -$0, to: Date())!.dayKey }
+        (0..<7).reversed().map { Calendar.current.date(byAdding: .day, value: -$0, to: Date())!.dayKey }
     }
 
     private func shortDay(_ key: String) -> String {
@@ -347,192 +508,108 @@ struct TrackerView: View {
     @State private var title = ""
     @State private var emoji = "⭐️"
     @State private var hex = "8C7BF2"
+    @State private var bump: UUID?
     private let palette = ["38BDF8", "F43F5E", "F59E0B", "A0674B", "8C7BF2", "10B981", "E0457B", "64748B"]
 
     var body: some View {
-        Screen {
-            ForEach(store.data.counters) { c in
-                let tint = Color(hex: c.hex)
-                VStack(spacing: 12) {
-                    HStack {
-                        Text(c.emoji).font(.largeTitle)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(c.title).font(.headline)
-                            let st = store.streak(c.id)
-                            Text(st > 0 ? "🔥 \(st) дн. подряд" : "Серия начнётся сегодня")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                    }
-                    HStack(spacing: 10) {
-                        ForEach(Who.allCases, id: \.self) { w in
-                            VStack(spacing: 2) {
-                                Text("\(store.count(c.id, who: w))").font(.title2.weight(.bold).monospacedDigit())
-                                    .contentTransition(.numericText())
-                                Text(store.name(w)).font(.caption2).foregroundStyle(store.color(w)).lineLimit(1)
-                            }
-                            .frame(maxWidth: .infinity).padding(.vertical, 10)
-                            .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        }
-                    }
-                    HStack(spacing: 10) {
-                        Button {
-                            withAnimation { store.addTrack(c.id) }
-                        } label: {
-                            Label("Добавить", systemImage: "plus")
-                                .font(.subheadline.weight(.bold)).foregroundStyle(.white)
-                                .frame(maxWidth: .infinity).padding(.vertical, 12)
-                                .background(tint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        }
-                        Button {
-                            withAnimation { store.undoTrack(c.id) }
-                        } label: {
-                            Image(systemName: "arrow.uturn.backward").font(.subheadline.weight(.bold))
-                                .frame(width: 48).padding(.vertical, 12)
-                                .background(Pal.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(14).card()
-                .contextMenu {
-                    Button("Удалить счётчик", role: .destructive) {
-                        store.data.counters.removeAll { $0.id == c.id }
-                        store.data.tracks.removeAll { $0.counter == c.id }
-                    }
+        ScrollView {
+            VStack(spacing: 16) {
+                ForEach(store.data.counters) { c in counterCard(c) }
+                Button { adding = true } label: {
+                    Label("Новый счётчик", systemImage: "plus.circle.fill").bigButton()
                 }
             }
-            Button { adding = true } label: {
-                Label("Новый счётчик", systemImage: "plus.circle.fill").bigButton()
-            }
+            .padding(.horizontal, 16).padding(.bottom, 24)
         }
+        .scrollIndicators(.hidden)
+        .background(ThemeBackground())
         .navigationTitle("Трекер")
-        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: store.data.tracks.count)
-        .sheet(isPresented: $adding) {
-            NavigationStack {
-                Form {
-                    TextField("Название", text: $title)
-                    TextField("Эмодзи", text: $emoji)
-                    HStack {
-                        ForEach(palette, id: \.self) { h in
-                            Circle().fill(Color(hex: h)).frame(width: 28, height: 28)
-                                .overlay(Circle().stroke(Color.primary, lineWidth: hex == h ? 2.5 : 0).padding(-3))
-                                .onTapGesture { hex = h }
-                        }
-                    }
-                }
-                .navigationTitle("Новый счётчик")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Отмена") { adding = false } }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Добавить") {
-                            let t = title.trimmingCharacters(in: .whitespaces)
-                            guard !t.isEmpty else { return }
-                            store.data.counters.append(TrackerCounter(title: t, emoji: String(emoji.prefix(2)), hex: hex))
-                            title = ""
-                            adding = false
-                        }
-                    }
-                }
-            }
-            .presentationDetents([.medium])
-        }
-    }
-}
-
-// MARK: - Банка настроения
-
-struct JarView: View {
-    @EnvironmentObject var store: Store
-    @State private var note = ""
-
-    private var balls: [JarBall] {
-        store.data.jar.sorted { $0.date < $1.date }.suffix(60).map { $0 }
+        .sheet(isPresented: $adding) { addSheet }
     }
 
-    var body: some View {
-        Screen {
-            jar.frame(height: 300).padding(.top, 8)
-
-            SectionTitle("Бросить шарик")
-            VStack(spacing: 12) {
-                HStack(spacing: 8) {
-                    ForEach(jarMoods) { m in
-                        Button {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
-                                store.addBall(mood: m.id, note: note)
-                            }
-                            note = ""
-                        } label: {
-                            VStack(spacing: 4) {
-                                Text(m.emoji).font(.system(size: 30))
-                                Text(m.title).font(.system(size: 10, weight: .medium)).foregroundStyle(.primary)
-                                    .lineLimit(1).minimumScaleFactor(0.6)
-                            }
-                            .frame(maxWidth: .infinity).padding(.vertical, 10)
-                            .background(Color(hex: m.hex).opacity(0.18), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                TextField("Пара слов (по желанию)", text: $note)
-                    .padding(12).background(Pal.field, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    private func counterCard(_ c: TrackerCounter) -> some View {
+        let tint = Color(hex: c.hex)
+        let total = store.count(c.id, who: nil)
+        let st = store.streak(c.id)
+        return VStack(spacing: 14) {
+            HStack {
+                Text(c.emoji).font(.title)
+                Text(c.title).font(.title3.weight(.heavy)).foregroundStyle(.white)
+                Spacer()
+                Text(st > 0 ? "🔥 \(st)" : "").font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                    .padding(.horizontal, 10).padding(.vertical, 4).background(.white.opacity(st > 0 ? 0.22 : 0), in: Capsule())
             }
-            .padding(14).card()
-
-            SectionTitle("Последние")
-            ForEach(store.data.jar.sorted { $0.date > $1.date }.prefix(15)) { b in
-                let m = jarMoods[min(b.mood, jarMoods.count - 1)]
-                HStack(spacing: 12) {
-                    Text(m.emoji).font(.title2)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(store.name(b.who)) — \(m.title)").font(.subheadline.weight(.semibold))
-                        if !b.note.isEmpty { Text(b.note).font(.footnote).foregroundStyle(.secondary) }
-                    }
-                    Spacer()
-                    Text(b.date.agoText).font(.caption).foregroundStyle(.secondary)
+            Button {
+                bump = c.id
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { store.addTrack(c.id) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { bump = nil }
+            } label: {
+                ZStack {
+                    Circle().fill(.white.opacity(0.18)).frame(width: 190, height: 190)
+                    Circle().fill(RadialGradient(colors: [.white.opacity(0.95), .white.opacity(0.7)], center: .init(x: 0.35, y: 0.3), startRadius: 2, endRadius: 120))
+                        .frame(width: 150, height: 150)
+                        .shadow(color: .black.opacity(0.2), radius: 12, y: 8)
+                    Text("\(total)").font(.system(size: 64, weight: .heavy, design: .rounded)).foregroundStyle(tint)
+                        .contentTransition(.numericText())
                 }
-                .padding(12).card()
+                .scaleEffect(bump == c.id ? 1.1 : 1)
+            }
+            .buttonStyle(.plain)
+            HStack(spacing: 10) {
+                ForEach(Who.allCases, id: \.self) { w in
+                    HStack(spacing: 6) {
+                        Circle().fill(store.color(w)).frame(width: 10, height: 10).overlay(Circle().stroke(.white, lineWidth: 1.5))
+                        Text("\(store.name(w)): \(store.count(c.id, who: w))").font(.footnote.weight(.semibold)).lineLimit(1)
+                    }
+                    .foregroundStyle(.white).frame(maxWidth: .infinity).padding(.vertical, 9)
+                    .background(.white.opacity(0.18), in: Capsule())
+                }
+                Button { withAnimation { store.undoTrack(c.id) } } label: {
+                    Image(systemName: "arrow.uturn.backward").font(.footnote.weight(.bold)).foregroundStyle(.white)
+                        .frame(width: 38, height: 34).background(.white.opacity(0.18), in: Capsule())
+                }
             }
         }
-        .navigationTitle("Банка настроения")
+        .padding(16)
+        .background(LinearGradient(colors: [tint, tint.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .shadow(color: tint.opacity(0.35), radius: 14, y: 8)
+        .contextMenu {
+            Button("Удалить счётчик", role: .destructive) {
+                store.data.counters.removeAll { $0.id == c.id }
+                store.data.tracks.removeAll { $0.counter == c.id }
+            }
+        }
     }
 
-    private var jar: some View {
-        GeometryReader { g in
-            let w = g.size.width
-            let jarW = min(w - 40, 300)
-            let r: CGFloat = 17
-            let perRow = max(1, Int((jarW - 30) / (r * 2)))
-            ZStack {
-                RoundedRectangle(cornerRadius: 40, style: .continuous)
-                    .fill(Pal.card)
-                RoundedRectangle(cornerRadius: 40, style: .continuous)
-                    .stroke(Color.primary.opacity(0.12), lineWidth: 2)
-                ZStack(alignment: .bottomLeading) {
-                    Color.clear
-                    ForEach(Array(balls.enumerated()), id: \.element.id) { i, b in
-                        let row = i / perRow
-                        let col = i % perRow
-                        let xOff: CGFloat = row % 2 == 0 ? 0 : r
-                        let jitter = CGFloat(Int(b.id.uuid.0) % 7) - 3
-                        Circle()
-                            .fill(Color(hex: jarMoods[min(b.mood, jarMoods.count - 1)].hex))
-                            .overlay(Circle().fill(.white.opacity(0.28)).frame(width: r * 0.7).offset(x: -r * 0.25, y: -r * 0.3))
-                            .frame(width: r * 2 - 2, height: r * 2 - 2)
-                            .offset(x: 14 + xOff + CGFloat(col) * r * 2 + jitter * 0.4,
-                                    y: -(12 + CGFloat(row) * (r * 1.8)))
-                            .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
+    private var addSheet: some View {
+        NavigationStack {
+            Form {
+                TextField("Название", text: $title)
+                TextField("Эмодзи", text: $emoji)
+                HStack {
+                    ForEach(palette, id: \.self) { h in
+                        Circle().fill(Color(hex: h)).frame(width: 28, height: 28)
+                            .overlay(Circle().stroke(Color.primary, lineWidth: hex == h ? 2.5 : 0).padding(-3))
+                            .onTapGesture { hex = h }
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 38, style: .continuous))
-                if balls.isEmpty {
-                    Text("Банка пуста").foregroundStyle(.secondary)
+            }
+            .navigationTitle("Новый счётчик")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Отмена") { adding = false } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Добавить") {
+                        let t = title.trimmingCharacters(in: .whitespaces)
+                        guard !t.isEmpty else { return }
+                        store.data.counters.append(TrackerCounter(title: t, emoji: String(emoji.prefix(2)), hex: hex))
+                        title = ""
+                        adding = false
+                    }
                 }
             }
-            .frame(width: jarW, height: g.size.height)
-            .frame(maxWidth: .infinity)
         }
+        .presentationDetents([.medium])
     }
 }

@@ -47,7 +47,18 @@ let colorPairs: [ColorPair] = [
 struct CardBG: ViewModifier {
     @EnvironmentObject var store: Store
     func body(content: Content) -> some View {
-        content.background(Pal.card, in: RoundedRectangle(cornerRadius: store.radius, style: .continuous))
+        let shape = RoundedRectangle(cornerRadius: store.radius, style: .continuous)
+        switch store.p.cardStyle {
+        case 1:
+            content.background(Pal.card, in: shape)
+        case 2:
+            content.background(Pal.card.opacity(0.55), in: shape)
+                .overlay(shape.stroke(Color.primary.opacity(0.14), lineWidth: 1.2))
+        default:
+            content.background(Pal.card, in: shape)
+                .overlay(shape.stroke(LinearGradient(colors: [.white.opacity(0.55), .white.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
+                .shadow(color: Theme.accent.opacity(0.10), radius: 14, y: 8)
+        }
     }
 }
 

@@ -120,11 +120,13 @@ struct Profile: Codable {
     var partnerCode = ""
     var lockApp = false
     var notifications = false
-    var themeID = "classic"
+    var themeID = "fresh"
     var wallpaper = "none"
     var iconID = ""
     var shareLocation = false
     var bubbleStyle = 0
+    var cardStyle = 0              // 0 — мягкие с тенью, 1 — плоские, 2 — контур
+    var bgStyle = 0                // 0 — свечение, 1 — аврора (движется), 2 — однотонный
 
     init() {}
 
@@ -141,7 +143,7 @@ struct Profile: Codable {
         design = v(.design, .rounded)
         haptics = v(.haptics, true)
         var ord: [Module] = v(.order, Module.defaultOrder)
-        for m in Module.defaultOrder where !ord.contains(m) { ord.append(m) }
+        for m in Module.defaultOrder where !ord.contains(m) { if m == .today { ord.insert(m, at: 0) } else { ord.append(m) } }
         order = ord
         disabled = v(.disabled, [])
         onboarded = v(.onboarded, false)
@@ -149,11 +151,13 @@ struct Profile: Codable {
         partnerCode = v(.partnerCode, "")
         lockApp = v(.lockApp, false)
         notifications = v(.notifications, false)
-        themeID = v(.themeID, "classic")
+        themeID = v(.themeID, "fresh")
         wallpaper = v(.wallpaper, "none")
         iconID = v(.iconID, "")
         shareLocation = v(.shareLocation, false)
         bubbleStyle = v(.bubbleStyle, 0)
+        cardStyle = v(.cardStyle, 0)
+        bgStyle = v(.bgStyle, 0)
     }
 }
 
@@ -255,6 +259,22 @@ struct SecureCard: Identifiable, Codable, Hashable {
     var name: String
     var number = ""
     var note = ""
+    var symbology = "code128"      // code128, ean13, qr, pdf417, aztec
+    var hex = "34C38F"
+
+    init(name: String, number: String = "", note: String = "", symbology: String = "code128", hex: String = "34C38F") {
+        self.name = name; self.number = number; self.note = note; self.symbology = symbology; self.hex = hex
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? UUID()
+        name = (try? c.decodeIfPresent(String.self, forKey: .name)) ?? "Карта"
+        number = (try? c.decodeIfPresent(String.self, forKey: .number)) ?? ""
+        note = (try? c.decodeIfPresent(String.self, forKey: .note)) ?? ""
+        symbology = (try? c.decodeIfPresent(String.self, forKey: .symbology)) ?? "code128"
+        hex = (try? c.decodeIfPresent(String.self, forKey: .hex)) ?? "34C38F"
+    }
 }
 
 struct FileItem: Identifiable, Codable, Hashable {

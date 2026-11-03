@@ -32,6 +32,8 @@ enum Keychain {
         q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         SecItemAdd(q as CFDictionary, nil)
     }
+
+    static func remove(_ key: String) { SecItemDelete(query(key) as CFDictionary) }
 }
 
 // MARK: - JSON без типа (данные записи едут на сервер как обычный JSON)

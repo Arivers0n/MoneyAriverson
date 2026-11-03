@@ -3,7 +3,7 @@ import UserNotifications
 
 @MainActor
 final class Store: ObservableObject {
-    @Published var data: AppData { didSet { save(); sync.dataChanged(data); Theme.current = ThemeDef.find(data.profile.themeID); location.apply(); WidgetBridge.shared.update(self) } }
+    @Published var data: AppData { didSet { save(); sync.dataChanged(data); applyTheme(); location.apply(); WidgetBridge.shared.update(self) } }
     @Published var scope: Scope = .we
     let sync = SyncEngine()
     let location = LocationService()
@@ -21,11 +21,19 @@ final class Store: ObservableObject {
         } else {
             data = AppData()
         }
-        Theme.current = ThemeDef.find(data.profile.themeID)
+        applyTheme()
         sync.attach(self)
         location.attach(self)
         WidgetBridge.shared.update(self)
         seedCountersIfNeeded()
+    }
+
+    func applyTheme() {
+        Theme.current = ThemeDef.find(data.profile.themeID)
+        Theme.bgStyle = data.profile.bgStyle
+        Theme.cardStyle = data.profile.cardStyle
+        Theme.accent = Color(hex: data.profile.myHex)
+        Theme.accent2 = Color(hex: data.profile.partnerHex)
     }
 
     private var saveTask: Task<Void, Never>?

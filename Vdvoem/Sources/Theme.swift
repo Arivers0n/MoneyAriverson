@@ -11,6 +11,8 @@ struct ThemeDef: Identifiable, Hashable {
     let fieldL: String, fieldD: String
 
     static let all: [ThemeDef] = [
+        ThemeDef(id: "fresh", title: "Свежесть", bgL: "EEF9E2", bgD: "0C1610", topL: "C8F0A4", topD: "1B3B22",
+                 cardL: "FFFFFF", cardD: "17241B", fieldL: "E2F1D3", fieldD: "223427"),
         ThemeDef(id: "classic", title: "Классика", bgL: "F4F3F0", bgD: "0D0E12", topL: "F4F3F0", topD: "0D0E12",
                  cardL: "FFFFFF", cardD: "1A1B20", fieldL: "ECEBE7", fieldD: "24262D"),
         ThemeDef(id: "mint", title: "Мята", bgL: "EEF7E6", bgD: "0E1712", topL: "D6F2B8", topD: "17331F",
@@ -33,8 +35,12 @@ struct ThemeDef: Identifiable, Hashable {
 }
 
 enum Theme {
-    /// Текущая тема. Обновляется хранилищем при каждой смене.
+    /// Текущая тема и стили. Обновляются хранилищем при каждой смене.
     static var current = ThemeDef.all[0]
+    static var bgStyle = 0
+    static var cardStyle = 0
+    static var accent = Color(hex: "4C9AF0")
+    static var accent2 = Color(hex: "D870A8")
 }
 
 enum Pal {
@@ -44,15 +50,42 @@ enum Pal {
     static var field: Color { Color(light: Color(hex: Theme.current.fieldL), dark: Color(hex: Theme.current.fieldD)) }
 }
 
-/// Фон экрана: плавный цветной верх переходит в основной цвет.
+/// Фон экрана: цветной верх, мягкие световые пятна, по желанию — медленная «аврора».
 struct ThemeBackground: View {
+    @Environment(\.colorScheme) private var scheme
+
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
             Pal.bg
-            LinearGradient(colors: [Pal.top, Pal.top.opacity(0)], startPoint: .top, endPoint: .bottom)
-                .frame(height: 360)
+            if Theme.bgStyle != 2 {
+                if Theme.bgStyle == 1 {
+                    TimelineView(.animation(minimumInterval: 1 / 20)) { tl in
+                        blobs(t: tl.date.timeIntervalSinceReferenceDate)
+                    }
+                } else {
+                    blobs(t: 0)
+                }
+            }
         }
         .ignoresSafeArea()
+    }
+
+    private func blobs(t: Double) -> some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            let a = scheme == .dark ? 0.30 : 0.45
+            ZStack {
+                LinearGradient(colors: [Pal.top, Pal.top.opacity(0)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: h * 0.55).frame(maxHeight: .infinity, alignment: .top)
+                Circle().fill(Theme.accent.opacity(a * 0.55)).frame(width: w * 0.9)
+                    .blur(radius: 70).offset(x: -w * 0.35 + CGFloat(sin(t / 5)) * 40, y: -h * 0.32 + CGFloat(cos(t / 6)) * 30)
+                Circle().fill(Theme.accent2.opacity(a * 0.5)).frame(width: w * 0.8)
+                    .blur(radius: 80).offset(x: w * 0.4 + CGFloat(cos(t / 7)) * 40, y: h * 0.05 + CGFloat(sin(t / 4)) * 40)
+                Circle().fill(Theme.accent.opacity(a * 0.35)).frame(width: w * 0.7)
+                    .blur(radius: 80).offset(x: -w * 0.2 + CGFloat(sin(t / 8)) * 50, y: h * 0.42)
+            }
+            .frame(width: w, height: h)
+        }
     }
 }
 
