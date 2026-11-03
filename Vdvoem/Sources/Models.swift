@@ -109,7 +109,7 @@ struct Profile: Codable {
     var start = Date()
     var myHex = "4C9AF0"
     var partnerHex = "D870A8"
-    var theme: ThemeMode = .dark
+    var theme: ThemeMode = .system
     var radius: Double = 22
     var design: DesignStyle = .rounded
     var haptics = true
@@ -138,7 +138,7 @@ struct Profile: Codable {
         start = v(.start, Date())
         myHex = v(.myHex, "4C9AF0")
         partnerHex = v(.partnerHex, "D870A8")
-        theme = v(.theme, .dark)
+        theme = v(.theme, .system)
         radius = v(.radius, 22)
         design = v(.design, .rounded)
         haptics = v(.haptics, true)

@@ -237,45 +237,116 @@ struct AppearanceView: View {
     @State private var iconError: String?
 
     var body: some View {
-        Screen {
-            SectionTitle("Тема")
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
-                ForEach(ThemeDef.all) { t in themeTile(t) }
-            }
-            .padding(14).card()
-
-            SectionTitle("Обои чата")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(WallpaperDef.all) { w in wallTile(w) }
+        ScrollView {
+            VStack(spacing: 18) {
+                LivePreview()
+                section("Тема") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 12) {
+                        ForEach(ThemeDef.all) { t in themeTile(t) }
+                    }
+                    Picker("Режим", selection: $store.data.profile.theme) {
+                        ForEach(ThemeMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }.pickerStyle(.segmented)
                 }
-                .padding(.horizontal, 2).padding(.vertical, 4)
-            }
-
-            SectionTitle("Значок приложения")
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4), spacing: 14) {
-                ForEach(AppIconDef.all) { i in iconTile(i) }
-            }
-            .padding(14).card()
-            if let e = iconError {
-                Text(e).font(.footnote).foregroundStyle(.red)
-            }
-
-            SectionTitle("Стиль")
-            VStack(spacing: 14) {
-                LookControls()
-                Divider()
-                Picker("Пузыри в чате", selection: $store.data.profile.bubbleStyle) {
-                    Text("Круглые").tag(0)
-                    Text("Мягкие").tag(1)
-                    Text("Острые").tag(2)
+                section("Цвета пары") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
+                        ForEach(colorPairs) { p in pairTile(p) }
+                    }
+                    HStack(spacing: 14) {
+                        ColorPicker(store.name(.me), selection: Binding(
+                            get: { Color(hex: store.p.myHex) }, set: { store.data.profile.myHex = $0.hex }), supportsOpacity: false)
+                        ColorPicker(store.name(.partner), selection: Binding(
+                            get: { Color(hex: store.p.partnerHex) }, set: { store.data.profile.partnerHex = $0.hex }), supportsOpacity: false)
+                    }
+                    .font(.subheadline)
                 }
-                .pickerStyle(.segmented)
+                section("Фон") {
+                    choice([("Свечение", "sparkles"), ("Аврора", "wind"), ("Однотонный", "square.fill")], $store.data.profile.bgStyle)
+                    Text("«Аврора» — цветные пятна медленно плавают за карточками.").font(.caption).foregroundStyle(.secondary)
+                }
+                section("Карточки") {
+                    choice([("Мягкие", "rectangle.fill"), ("Плоские", "rectangle"), ("Контур", "rectangle.dashed")], $store.data.profile.cardStyle)
+                }
+                section("Обои чата") {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) { ForEach(WallpaperDef.all) { w in wallTile(w) } }.padding(.vertical, 4)
+                    }
+                    Picker("Пузыри", selection: $store.data.profile.bubbleStyle) {
+                        Text("Круглые").tag(0)
+                        Text("Мягкие").tag(1)
+                        Text("Острые").tag(2)
+                    }.pickerStyle(.segmented)
+                }
+                section("Значок приложения") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4), spacing: 14) {
+                        ForEach(AppIconDef.all) { i in iconTile(i) }
+                    }
+                    if let e = iconError { Text(e).font(.footnote).foregroundStyle(.red) }
+                }
+                section("Шрифт и форма") {
+                    Picker("Шрифт", selection: $store.data.profile.design) {
+                        ForEach(DesignStyle.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }.pickerStyle(.segmented)
+                    HStack {
+                        Text("Скругление").font(.subheadline)
+                        Slider(value: $store.data.profile.radius, in: 6...36, step: 1)
+                        Text("\(Int(store.p.radius))").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary).frame(width: 28)
+                    }
+                    Toggle("Вибро-отклик", isOn: $store.data.profile.haptics)
+                }
             }
-            .padding(16).card()
+            .padding(.horizontal, 16).padding(.bottom, 30)
         }
+        .scrollIndicators(.hidden)
+        .background(ThemeBackground())
         .navigationTitle("Оформление")
         .animation(.easeInOut(duration: 0.25), value: store.p.themeID)
+        .animation(.easeInOut(duration: 0.25), value: store.p.cardStyle)
+    }
+
+    private func section<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title.uppercased()).font(.caption.weight(.bold)).foregroundStyle(.secondary).tracking(1)
+            c()
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
+    }
+
+    private func choice(_ items: [(String, String)], _ sel: Binding<Int>) -> some View {
+        HStack(spacing: 8) {
+            ForEach(Array(items.enumerated()), id: \.offset) { i, it in
+                let on = sel.wrappedValue == i
+                Button { sel.wrappedValue = i; store.tap() } label: {
+                    VStack(spacing: 6) {
+                        Image(systemName: it.1).font(.title3)
+                        Text(it.0).font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(on ? .white : .primary)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .background(on ? AnyShapeStyle(store.meColor) : AnyShapeStyle(Pal.field), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func pairTile(_ p: ColorPair) -> some View {
+        let on = store.p.myHex == p.me && store.p.partnerHex == p.partner
+        return Button {
+            store.data.profile.myHex = p.me; store.data.profile.partnerHex = p.partner; store.tap()
+        } label: {
+            VStack(spacing: 6) {
+                HStack(spacing: -10) {
+                    Circle().fill(Color(hex: p.me)).frame(width: 30, height: 30)
+                    Circle().fill(Color(hex: p.partner)).frame(width: 30, height: 30)
+                }
+                Text(p.id).font(.system(size: 10, weight: .medium)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.7)
+            }
+            .frame(maxWidth: .infinity).padding(.vertical, 10)
+            .background(Pal.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(on ? Color.primary : .clear, lineWidth: 2))
+        }
+        .buttonStyle(.plain)
     }
 
     private func themeTile(_ t: ThemeDef) -> some View {
@@ -307,13 +378,11 @@ struct AppearanceView: View {
             store.tap()
         } label: {
             VStack(spacing: 6) {
-                ZStack {
-                    WallpaperPreview(id: w.id)
-                }
-                .frame(width: 74, height: 110)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(on ? store.meColor : Color.primary.opacity(0.1), lineWidth: on ? 2.5 : 1))
+                WallpaperPreview(id: w.id)
+                    .frame(width: 74, height: 110)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(on ? store.meColor : Color.primary.opacity(0.1), lineWidth: on ? 2.5 : 1))
                 Text(w.title).font(.caption2.weight(on ? .bold : .regular)).foregroundStyle(.primary)
             }
         }
@@ -322,9 +391,7 @@ struct AppearanceView: View {
 
     private func iconTile(_ i: AppIconDef) -> some View {
         let on = store.p.iconID == i.id
-        return Button {
-            setIcon(i)
-        } label: {
+        return Button { setIcon(i) } label: {
             VStack(spacing: 6) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
@@ -352,6 +419,53 @@ struct AppearanceView: View {
                 }
             }
         }
+    }
+}
+
+/// Мини-экран: показывает, как выглядят выбранные тема, цвета, карточки и пузыри.
+struct LivePreview: View {
+    @EnvironmentObject var store: Store
+
+    var body: some View {
+        let bubble: CGFloat = store.p.bubbleStyle == 1 ? 12 : (store.p.bubbleStyle == 2 ? 5 : 18)
+        ZStack {
+            WallpaperView(id: store.p.wallpaper)
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: "frying.pan.fill").font(.title3).foregroundStyle(.white)
+                        .frame(width: 42, height: 42).background(.white.opacity(0.2), in: Circle())
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Готовлю").font(.headline).foregroundStyle(.white)
+                        Text("\(store.name(.partner)) · 10 мин назад").font(.caption).foregroundStyle(.white.opacity(0.85))
+                    }
+                    Spacer()
+                }
+                .padding(12)
+                .background(LinearGradient(colors: [Color(hex: "E8590C"), Color(hex: "E8590C").opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                            in: RoundedRectangle(cornerRadius: store.radius, style: .continuous))
+                HStack {
+                    Text("Что на ужин?").font(.subheadline).padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(store.partnerColor, in: RoundedRectangle(cornerRadius: bubble, style: .continuous)).foregroundStyle(.white)
+                    Spacer()
+                }
+                HStack {
+                    Spacer()
+                    Text("Паста! Скоро буду ❤️").font(.subheadline).padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(store.meColor, in: RoundedRectangle(cornerRadius: bubble, style: .continuous)).foregroundStyle(.white)
+                }
+                HStack(spacing: 8) {
+                    Label("Чат", systemImage: "bubble.left.fill").font(.caption.weight(.bold)).foregroundStyle(.white)
+                        .padding(.horizontal, 14).frame(height: 34).background(store.meColor, in: Capsule())
+                    ForEach(["heart", "photo", "map"], id: \.self) { Image(systemName: $0).foregroundStyle(.secondary).frame(maxWidth: .infinity) }
+                }
+                .padding(5).background(Pal.card, in: Capsule())
+            }
+            .padding(14)
+        }
+        .frame(height: 290)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(Color.primary.opacity(0.1), lineWidth: 1))
+        .shadow(color: .black.opacity(0.12), radius: 14, y: 8)
     }
 }
 
