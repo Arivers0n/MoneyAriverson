@@ -3,7 +3,7 @@ import UserNotifications
 
 @MainActor
 final class Store: ObservableObject {
-    @Published var data: AppData { didSet { save(); sync.dataChanged(data); Theme.current = ThemeDef.find(data.profile.themeID); location.apply() } }
+    @Published var data: AppData { didSet { save(); sync.dataChanged(data); Theme.current = ThemeDef.find(data.profile.themeID); location.apply(); WidgetBridge.shared.update(self) } }
     @Published var scope: Scope = .we
     let sync = SyncEngine()
     let location = LocationService()
@@ -24,6 +24,7 @@ final class Store: ObservableObject {
         Theme.current = ThemeDef.find(data.profile.themeID)
         sync.attach(self)
         location.attach(self)
+        WidgetBridge.shared.update(self)
         seedCountersIfNeeded()
     }
 

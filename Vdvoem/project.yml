@@ -14,6 +14,11 @@ targets:
     platform: iOS
     sources:
       - Sources
+      - Shared
+      - Assets.xcassets
+    dependencies:
+      - target: VdvoemWidget
+        embed: true
     info:
       path: Sources/Info.plist
       properties:
@@ -30,3 +35,37 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ru.vdvoem.app
         TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Night AppIcon-Ocean AppIcon-Sunset AppIcon-Lavender AppIcon-Gold AppIcon-Mint AppIcon-Peach AppIcon-Candy AppIcon-Aurora AppIcon-Cosmos AppIcon-Mono AppIcon-Neon AppIcon-Berry AppIcon-Lime AppIcon-Ink"
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
+    entitlements:
+      path: Sources/Vdvoem.entitlements
+      properties:
+        com.apple.security.application-groups: [group.ru.vdvoem.app]
+  VdvoemWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget
+        excludes:
+          - Info.plist
+          - VdvoemWidget.entitlements
+      - Shared
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Вдвоём
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widget/VdvoemWidget.entitlements
+      properties:
+        com.apple.security.application-groups: [group.ru.vdvoem.app]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ru.vdvoem.app.widget
+        PRODUCT_NAME: VdvoemWidget
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: "YES"
