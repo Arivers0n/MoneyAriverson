@@ -1,6 +1,6 @@
 import SwiftUI
 
-private func ownerColor(_ store: Store, _ v: Int) -> Color {
+@MainActor private func ownerColor(_ store: Store, _ v: Int) -> Color {
     store.color(GameLogic.owner(v))
 }
 
