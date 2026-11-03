@@ -190,14 +190,7 @@ private func makeAdapters() -> [Adapter] {
         adapter("batteries", \AppData.batteries) { b in
             var x = b; x.who = b.who.flipped; x.id = x.who.rawValue; return x
         },
-        adapter("matches", \AppData.matches) { m in
-            var x = m
-            x.turn = m.turn.flipped
-            x.starter = m.starter.flipped
-            x.winner = m.winner?.flipped
-            x.board = m.board.map { $0 == 1 ? 2 : ($0 == 2 ? 1 : $0) }
-            return x
-        },
+        adapter("matches", \AppData.matches) { GameFlip.flip($0) },
     ]
 }
 

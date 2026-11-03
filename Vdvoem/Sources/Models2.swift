@@ -157,27 +157,93 @@ struct PlacePoint: Identifiable, Codable, Hashable {
 // MARK: - Сетевые игры
 
 enum GameKind: String, Codable, CaseIterable, Identifiable {
-    case ttt, four, reversi
+    case ttt, four, reversi, checkers, dots, battleship, durak, memory, rps, hangman
     var id: String { rawValue }
+
     var title: String {
         switch self {
         case .ttt: return "Крестики-нолики"
         case .four: return "4 в ряд"
         case .reversi: return "Реверси"
+        case .checkers: return "Шашки"
+        case .dots: return "Точки и квадратики"
+        case .battleship: return "Морской бой"
+        case .durak: return "Дурак"
+        case .memory: return "Найди пару"
+        case .rps: return "Камень-ножницы-бумага"
+        case .hangman: return "Виселица"
         }
     }
+
     var icon: String {
         switch self {
         case .ttt: return "number"
         case .four: return "square.grid.3x3.square"
         case .reversi: return "circle.lefthalf.filled"
+        case .checkers: return "circle.circle"
+        case .dots: return "circle.grid.3x3.fill"
+        case .battleship: return "sailboat"
+        case .durak: return "suit.spade"
+        case .memory: return "brain.head.profile"
+        case .rps: return "hand.raised"
+        case .hangman: return "textformat.abc"
         }
     }
+
+    var art: String {
+        switch self {
+        case .ttt: return "❌"
+        case .four: return "🔴"
+        case .reversi: return "⚫️"
+        case .checkers: return "♟️"
+        case .dots: return "🔲"
+        case .battleship: return "🚢"
+        case .durak: return "🃏"
+        case .memory: return "🧠"
+        case .rps: return "✊"
+        case .hangman: return "🔤"
+        }
+    }
+
+    var blurb: String {
+        switch self {
+        case .ttt: return "Три в ряд, быстро"
+        case .four: return "Соберите четыре в линию"
+        case .reversi: return "Захватывайте фишки"
+        case .checkers: return "Классические русские шашки"
+        case .dots: return "Замыкайте квадраты"
+        case .battleship: return "Тайные флоты 10×10"
+        case .durak: return "Подкидной, колода 36"
+        case .memory: return "Откройте все пары"
+        case .rps: return "До двух побед"
+        case .hangman: return "Загадайте слово любимому"
+        }
+    }
+
+    var hex: String {
+        switch self {
+        case .ttt: return "FF9AA8"
+        case .four: return "FFB86B"
+        case .reversi: return "9AA7C7"
+        case .checkers: return "D9B38C"
+        case .dots: return "8EC5FF"
+        case .battleship: return "6FD0E8"
+        case .durak: return "C9A7FF"
+        case .memory: return "FFD36E"
+        case .rps: return "9BE7C4"
+        case .hangman: return "FFA8D0"
+        }
+    }
+
+    /// Игры со скрытой информацией (руки, флот, выбор) нельзя играть вдвоём на одном телефоне.
+    var needsPair: Bool { [.battleship, .durak, .rps, .hangman].contains(self) }
+
     var size: (rows: Int, cols: Int) {
         switch self {
         case .ttt: return (3, 3)
         case .four: return (6, 7)
-        case .reversi: return (8, 8)
+        case .reversi, .checkers: return (8, 8)
+        default: return (1, 1)
         }
     }
 }
@@ -187,7 +253,7 @@ enum MatchState: String, Codable { case playing, won, draw }
 struct GameMatch: Identifiable, Codable, Hashable {
     var id = UUID()
     var kind: GameKind
-    var board: [Int]               // 0 пусто, 1 — фишки «я» создателя пары, 2 — «партнёра»
+    var board: [Int]               // правила — в GamesCore.swift; 1 — «моё», 2 — «партнёра»
     var turn: Who
     var starter: Who
     var state: MatchState = .playing
@@ -195,6 +261,12 @@ struct GameMatch: Identifiable, Codable, Hashable {
     var moves = 0
     var last = -1
     var updated = Date()
+    // Дополнительные поля для сложных игр (необязательные — старые версии не ломаются)
+    var aux: Int? = nil
+    var extra: [Int]? = nil
+    var table: [Int]? = nil
+    var word: String? = nil
+    var guesses: String? = nil
 }
 
 // MARK: - Сигналы, питомец, батарея

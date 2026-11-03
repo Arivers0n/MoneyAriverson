@@ -1,117 +1,11 @@
 import SwiftUI
 
-// MARK: - Правила игр (без интерфейса)
-// Доска хранится глазами «я»: 1 — мои фишки, 2 — фишки партнёра. На втором телефоне синхронизация переворачивает значения.
-
-enum GameLogic {
-    static func initialBoard(_ k: GameKind) -> [Int] {
-        var b = Array(repeating: 0, count: k.size.rows * k.size.cols)
-        if k == .reversi { b[3 * 8 + 3] = 2; b[4 * 8 + 4] = 2; b[3 * 8 + 4] = 1; b[4 * 8 + 3] = 1 }
-        return b
-    }
-
-    static func other(_ w: Who) -> Who { w == .me ? .partner : .me }
-    static func piece(_ w: Who) -> Int { w == .me ? 1 : 2 }
-
-    private static let dirs8 = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-
-    static func dropRow(_ b: [Int], col: Int, rows: Int, cols: Int) -> Int? {
-        for r in stride(from: rows - 1, through: 0, by: -1) where b[r * cols + col] == 0 { return r }
-        return nil
-    }
-
-    static func flips(_ b: [Int], idx: Int, p: Int) -> [Int] {
-        guard b[idx] == 0 else { return [] }
-        let r0 = idx / 8, c0 = idx % 8
-        var out: [Int] = []
-        for (dr, dc) in dirs8 {
-            var line: [Int] = []
-            var r = r0 + dr, c = c0 + dc
-            while r >= 0, r < 8, c >= 0, c < 8, b[r * 8 + c] == 3 - p {
-                line.append(r * 8 + c)
-                r += dr; c += dc
-            }
-            if !line.isEmpty, r >= 0, r < 8, c >= 0, c < 8, b[r * 8 + c] == p { out += line }
-        }
-        return out
-    }
-
-    /// Допустимые ходы: клетки (крестики-нолики, реверси) или столбцы (4 в ряд).
-    static func validMoves(_ k: GameKind, _ b: [Int], _ who: Who) -> [Int] {
-        switch k {
-        case .ttt: return b.indices.filter { b[$0] == 0 }
-        case .four: return (0..<7).filter { b[$0] == 0 }
-        case .reversi: return b.indices.filter { !flips(b, idx: $0, p: piece(who)).isEmpty }
-        }
-    }
-
-    /// Выигрышная линия (для крестиков-ноликов и 4 в ряд).
-    static func winCells(_ k: GameKind, _ b: [Int]) -> [Int]? {
-        let (rows, cols) = k.size
-        let need = k == .ttt ? 3 : 4
-        guard k != .reversi else { return nil }
-        for r in 0..<rows {
-            for c in 0..<cols {
-                let p = b[r * cols + c]
-                if p == 0 { continue }
-                for (dr, dc) in [(0, 1), (1, 0), (1, 1), (1, -1)] {
-                    var cells = [r * cols + c]
-                    var rr = r + dr, cc = c + dc
-                    while rr >= 0, rr < rows, cc >= 0, cc < cols, b[rr * cols + cc] == p, cells.count < need {
-                        cells.append(rr * cols + cc)
-                        rr += dr; cc += dc
-                    }
-                    if cells.count == need { return cells }
-                }
-            }
-        }
-        return nil
-    }
-
-    static func play(_ m: GameMatch, move: Int, by who: Who) -> GameMatch? {
-        guard m.state == .playing, m.turn == who, validMoves(m.kind, m.board, who).contains(move) else { return nil }
-        var n = m
-        let p = piece(who)
-        let (rows, cols) = m.kind.size
-        var cell = move
-        switch m.kind {
-        case .ttt:
-            n.board[move] = p
-        case .four:
-            guard let r = dropRow(m.board, col: move, rows: rows, cols: cols) else { return nil }
-            cell = r * cols + move
-            n.board[cell] = p
-        case .reversi:
-            for f in flips(m.board, idx: move, p: p) { n.board[f] = p }
-            n.board[move] = p
-        }
-        n.moves += 1
-        n.last = cell
-        n.updated = Date()
-        switch m.kind {
-        case .ttt, .four:
-            if winCells(m.kind, n.board) != nil { n.state = .won; n.winner = who }
-            else if !n.board.contains(0) { n.state = .draw }
-            else { n.turn = other(who) }
-        case .reversi:
-            let opp = other(who)
-            if !validMoves(.reversi, n.board, opp).isEmpty { n.turn = opp }
-            else if !validMoves(.reversi, n.board, who).isEmpty { n.turn = who }
-            else {
-                let a = n.board.filter { $0 == 1 }.count, b = n.board.filter { $0 == 2 }.count
-                if a == b { n.state = .draw } else { n.state = .won; n.winner = a > b ? .me : .partner }
-            }
-        }
-        return n
-    }
-}
-
 // MARK: - Действия в хранилище
 
 extension Store {
     @discardableResult
     func newMatch(_ k: GameKind, starter: Who = .me) -> GameMatch {
-        let m = GameMatch(kind: k, board: GameLogic.initialBoard(k), turn: starter, starter: starter)
+        let m = GameLogic.make(k, starter: starter)
         data.matches.append(m)
         tap()
         return m
@@ -124,6 +18,20 @@ extension Store {
               let n = GameLogic.play(data.matches[i], move: index, by: who) else { return }
         data.matches[i] = n
         if n.state == .won { success() } else { tap() }
+    }
+
+    func setHangmanWord(_ id: UUID, _ word: String) {
+        guard let i = data.matches.firstIndex(where: { $0.id == id }),
+              let n = Hangman.setWord(data.matches[i], word: word, by: .me) else { return }
+        data.matches[i] = n
+        success()
+    }
+
+    func readyFleet(_ id: UUID, layout: [Int]) {
+        guard let i = data.matches.firstIndex(where: { $0.id == id }),
+              let n = Battleship.ready(data.matches[i], layout: layout, by: .me) else { return }
+        data.matches[i] = n
+        success()
     }
 
     func deleteMatch(_ id: UUID) { data.matches.removeAll { $0.id == id } }
@@ -153,17 +61,17 @@ struct GamesView: View {
             .padding(18).card()
 
             SectionTitle("Новая партия")
-            VStack(spacing: 0) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(GameKind.allCases) { k in
+                    let locked = k.needsPair && sync.status == .notPaired
                     Button {
                         let m = store.newMatch(k)
                         openID = m.id
-                    } label: { row(k.title, k.icon, "Позвать \(store.name(.partner)) сыграть") }
+                    } label: { kindTile(k, locked: locked) }
                     .buttonStyle(.plain)
-                    if k != GameKind.allCases.last { Divider().padding(.leading, 72) }
+                    .disabled(locked)
                 }
             }
-            .card()
 
             if !playing.isEmpty {
                 SectionTitle("Идут сейчас")
@@ -188,12 +96,31 @@ struct GamesView: View {
 
             Text(sync.status == .notPaired
                  ? "Пока вы не соединились с партнёром, партии идут на одном телефоне — передавайте его друг другу."
-                 : "Ходите с разных телефонов: ход партнёра появится у вас сразу. Фоновых уведомлений нет — откройте приложение.")
+                 : "Играйте с разных телефонов: ход партнёра появится у вас сразу. Игры со скрытыми картами и флотом (Морской бой, Дурак, Камень-ножницы-бумага, Виселица) доступны после соединения. Фоновых уведомлений нет — откройте приложение.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
         .navigationTitle("Игры")
         .navigationDestination(item: $openID) { id in MatchView(matchID: id) }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: store.data.matches.count)
+    }
+
+    private func kindTile(_ k: GameKind, locked: Bool) -> some View {
+        let c = Color(hex: k.hex)
+        return ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(k.title).font(.system(size: 16, weight: .heavy, design: .rounded)).foregroundStyle(.primary)
+                    .lineLimit(2).minimumScaleFactor(0.75)
+                Text(locked ? "Нужна пара" : k.blurb).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            Text(k.art).font(.system(size: 46)).shadow(color: c.opacity(0.6), radius: 8, y: 5).rotationEffect(.degrees(-6))
+        }
+        .padding(14).frame(height: 116)
+        .background(LinearGradient(colors: [c.opacity(0.5), c.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    in: RoundedRectangle(cornerRadius: max(store.radius, 20), style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: max(store.radius, 20), style: .continuous).stroke(.white.opacity(0.45), lineWidth: 1))
+        .opacity(locked ? 0.5 : 1)
     }
 
     private func stat(_ w: Who) -> some View {
@@ -276,11 +203,25 @@ struct MatchView: View {
         }
     }
 
+    private func playingText(_ m: GameMatch) -> String {
+        switch m.kind {
+        case .rps: return "Раунд \(m.extra?.last ?? 1)"
+        case .battleship where !Battleship.bothReady(m): return "Расстановка флота"
+        case .hangman where m.word == nil: return m.starter == .me ? "Загадайте слово" : "\(store.name(m.starter)) загадывает слово"
+        case .hangman: return m.starter == .me ? "\(store.name(.partner)) угадывает" : "Угадывайте слово"
+        case .durak:
+            if m.turn == .me { return m.starter == .me ? "Ваша атака" : "Ваша защита" }
+            return "Ход: \(store.name(m.turn))"
+        default:
+            return hotSeat ? "Ход: \(store.name(m.turn))" : (m.turn == .me ? "Ваш ход" : "Ход: \(store.name(m.turn))")
+        }
+    }
+
     private func header(_ m: GameMatch) -> some View {
         let text: String
         var who: Who? = m.turn
         switch m.state {
-        case .playing: text = hotSeat ? "Ход: \(store.name(m.turn))" : (m.turn == .me ? "Ваш ход" : "Ход: \(store.name(m.turn))")
+        case .playing: text = playingText(m)
         case .won: text = "Победил(а) \(store.name(m.winner ?? .me))"; who = m.winner
         case .draw: text = "Ничья"; who = nil
         }
@@ -300,7 +241,7 @@ struct MatchView: View {
                     dismiss()
                 } label: { Text("Реванш").bigButton() }
                     .padding(.horizontal, 16)
-            } else if !hotSeat && m.turn != .me {
+            } else if !hotSeat && m.turn != .me && m.kind != .rps && !(m.kind == .battleship && !Battleship.bothReady(m)) && !(m.kind == .hangman && m.word == nil) {
                 Text("Ждём ход партнёра…").font(.footnote).foregroundStyle(.secondary)
             }
         }
@@ -322,6 +263,13 @@ struct MatchView: View {
         case .ttt: tttBoard(m, win)
         case .four: fourBoard(m, win)
         case .reversi: reversiBoard(m)
+        case .dots: DotsBoard(m: m, send: { tryMove(m, $0) }, enabled: canTap(m))
+        case .checkers: CheckersBoard(m: m, send: { tryMove(m, $0) }, enabled: canTap(m))
+        case .battleship: BattleshipBoard(m: m)
+        case .durak: DurakBoard(m: m, send: { tryMove(m, $0) })
+        case .memory: MemoryBoard(m: m, send: { tryMove(m, $0) }, enabled: canTap(m))
+        case .rps: RPSBoard(m: m)
+        case .hangman: HangmanBoard(m: m, send: { tryMove(m, $0) })
         }
     }
 
