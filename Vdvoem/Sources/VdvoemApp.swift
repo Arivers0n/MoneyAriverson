@@ -29,6 +29,9 @@ struct VdvoemApp: App {
             .fontDesign(store.p.design.design)
             .preferredColorScheme(store.scheme)
             .tint(store.meColor)
+            .animation(Store.spring, value: store.p.radius)
+            .animation(Store.spring, value: store.p.design)
+            .animation(Store.spring, value: store.p.bgPattern)
             .id(store.p.themeID)
         }
     }
@@ -39,17 +42,25 @@ struct RootView: View {
     @State private var tab = 0
 
     var body: some View {
+        // «Контурные» иконки — родная панель iOS; «неоновые» и «объёмные» — своя панель с тем же поведением.
+        let custom = store.p.iconStyle != 0
         TabView(selection: $tab) {
             ForEach(Array(store.bar.enumerated()), id: \.element) { i, m in
                 NavigationStack { ModuleView(module: m) }
+                    .toolbar(custom ? .hidden : .automatic, for: .tabBar)
                     .tabItem { Label(m.title, systemImage: m.icon) }
                     .tag(i)
             }
             NavigationStack { MoreView() }
+                .toolbar(custom ? .hidden : .automatic, for: .tabBar)
                 .tabItem { Label("Ещё", systemImage: "square.grid.2x2") }
                 .tag(store.bar.count)
         }
         .tabBarCollapses()
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if custom { StyledTabBar(tab: $tab).transition(.move(edge: .bottom).combined(with: .opacity)) }
+        }
+        .animation(Store.spring, value: store.p.iconStyle)
         .overlay { SignalOverlay() }
         .onChange(of: tab) { _, _ in store.tap() }
     }

@@ -63,7 +63,10 @@ struct SettingsView: View {
                             if on { store.data.profile.disabled.removeAll { $0 == m } }
                             else if !store.p.disabled.contains(m) { store.data.profile.disabled.append(m) }
                         })) {
-                        Label(m.title, systemImage: m.icon)
+                        HStack(spacing: 10) {
+                            StyledIcon(systemName: m.icon, size: 15).frame(width: 30, height: 30)
+                            Text(m.title)
+                        }
                     }
                     if m != Module.allCases.last { Divider() }
                 }
@@ -142,7 +145,7 @@ struct ReorderView: View {
                     let off = store.p.disabled.contains(m)
                     let pos = store.active.firstIndex(of: m)
                     HStack(spacing: 12) {
-                        Image(systemName: m.icon).frame(width: 26)
+                        StyledIcon(systemName: m.icon, size: 15).frame(width: 30, height: 30)
                         Text(m.title)
                         Spacer()
                         if off { Chip(text: "выкл") }

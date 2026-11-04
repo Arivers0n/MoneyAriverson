@@ -40,6 +40,7 @@ final class Store: ObservableObject {
         Theme.current = ThemeDef.find(data.profile.themeID)
         Theme.bgStyle = data.profile.bgStyle
         Theme.cardStyle = data.profile.cardStyle
+        Theme.bgPattern = data.profile.bgPattern
         Theme.accent = Color(hex: data.profile.myHex)
         Theme.accent2 = Color(hex: data.profile.partnerHex)
     }

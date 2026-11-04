@@ -28,7 +28,13 @@ struct ThemeDef: Identifiable, Hashable {
         ThemeDef(id: "sakura", title: "Сакура", bgL: "FDF0F5", bgD: "1B1016", topL: "F9CFE2", topD: "3E1A33",
                  cardL: "FFFFFF", cardD: "241520", fieldL: "F6E1EA", fieldD: "33202D"),
         ThemeDef(id: "graphite", title: "Графит", bgL: "EFEFF1", bgD: "0A0A0B", topL: "DEDFE3", topD: "1A1B1F",
-                 cardL: "FFFFFF", cardD: "17171A", fieldL: "E4E4E8", fieldD: "222226")
+                 cardL: "FFFFFF", cardD: "17171A", fieldL: "E4E4E8", fieldD: "222226"),
+        ThemeDef(id: "cosmos", title: "Космос", bgL: "ECE8FA", bgD: "0B0820", topL: "CFC4F5", topD: "2A1760",
+                 cardL: "FFFFFF", cardD: "1A1438", fieldL: "E2DCF5", fieldD: "261E4A"),
+        ThemeDef(id: "neon", title: "Неон", bgL: "E8F7F7", bgD: "05070C", topL: "BDF3F0", topD: "08323A",
+                 cardL: "FFFFFF", cardD: "0E141C", fieldL: "D8EEEE", fieldD: "16202B"),
+        ThemeDef(id: "organic", title: "Органика", bgL: "F5EEDF", bgD: "15130E", topL: "E6D7B8", topD: "3A3220",
+                 cardL: "FFFDF7", cardD: "211E16", fieldL: "EBE2CF", fieldD: "2C281D")
     ]
 
     static func find(_ id: String) -> ThemeDef { all.first { $0.id == id } ?? all[0] }
@@ -39,6 +45,7 @@ enum Theme {
     static var current = ThemeDef.all[0]
     static var bgStyle = 0
     static var cardStyle = 0
+    static var bgPattern = 0
     static var accent = Color(hex: "4C9AF0")
     static var accent2 = Color(hex: "D870A8")
 }
@@ -66,6 +73,7 @@ struct ThemeBackground: View {
                     blobs(t: 0)
                 }
             }
+            PatternOverlay(kind: Theme.bgPattern)
         }
         .ignoresSafeArea()
     }
@@ -239,9 +247,17 @@ struct AppearanceView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
+                section("Предпросмотр тем") {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) { ForEach(ThemeDef.all) { t in ThemePreviewCard(def: t) } }
+                            .scrollTargetLayout()
+                            .padding(.vertical, 6)
+                    }
+                    .scrollTargetBehavior(.viewAligned)
+                }
                 LivePreview()
                 section("Тема") {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 12) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 14) {
                         ForEach(ThemeDef.all) { t in themeTile(t) }
                     }
                     Picker("Режим", selection: $store.data.profile.theme) {
@@ -263,6 +279,25 @@ struct AppearanceView: View {
                 section("Фон") {
                     choice([("Свечение", "sparkles"), ("Аврора", "wind"), ("Однотонный", "square.fill")], $store.data.profile.bgStyle)
                     Text("«Аврора» — цветные пятна медленно плавают за карточками.").font(.caption).foregroundStyle(.secondary)
+                    Text("Узор").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(.top, 4)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) { ForEach(0..<4, id: \.self) { k in patternDot(k) } }
+                            .padding(.vertical, 8).padding(.horizontal, 6)
+                    }
+                }
+                section("Иконки") {
+                    Picker("Стиль иконок", selection: Binding(get: { store.p.iconStyle }, set: { store.setIconStyle($0) })) {
+                        Text("Контурные").tag(0)
+                        Text("Неоновые").tag(1)
+                        Text("Объёмные").tag(2)
+                    }.pickerStyle(.segmented)
+                    HStack {
+                        ForEach(["heart.fill", "calendar", "bubble.left.fill", "star.fill", "gearshape.fill"], id: \.self) {
+                            StyledIcon(systemName: $0, size: 22).frame(maxWidth: .infinity)
+                        }
+                    }
+                    Text("Применяется к нижней панели и спискам функций. У «контурных» остаётся родная панель iOS.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 section("Карточки") {
                     choice([("Мягкие", "rectangle.fill"), ("Плоские", "rectangle"), ("Контур", "rectangle.dashed")], $store.data.profile.cardStyle)
@@ -284,15 +319,16 @@ struct AppearanceView: View {
                     if let e = iconError { Text(e).font(.footnote).foregroundStyle(.red) }
                 }
                 section("Шрифт и форма") {
-                    Picker("Шрифт", selection: $store.data.profile.design) {
+                    Picker("Шрифт", selection: Binding(get: { store.p.design }, set: { store.setFont($0) })) {
                         ForEach(DesignStyle.allCases, id: \.self) { Text($0.title).tag($0) }
                     }.pickerStyle(.segmented)
                     HStack {
                         Text("Скругление").font(.subheadline)
-                        Slider(value: $store.data.profile.radius, in: 6...36, step: 1)
-                        Text("\(Int(store.p.radius))").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary).frame(width: 28)
+                        Slider(value: Binding(get: { store.p.radius }, set: { store.setRadius($0) }), in: 0...30, step: 1)
+                        Text("\(Int(store.p.radius))px").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
                     }
                     Toggle("Вибро-отклик", isOn: $store.data.profile.haptics)
+                    Toggle("Звук при смене темы", isOn: $store.data.profile.sound)
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 30)
@@ -300,8 +336,31 @@ struct AppearanceView: View {
         .scrollIndicators(.hidden)
         .background(ThemeBackground())
         .navigationTitle("Оформление")
-        .animation(.easeInOut(duration: 0.25), value: store.p.themeID)
-        .animation(.easeInOut(duration: 0.25), value: store.p.cardStyle)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Сбросить") { store.resetAppearance() }
+            }
+        }
+        .animation(Store.spring, value: store.p.themeID)
+        .animation(Store.spring, value: store.p.cardStyle)
+        .animation(Store.spring, value: store.p.radius)
+        .animation(Store.spring, value: store.p.design)
+    }
+
+    private func patternDot(_ k: Int) -> some View {
+        let on = store.p.bgPattern == k
+        return Button { store.setPattern(k) } label: {
+            ZStack {
+                Circle().fill(LinearGradient(colors: [store.meColor.opacity(0.55), store.meColor.opacity(0.9)],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                Image(systemName: PatternOverlay.symbol(k)).font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
+            }
+            .frame(width: 38, height: 38)
+            .overlay(Circle().strokeBorder(Color.primary, lineWidth: on ? 2.5 : 0).padding(-5))
+            .scaleEffect(on ? 1.06 : 1)
+            .accessibilityLabel(PatternOverlay.title(k))
+        }
+        .buttonStyle(.plain)
     }
 
     private func section<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {
@@ -351,22 +410,23 @@ struct AppearanceView: View {
 
     private func themeTile(_ t: ThemeDef) -> some View {
         let on = store.p.themeID == t.id
+        let dark = ThemeLook.of(t.id).mode == .dark
         return Button {
-            store.data.profile.themeID = t.id
-            store.tap()
+            store.applyPreset(t)
         } label: {
             VStack(spacing: 6) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(LinearGradient(colors: [Color(hex: t.topL), Color(hex: t.bgL)], startPoint: .top, endPoint: .bottom))
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color(hex: t.cardL)).frame(width: 30, height: 14).offset(y: 12)
+                    Circle().fill(LinearGradient(colors: [Color(hex: dark ? t.topD : t.topL), Color(hex: dark ? t.bgD : t.bgL)],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                    Capsule().fill(Color(hex: dark ? t.cardD : t.cardL)).frame(width: 26, height: 12).offset(y: 10)
                 }
-                .frame(height: 58)
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(on ? store.meColor : Color.primary.opacity(0.08), lineWidth: on ? 2.5 : 1))
-                Text(t.title).font(.caption2.weight(on ? .bold : .regular)).foregroundStyle(.primary)
+                .frame(width: 58, height: 58)
+                .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                .overlay(Circle().strokeBorder(Color.primary, lineWidth: on ? 2.5 : 0).padding(-4))
+                .scaleEffect(on ? 1.05 : 1)
+                Text(t.title).font(.caption2.weight(on ? .bold : .regular)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.8)
             }
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
     }
