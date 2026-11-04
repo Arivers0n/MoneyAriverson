@@ -181,7 +181,7 @@ struct TodayView: View {
                 .foregroundStyle(.white).padding(16)
             }
             .frame(height: big ? 290 : 200)
-            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.r(30), style: .continuous))
             .shadow(color: c.opacity(0.4), radius: 16, y: 10)
         }
         .buttonStyle(.plain)
@@ -192,16 +192,16 @@ struct TodayView: View {
 
     private var tiles: some View {
         HStack(spacing: 12) {
-            tile("Сон", "😴", "9DB7FF", detail: sleepDetail) { SleepView() }
-            tile("Трекер", "📊", "FFC25C", detail: trackerDetail) { TrackerView() }
-            tile("Банка", "🫙", "7EE0C0", detail: jarDetail) { JarView() }
+            tile("Сон", "moon.zzz", "9DB7FF", detail: sleepDetail) { SleepView() }
+            tile("Трекер", "chart.bar", "FFC25C", detail: trackerDetail) { TrackerView() }
+            tile("Банка", "face.smiling", "7EE0C0", detail: jarDetail) { JarView() }
         }
     }
 
     private func tile<D: View>(_ title: String, _ icon: String, _ hex: String, detail: String, @ViewBuilder dest: @escaping () -> D) -> some View {
         NavigationLink { dest() } label: {
             VStack(alignment: .leading, spacing: 10) {
-                ArtTile(emoji: icon, hex: hex, size: 46)
+                ArtIcon(symbol: icon, color: Color(hex: hex), size: 20)
                 Text(title).font(.subheadline.weight(.bold)).foregroundStyle(.primary)
                 Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2).frame(height: 30, alignment: .topLeading)
             }
@@ -344,8 +344,8 @@ struct StatusSheet: View {
                                 }
                                 .frame(maxWidth: .infinity).padding(.vertical, 12)
                                 .background(on ? Color(hex: k.hex).opacity(0.22) : Pal.card,
-                                            in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            in: RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous)
                                     .stroke(on ? Color(hex: k.hex) : Color.clear, lineWidth: 2))
                                 .scaleEffect(on ? 1.04 : 1)
                             }
@@ -354,9 +354,9 @@ struct StatusSheet: View {
                     }
                     VStack(spacing: 10) {
                         TextField("Где вы? (по желанию)", text: $place)
-                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                         TextField("Пара слов к статусу", text: $note)
-                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                     }
                     Button {
                         if let k = picked { store.setStatus(k, note: note, place: place); dismiss() }
@@ -513,7 +513,7 @@ struct SleepView: View {
 
     private func column(_ e: SleepEntry?, _ w: Who) -> some View {
         let h = CGFloat(min((e?.hours ?? 0) / 12, 1)) * 110
-        return RoundedRectangle(cornerRadius: 5, style: .continuous)
+        return RoundedRectangle(cornerRadius: Theme.r(5), style: .continuous)
             .fill(e == nil ? Color.gray.opacity(0.15) : store.color(w))
             .frame(width: 12, height: max(6, h))
     }
@@ -600,7 +600,7 @@ struct TrackerView: View {
         }
         .padding(16)
         .background(LinearGradient(colors: [tint, tint.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+                    in: RoundedRectangle(cornerRadius: Theme.r(30), style: .continuous))
         .shadow(color: tint.opacity(0.35), radius: 14, y: 8)
         .contextMenu {
             Button("Удалить счётчик", role: .destructive) {

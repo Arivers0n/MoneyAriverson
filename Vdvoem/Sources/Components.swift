@@ -160,6 +160,7 @@ struct EmptyState: View {
 }
 
 struct FormSheet<C: View>: View {
+    @EnvironmentObject private var themeStore: Store   // перерисовка при смене темы
     @Environment(\.dismiss) private var dismiss
     let title: String
     let canSave: Bool
@@ -219,6 +220,7 @@ struct WhoPicker: View {
 // MARK: - Блокировка (Face ID / код)
 
 struct LockGate<Content: View>: View {
+    @EnvironmentObject private var themeStore: Store   // перерисовка при смене темы
     let title: String
     let content: () -> Content
     @State private var ok = false

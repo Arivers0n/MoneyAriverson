@@ -156,7 +156,7 @@ struct PinDetail: View {
                         LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                             ForEach(photos) { p in
                                 RemoteImage(media: p.media, file: p.file)
-                                    .frame(height: 150).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .frame(height: 150).clipShape(RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                             }
                         }
                         Button { adding = true } label: { Label("Добавить фото к месту", systemImage: "photo.badge.plus").bigButton() }

@@ -25,6 +25,7 @@ enum ImageCache {
 
 /// Картинка с сервера: кэш в памяти и на диске, плавное появление.
 struct RemoteImage: View {
+    @EnvironmentObject private var themeStore: Store   // перерисовка при смене темы
     let media: String
     let file: String
     var thumb: String? = "480x0"
@@ -138,11 +139,11 @@ struct PhotoComposer: View {
                 VStack(spacing: 14) {
                     PhotosPicker(selection: $picked, matching: .images) {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Pal.card)
+                            RoundedRectangle(cornerRadius: Theme.r(20), style: .continuous).fill(Pal.card)
                             if let preview {
                                 Image(uiImage: preview).resizable().scaledToFill()
                                     .frame(maxWidth: .infinity).frame(height: 320).clipped()
-                                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                    .clipShape(RoundedRectangle(cornerRadius: Theme.r(20), style: .continuous))
                             } else {
                                 VStack(spacing: 8) {
                                     Image(systemName: "photo.badge.plus").font(.system(size: 38)).foregroundStyle(store.meColor)
@@ -153,7 +154,7 @@ struct PhotoComposer: View {
                         .frame(height: 320)
                     }
                     TextField("Подпись (по желанию)", text: $caption, axis: .vertical)
-                        .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                     if sync.status == .notPaired {
                         Text("Сначала соединитесь с партнёром в настройках — фото хранятся на вашем сервере.")
                             .font(.footnote).foregroundStyle(.orange)

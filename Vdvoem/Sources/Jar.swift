@@ -168,12 +168,12 @@ struct JarView: View {
 
     private var jar: some View {
         ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 56, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous)
                 .fill(LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 56, style: .continuous))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous))
             SpriteView(scene: model.scene, options: [.allowsTransparency])
-                .clipShape(RoundedRectangle(cornerRadius: 56, style: .continuous))
-            RoundedRectangle(cornerRadius: 56, style: .continuous)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous))
+            RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous)
                 .stroke(LinearGradient(colors: [.white.opacity(0.9), .white.opacity(0.15), .white.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 3)
             Capsule().fill(.white.opacity(0.45)).frame(width: 12, height: 150)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 26).padding(.top, 60)
@@ -243,13 +243,13 @@ struct JarView: View {
                             Text(m.title).font(.system(size: 10, weight: .semibold)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.6)
                         }
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(Color(hex: m.hex).opacity(0.18), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color(hex: m.hex).opacity(0.18), in: RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
             }
             TextField("Пара слов (по желанию)", text: $note)
-                .padding(12).background(Pal.field, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(12).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(12), style: .continuous))
         }
         .padding(14).card()
     }
@@ -263,7 +263,7 @@ struct JarView: View {
                     Text("\(n)").font(.subheadline.weight(.heavy).monospacedDigit())
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 8)
-                .background(Color(hex: m.hex).opacity(n > 0 ? 0.22 : 0.07), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(Color(hex: m.hex).opacity(n > 0 ? 0.22 : 0.07), in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
             }
         }
         .overlay(alignment: .topLeading) { Text("Сегодня").font(.caption2).foregroundStyle(.secondary).offset(y: -16) }

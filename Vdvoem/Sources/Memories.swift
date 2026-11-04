@@ -41,7 +41,7 @@ struct MemoriesView: View {
             Button { opened = p } label: {
                 RemoteImage(media: p.media, file: p.file)
                     .aspectRatio(CGFloat(min(max(p.ratio, 0.75), 1.6)), contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
                     .padding(.horizontal, 10)
             }
             .buttonStyle(.plain)

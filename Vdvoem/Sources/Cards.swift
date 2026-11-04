@@ -150,7 +150,7 @@ struct CardTile: View {
     var body: some View {
         let c = Color(hex: card.hex)
         ZStack(alignment: .bottomLeading) {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.r(24), style: .continuous)
                 .fill(LinearGradient(colors: [c, c.opacity(0.65)], startPoint: .topLeading, endPoint: .bottomTrailing))
             Circle().fill(.white.opacity(0.14)).frame(width: 180).offset(x: 150, y: -60)
             Circle().fill(.white.opacity(0.10)).frame(width: 120).offset(x: 220, y: 30)
@@ -169,7 +169,7 @@ struct CardTile: View {
             .padding(18)
         }
         .frame(height: 170)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.r(24), style: .continuous))
         .shadow(color: c.opacity(0.35), radius: 14, y: 8)
     }
 
@@ -204,7 +204,7 @@ struct CardShowView: View {
                     Text(card.number).font(.title3.monospaced()).foregroundStyle(.black)
                 }
                 .padding(24).frame(maxWidth: .infinity)
-                .background(.white, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .background(.white, in: RoundedRectangle(cornerRadius: Theme.r(28), style: .continuous))
                 if !card.note.isEmpty { Text(card.note).font(.footnote).foregroundStyle(.white.opacity(0.9)) }
                 Text("Яркость экрана увеличена").font(.caption).foregroundStyle(.white.opacity(0.7))
                 Spacer()
@@ -247,7 +247,7 @@ struct AddCardSheet: View {
                             Button("Сканировать заново") { number = ""; scanning = true }.font(.footnote)
                         }
                         .padding(16).frame(maxWidth: .infinity)
-                        .background(Pal.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .background(Pal.card, in: RoundedRectangle(cornerRadius: Theme.r(20), style: .continuous))
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -269,9 +269,9 @@ struct AddCardSheet: View {
                             }
                         }
                         TextField("Своё название", text: $name)
-                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                         TextField("Заметка (скидка 5%, чья карта)", text: $note)
-                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                     }
 
                     Button {
@@ -319,7 +319,7 @@ struct AddCardSheet: View {
                 HStack {
                     TextField("Номер под штрих-кодом", text: $typed)
                         .keyboardType(.asciiCapable)
-                        .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                     Button("Готово") {
                         let t = typed.trimmingCharacters(in: .whitespaces)
                         if !t.isEmpty { number = t; kind = "code128" }
@@ -329,6 +329,6 @@ struct AddCardSheet: View {
             }
         }
         .padding(18).frame(maxWidth: .infinity)
-        .background(Pal.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(Pal.card, in: RoundedRectangle(cornerRadius: Theme.r(22), style: .continuous))
     }
 }

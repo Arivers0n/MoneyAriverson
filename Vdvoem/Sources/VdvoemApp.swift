@@ -29,40 +29,55 @@ struct VdvoemApp: App {
             .fontDesign(store.p.design.design)
             .preferredColorScheme(store.scheme)
             .tint(store.meColor)
-            .animation(Store.spring, value: store.p.radius)
             .animation(Store.spring, value: store.p.design)
-            .animation(Store.spring, value: store.p.bgPattern)
-            .id(store.p.themeID)
         }
     }
 }
 
 struct RootView: View {
     @EnvironmentObject var store: Store
-    @State private var tab = 0
+    @State private var selected = ""
+    /// Открытые вкладки остаются «живыми» (стек навигации не теряется), как в обычном TabView.
+    @State private var visited: Set<String> = []
+    @State private var keyboard = false
+
+    private var tabs: [AppTab] {
+        store.bar.map { AppTab(id: $0.rawValue, title: $0.title, symbol: $0.icon, hex: $0.hex) }
+            + [AppTab(id: "more", title: "Ещё", symbol: "square.grid.2x2", hex: "B7A6FF")]
+    }
+    private var current: String { tabs.contains { $0.id == selected } ? selected : (tabs.first?.id ?? "more") }
 
     var body: some View {
-        // «Контурные» иконки — родная панель iOS; «неоновые» и «объёмные» — своя панель с тем же поведением.
-        let custom = store.p.iconStyle != 0
-        TabView(selection: $tab) {
-            ForEach(Array(store.bar.enumerated()), id: \.element) { i, m in
-                NavigationStack { ModuleView(module: m) }
-                    .toolbar(custom ? .hidden : .automatic, for: .tabBar)
-                    .tabItem { Label(m.title, systemImage: m.icon) }
-                    .tag(i)
+        ZStack {
+            ForEach(tabs) { t in
+                if visited.contains(t.id) || t.id == current {
+                    NavigationStack {
+                        if t.id == "more" { MoreView() }
+                        else if let m = Module(rawValue: t.id) { ModuleView(module: m) }
+                    }
+                    .opacity(t.id == current ? 1 : 0)
+                    .allowsHitTesting(t.id == current)
+                    .accessibilityHidden(t.id != current)
+                    .zIndex(t.id == current ? 1 : 0)
+                }
             }
-            NavigationStack { MoreView() }
-                .toolbar(custom ? .hidden : .automatic, for: .tabBar)
-                .tabItem { Label("Ещё", systemImage: "square.grid.2x2") }
-                .tag(store.bar.count)
         }
-        .tabBarCollapses()
+        // Панель в safe area: контент не залезает под неё, челка и home-индикатор учтены.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if custom { StyledTabBar(tab: $tab).transition(.move(edge: .bottom).combined(with: .opacity)) }
+            if !keyboard {
+                AppTabBar(tabs: tabs, selected: Binding(get: { current }, set: { selected = $0 }))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
-        .animation(Store.spring, value: store.p.iconStyle)
         .overlay { SignalOverlay() }
-        .onChange(of: tab) { _, _ in store.tap() }
+        .onAppear { if selected.isEmpty { selected = tabs.first?.id ?? "more" }; visited.insert(current) }
+        .onChange(of: selected) { _, new in visited.insert(new) }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            withAnimation(Store.spring) { keyboard = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            withAnimation(Store.spring) { keyboard = false }
+        }
     }
 }
 

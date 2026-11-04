@@ -36,11 +36,11 @@ struct ThemeLook {
 // MARK: - Действия хранилища (оформление)
 
 extension Store {
-    /// Единая анимация для любых правок оформления — без рывков.
-    static let spring = Animation.spring(response: 0.3, dampingFraction: 0.85)
+    /// Единая мягкая анимация для любых правок оформления — без рывков.
+    static let spring = Animation.spring(response: 0.35, dampingFraction: 0.86)
 
     private static let selectionGen = UISelectionFeedbackGenerator()
-    private static let rigidGen = UIImpactFeedbackGenerator(style: .rigid)
+    private static let edgeGen = UIImpactFeedbackGenerator(style: .medium)
 
     /// Выбор готовой темы: фон, иконки, шрифт, скругление и узор переодеваются разом.
     func applyPreset(_ t: ThemeDef) {
@@ -55,20 +55,32 @@ extension Store {
         pr.bgPattern = look.pattern
         if let pair = look.pair { pr.myHex = pair.0; pr.partnerHex = pair.1 }
         if let m = look.mode { pr.theme = m } else if prev.mode != nil { pr.theme = .system }
+        liveRadius = nil
         withAnimation(Store.spring) { data.profile = pr }
         success()
         glassSound()
     }
 
-    /// Слайдер округления: микро-вибрация на каждый пиксель, «упор» на краях.
+    /// Слайдер округления: мягкий «шорох» selection на каждый пиксель, чёткий щелчок на краях (0 и 30).
+    /// Во время движения пальца меняется только `liveRadius` — без записи на диск и синхронизации.
     func setRadius(_ raw: Double) {
         let v = min(30, max(0, raw.rounded()))
-        guard v != p.radius else { return }
-        data.profile.radius = v
+        guard v != (liveRadius ?? p.radius) else { return }
+        liveRadius = v
         guard p.haptics else { return }
-        Store.selectionGen.selectionChanged()
+        if v == 0 || v == 30 {
+            Store.edgeGen.impactOccurred(intensity: 0.8)
+        } else {
+            Store.selectionGen.selectionChanged()
+        }
         Store.selectionGen.prepare()
-        if v == 0 || v == 30 { Store.rigidGen.impactOccurred(intensity: 0.7) }
+    }
+
+    /// Палец отпущен: фиксируем значение в профиле.
+    func commitRadius() {
+        guard let v = liveRadius else { return }
+        data.profile.radius = v
+        liveRadius = nil
     }
 
     func setIconStyle(_ v: Int) {
@@ -105,6 +117,7 @@ extension Store {
         pr.myHex = d.myHex
         pr.partnerHex = d.partnerHex
         pr.theme = d.theme
+        liveRadius = nil
         withAnimation(Store.spring) { data.profile = pr }
         tap()
     }
@@ -117,29 +130,31 @@ extension Store {
 
 // MARK: - «Стеклянный» звук (синтезируется на лету, файлы не нужны)
 
+/// Очень короткий и мягкий. Категория `.ambient`: уважает беззвучный режим и не прерывает музыку.
+/// AVAudioPlayer создаётся и «прогревается» один раз — задержка при воспроизведении минимальна.
 final class GlassSound {
     static let shared = GlassSound()
     private var player: AVAudioPlayer?
 
     private init() {
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
         player = try? AVAudioPlayer(data: Self.makeWAV())
-        player?.volume = 0.6
+        player?.volume = 0.35
         player?.prepareToPlay()
     }
 
     func play() {
-        // .ambient: не прерывает музыку и уважает беззвучный режим
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
-        player?.currentTime = 0
-        player?.play()
+        guard let player else { return }
+        try? AVAudioSession.sharedInstance().setActive(true)
+        player.currentTime = 0
+        player.play()
     }
 
-    /// Короткий колокольчик: несколько гармоник с быстрым затуханием.
     private static func makeWAV() -> Data {
         let rate = 44_100
-        let count = Int(Double(rate) * 0.45)
+        let count = Int(Double(rate) * 0.26)
         let partials: [(freq: Double, amp: Double, decay: Double)] = [
-            (1568, 0.50, 9), (2349, 0.30, 12), (3136, 0.20, 16), (4186, 0.10, 22)
+            (1760, 0.50, 16), (2637, 0.28, 22), (3520, 0.16, 30), (4699, 0.06, 40)
         ]
         var samples = [Int16]()
         samples.reserveCapacity(count)
@@ -147,7 +162,7 @@ final class GlassSound {
             let t = Double(i) / Double(rate)
             var v = 0.0
             for p in partials { v += p.amp * sin(2 * .pi * p.freq * t) * exp(-p.decay * t) }
-            v *= min(1, t / 0.003) * 0.6
+            v *= min(1, t / 0.004) * 0.55          // мягкая атака
             samples.append(Int16(max(-1, min(1, v)) * Double(Int16.max)))
         }
         var data = Data()
@@ -166,84 +181,176 @@ final class GlassSound {
     }
 }
 
-// MARK: - Иконка в трёх стилях
+// MARK: - Подбор цвета (HSB)
 
-struct StyledIcon: View {
-    @EnvironmentObject var store: Store
-    let systemName: String
-    var size: CGFloat = 22
-    var color: Color? = nil
-    /// Переопределения нужны только для миниатюр других тем.
-    var style: Int? = nil
-    var radius: CGFloat? = nil
-    var dim = false
+extension Color {
+    /// Подтягивает насыщенность/яркость не ниже заданных — чтобы пастельные цвета разделов выглядели сочно.
+    func boosted(minS: CGFloat = 0, minB: CGFloat = 0) -> Color { hsb(setS: nil, setB: nil, minS: minS, minB: minB) }
 
-    var body: some View {
-        let st = style ?? store.p.iconStyle
-        let c = color ?? store.meColor
-        let r = radius ?? store.radius
+    func hsb(dS: CGFloat = 0, dB: CGFloat = 0) -> Color { hsb(setS: nil, setB: nil, minS: 0, minB: 0, dS: dS, dB: dB) }
 
-        ZStack {
-            switch st {
-            case 1:
-                Image(systemName: systemName)
-                    .font(.system(size: size, weight: .semibold))
-                    .foregroundStyle(c)
-                    .shadow(color: c.opacity(dim ? 0.3 : 1), radius: size * 0.22)
-                    .shadow(color: c.opacity(dim ? 0.15 : 0.8), radius: size * 0.5)
-                    .id(st)
-            case 2:
-                let tile = RoundedRectangle(cornerRadius: min(r, size * 0.7), style: .continuous)
-                Image(systemName: systemName)
-                    .font(.system(size: size * 0.78, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.25), radius: 2, y: 2)
-                    .frame(width: size * 1.7, height: size * 1.7)
-                    .background(tile.fill(LinearGradient(colors: [c.opacity(dim ? 0.6 : 0.95), c.opacity(dim ? 0.3 : 0.55)],
-                                                         startPoint: .topLeading, endPoint: .bottomTrailing)))
-                    .overlay(tile.strokeBorder(LinearGradient(colors: [.white.opacity(0.8), .white.opacity(0.05)],
-                                                              startPoint: .top, endPoint: .bottom), lineWidth: 1))
-                    .shadow(color: c.opacity(dim ? 0 : 0.4), radius: 6, y: 4)
-                    .id(st)
-            default:
-                Image(systemName: systemName)
-                    .font(.system(size: size, weight: .light))
-                    .foregroundStyle(c)
-                    .id(st)
-            }
-        }
-        .transition(.opacity.combined(with: .scale(scale: 0.9)))
-        .frame(width: size * 1.7, height: size * 1.7)
+    private func hsb(setS: CGFloat?, setB: CGFloat?, minS: CGFloat, minB: CGFloat, dS: CGFloat = 0, dB: CGFloat = 0) -> Color {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(self).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        let ns = min(1, max(0, max(setS ?? s, minS) + dS))
+        let nb = min(1, max(0, max(setB ?? b, minB) + dB))
+        return Color(hue: Double(h), saturation: Double(ns), brightness: Double(nb), opacity: Double(a))
     }
 }
 
-/// Нижняя панель со стилем иконок. Для «контурных» остаётся родная панель iOS.
-struct StyledTabBar: View {
+// MARK: - Иконка в трёх стилях (общая для плиток «Ещё», таб-бара, списков)
+
+/// Одна и та же иконка рисуется тремя разными способами и мгновенно переключается вместе с темой.
+///  • Контурные — тонкая линия, без заливки.
+///  • Неоновые — матовое стекло и светящийся градиентный контур.
+///  • Объёмные — глянцевая «мягкая 3D» плитка с бликом и тенью.
+struct ArtIcon: View {
     @EnvironmentObject var store: Store
-    @Binding var tab: Int
+    let symbol: String
+    let color: Color
+    /// Размер глифа. Плитка всегда `size * 1.7` — все стили занимают одинаковое место.
+    var size: CGFloat = 28
+    /// Переопределения нужны только для миниатюр других тем.
+    var style: Int? = nil
+    var accent: Color? = nil
+    var active = true
 
     var body: some View {
-        let items = store.bar.map { ($0.title, $0.icon) } + [("Ещё", "square.grid.2x2")]
-        HStack(spacing: 0) {
-            ForEach(items.indices, id: \.self) { i in
-                let on = tab == i
-                Button { tab = i } label: {
-                    VStack(spacing: 2) {
-                        StyledIcon(systemName: items[i].1, size: 18, color: on ? store.meColor : .secondary, dim: !on)
-                        Text(items[i].0)
-                            .font(.system(size: 10, weight: on ? .semibold : .regular))
-                            .foregroundStyle(on ? store.meColor : .secondary)
-                            .lineLimit(1).minimumScaleFactor(0.8)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.plain)
+        let st = style ?? store.p.iconStyle
+        let box = size * 1.7
+        ZStack {
+            switch st {
+            case 1: neon(box)
+            case 2: solid(box)
+            default: outline(box)
             }
         }
-        .padding(.vertical, 6).padding(.horizontal, 6)
-        .glass(RoundedRectangle(cornerRadius: max(store.radius, 12) + 10, style: .continuous))
-        .padding(.horizontal, 12).padding(.bottom, 2)
+        .id(st)
+        .transition(.opacity.combined(with: .scale(scale: 0.92)))
+        .frame(width: box, height: box)
+        .saturation(active ? 1 : 0.2)
+        .opacity(active ? 1 : 0.7)
+    }
+
+    private func tileRadius(_ box: CGFloat) -> CGFloat { min(Theme.r(18) * box / 64, box / 2) }
+
+    // 1. Контурные
+    private func outline(_ box: CGFloat) -> some View {
+        let c = active ? (accent ?? store.meColor) : Color.secondary
+        return ZStack {
+            if box >= 44 {
+                Circle().strokeBorder(c.opacity(0.28), lineWidth: 1).padding(box * 0.04)
+            }
+            Image(systemName: symbol)
+                .font(.system(size: size * 0.82, weight: .thin))
+                .foregroundStyle(c)
+        }
+    }
+
+    // 2. Неоновые: матовое стекло + светящийся градиентный контур
+    private func neon(_ box: CGFloat) -> some View {
+        let n1 = color.boosted(minS: 0.7, minB: 1)
+        let n2 = (accent ?? store.partnerColor).boosted(minS: 0.65, minB: 1)
+        let shape = RoundedRectangle(cornerRadius: tileRadius(box), style: .continuous)
+        let grad = LinearGradient(colors: [n1, n2], startPoint: .topLeading, endPoint: .bottomTrailing)
+        return ZStack {
+            shape.fill(.ultraThinMaterial)
+            shape.fill(LinearGradient(colors: [n1.opacity(0.18), n2.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing))
+            shape.strokeBorder(grad, lineWidth: 1.5)
+                .shadow(color: n1.opacity(0.65), radius: box * 0.1)
+            Image(systemName: symbol)
+                .font(.system(size: size * 0.78, weight: .medium))
+                .foregroundStyle(grad)
+                .shadow(color: n1.opacity(0.9), radius: size * 0.16)
+        }
+        .padding(box * 0.04)
+    }
+
+    // 3. Объёмные: глянцевая «мягкая 3D»
+    private func solid(_ box: CGFloat) -> some View {
+        let base = color.boosted(minS: 0.5, minB: 0.9)
+        let top = base.hsb(dS: -0.14, dB: 0.04)
+        let bottom = base.hsb(dS: 0.18, dB: -0.2)
+        let shape = RoundedRectangle(cornerRadius: tileRadius(box), style: .continuous)
+        return ZStack {
+            shape.fill(LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom))
+            // глянцевый блик сверху
+            Ellipse()
+                .fill(LinearGradient(colors: [.white.opacity(0.6), .white.opacity(0)], startPoint: .top, endPoint: .bottom))
+                .frame(width: box * 0.9, height: box * 0.52)
+                .offset(y: -box * 0.26)
+            // светлая кромка и мягкая нижняя тень внутри
+            shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.85), .white.opacity(0.05), .black.opacity(0.14)],
+                                              startPoint: .top, endPoint: .bottom), lineWidth: 1.2)
+            Image(systemName: symbol)
+                .symbolVariant(.fill)
+                .font(.system(size: size * 0.8, weight: .bold))
+                .foregroundStyle(.white)
+                .shadow(color: bottom.opacity(0.7), radius: size * 0.1, y: size * 0.08)
+        }
+        .clipShape(shape)
+        .shadow(color: bottom.opacity(0.45), radius: box * 0.14, y: box * 0.1)
+        .padding(box * 0.04)
+    }
+}
+
+// MARK: - Единый таб-бар (всегда свой, для всех тем и стилей)
+
+struct AppTab: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let symbol: String
+    let hex: String
+}
+
+/// Размытое стекло по всей ширине, тонкая обводка сверху. Иконки меняют стиль вместе со всей системой.
+struct AppTabBar: View {
+    @EnvironmentObject var store: Store
+    let tabs: [AppTab]
+    @Binding var selected: String
+    @State private var popped: String? = nil
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(tabs) { item($0) }
+        }
+        .padding(.horizontal, 8).padding(.top, 6).padding(.bottom, 2)
+        .background {
+            ZStack(alignment: .top) {
+                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(Pal.bg.opacity(0.35))
+                Rectangle().fill(Color.primary.opacity(0.12)).frame(height: 0.5)
+            }
+            .ignoresSafeArea(edges: .bottom)     // стекло продолжается под home-индикатор
+        }
+    }
+
+    private func item(_ t: AppTab) -> some View {
+        let on = t.id == selected
+        return Button { choose(t) } label: {
+            VStack(spacing: 1) {
+                ArtIcon(symbol: t.symbol, color: Color(hex: t.hex), size: 20, active: on)
+                    .scaleEffect(popped == t.id ? 1.15 : 1)
+                Text(t.title)
+                    .font(.system(size: 10, weight: on ? .semibold : .medium))
+                    .foregroundStyle(on ? store.meColor : Color.secondary)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(t.title)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    /// Выбор вкладки: иконка слегка пружинит (1.0 → 1.15 → 1.0).
+    private func choose(_ t: AppTab) {
+        if selected != t.id { selected = t.id; store.tap() }
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.5)) { popped = t.id }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { if popped == t.id { popped = nil } }
+        }
     }
 }
 
@@ -315,10 +422,16 @@ struct PatternOverlay: View {
 
 // MARK: - Карточка-миниатюра темы (карусель)
 
+/// Все карточки одного размера и с одним скруглением — оно берётся из слайдера, поэтому карусель живо реагирует на него.
 struct ThemePreviewCard: View {
     @EnvironmentObject var store: Store
     @Environment(\.colorScheme) private var scheme
     let def: ThemeDef
+
+    private let tiles: [(String, String)] = [
+        ("bubble.left.and.bubble.right", "8EC5FF"), ("safari", "FFB38A"),
+        ("lock", "B7A6FF"), ("gamecontroller", "C9A7FF")
+    ]
 
     var body: some View {
         let look = ThemeLook.of(def.id)
@@ -327,24 +440,26 @@ struct ThemePreviewCard: View {
         let bg = Color(hex: dark ? def.bgD : def.bgL)
         let card = Color(hex: dark ? def.cardD : def.cardL)
         let accent = look.pair.map { Color(hex: $0.0) } ?? store.meColor
+        let accent2 = look.pair.map { Color(hex: $0.1) } ?? store.partnerColor
         let ink: Color = dark ? .white : Color(hex: "1B1B1F")
-        let r = CGFloat(look.radius)
         let on = def.id == store.p.themeID
+        let outer = store.radius + 4
+        let inner = store.radius * 0.5
 
         Button { store.applyPreset(def) } label: {
             VStack(spacing: 8) {
                 ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: r + 4, style: .continuous)
+                    RoundedRectangle(cornerRadius: outer, style: .continuous)
                         .fill(LinearGradient(colors: [top, bg], startPoint: .top, endPoint: .bottom))
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Ещё").font(.system(size: 16, weight: .bold, design: look.font.design)).foregroundStyle(ink)
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 2), spacing: 6) {
-                            ForEach(["bubble.left.fill", "safari", "lock.fill", "gamecontroller.fill"], id: \.self) { sym in
+                            ForEach(tiles, id: \.0) { t in
                                 ZStack {
-                                    RoundedRectangle(cornerRadius: r * 0.55, style: .continuous).fill(card)
-                                    StyledIcon(systemName: sym, size: 14, color: accent, style: look.icon, radius: r * 0.4)
+                                    RoundedRectangle(cornerRadius: inner, style: .continuous).fill(card)
+                                    ArtIcon(symbol: t.0, color: Color(hex: t.1), size: 13, style: look.icon, accent: look.icon == 0 ? accent : accent2)
                                 }
-                                .frame(height: 44)
+                                .frame(height: 46)
                             }
                         }
                         Spacer(minLength: 0)
@@ -359,7 +474,7 @@ struct ThemePreviewCard: View {
                     .padding(10)
                 }
                 .frame(width: 128, height: 196)
-                .overlay(RoundedRectangle(cornerRadius: r + 4, style: .continuous)
+                .overlay(RoundedRectangle(cornerRadius: outer, style: .continuous)
                     .strokeBorder(accent, lineWidth: on ? 3 : 0))
                 .scaleEffect(on ? 1.03 : 1)
                 .shadow(color: .black.opacity(0.15), radius: 8, y: 4)

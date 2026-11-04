@@ -64,7 +64,7 @@ struct SettingsView: View {
                             else if !store.p.disabled.contains(m) { store.data.profile.disabled.append(m) }
                         })) {
                         HStack(spacing: 10) {
-                            StyledIcon(systemName: m.icon, size: 15).frame(width: 30, height: 30)
+                            ArtIcon(symbol: m.icon, color: Color(hex: m.hex), size: 15).frame(width: 30, height: 30)
                             Text(m.title)
                         }
                     }
@@ -145,7 +145,7 @@ struct ReorderView: View {
                     let off = store.p.disabled.contains(m)
                     let pos = store.active.firstIndex(of: m)
                     HStack(spacing: 12) {
-                        StyledIcon(systemName: m.icon, size: 15).frame(width: 30, height: 30)
+                        ArtIcon(symbol: m.icon, color: Color(hex: m.hex), size: 15).frame(width: 30, height: 30)
                         Text(m.title)
                         Spacer()
                         if off { Chip(text: "выкл") }

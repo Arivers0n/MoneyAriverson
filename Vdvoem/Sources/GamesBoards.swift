@@ -27,7 +27,7 @@ struct DotsBoard: View {
                     ForEach(0..<16, id: \.self) { b in
                         let v = m.board[40 + b]
                         let r = b / 4, c = b % 4
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        RoundedRectangle(cornerRadius: Theme.r(6), style: .continuous)
                             .fill(v == 0 ? Color.clear : ownerColor(store, v).opacity(0.38))
                             .frame(width: s - 6, height: s - 6)
                             .overlay(Text(v == 0 ? "" : String(store.name(GameLogic.owner(v) ?? .me).prefix(1)).uppercased())
@@ -128,7 +128,7 @@ struct CheckersBoard: View {
                     }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.r(12), style: .continuous))
             .frame(maxWidth: 440)
             Text(m.aux != nil ? "Продолжайте бить этой же шашкой" : (all.contains { $0.cap != nil } ? "Бить обязательно" : " "))
                 .font(.footnote).foregroundStyle(.secondary)
@@ -163,7 +163,7 @@ struct BattleshipBoard: View {
                 HStack(spacing: 12) {
                     Button { withAnimation { layout = Battleship.randomLayout() }; store.tap() } label: {
                         Label("Перемешать", systemImage: "shuffle").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .glass(RoundedRectangle(cornerRadius: 16, style: .continuous), interactive: true)
+                            .glass(RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous), interactive: true)
                     }.buttonStyle(.plain)
                     Button { store.readyFleet(m.id, layout: layout) } label: { Text("Готов").bigButton() }
                 }
@@ -197,7 +197,7 @@ struct BattleshipBoard: View {
                             ZStack {
                                 Rectangle().fill(Color(hex: enemy ? "1F6F9E" : "2F86B8").opacity(0.55))
                                 Rectangle().stroke(.white.opacity(0.25), lineWidth: 0.5)
-                                if ship { RoundedRectangle(cornerRadius: 3).fill(Color(hex: "E7ECF3")).padding(1.5) }
+                                if ship { RoundedRectangle(cornerRadius: Theme.r(3)).fill(Color(hex: "E7ECF3")).padding(1.5) }
                                 if shot == 1 { Circle().fill(.white.opacity(0.85)).frame(width: cell * 0.2) }
                                 if shot == 2 { Image(systemName: "xmark").font(.system(size: cell * 0.6, weight: .heavy)).foregroundStyle(Color(hex: "FF4D4D")) }
                             }
@@ -208,8 +208,8 @@ struct BattleshipBoard: View {
                 }
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(.white.opacity(0.4), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.r(10), style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.r(10), style: .continuous).stroke(.white.opacity(0.4), lineWidth: 1))
     }
 }
 
@@ -354,7 +354,7 @@ struct MemoryBoard: View {
                     let face = (m.extra?[i]).map { MemoryGame.faces[$0] } ?? "?"
                     Button { send(i) } label: {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous)
                                 .fill(v == 0 ? AnyShapeStyle(LinearGradient(colors: [store.meColor, store.partnerColor], startPoint: .topLeading, endPoint: .bottomTrailing))
                                       : (v == 3 ? AnyShapeStyle(Color.white) : AnyShapeStyle(ownerColor(store, v).opacity(0.3))))
                             if v == 0 { Image(systemName: "questionmark").font(.title2.weight(.heavy)).foregroundStyle(.white.opacity(0.7)) }
@@ -410,7 +410,7 @@ struct RPSBoard: View {
                                 Text(it.2).font(.caption.weight(.bold)).foregroundStyle(.primary)
                             }
                             .frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .glass(RoundedRectangle(cornerRadius: 22, style: .continuous), interactive: true)
+                            .glass(RoundedRectangle(cornerRadius: Theme.r(22), style: .continuous), interactive: true)
                         }
                         .buttonStyle(.plain)
                         .disabled(mine != 0 && !done)
@@ -463,7 +463,7 @@ struct HangmanBoard: View {
                         Text("Загадайте слово").font(.headline)
                         Text("От 3 до 14 русских букв. \(store.name(.partner)) будет угадывать.").font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         TextField("Слово", text: $input).textInputAutocapitalization(.characters).autocorrectionDisabled()
-                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                         Button { store.setHangmanWord(m.id, input) } label: {
                             Text("Загадать").bigButton().opacity((3...14).contains(Hangman.normalize(input).count) ? 1 : 0.4)
                         }
@@ -499,7 +499,7 @@ struct HangmanBoard: View {
                             Button { send(i) } label: {
                                 Text(String(ch)).font(.headline).frame(maxWidth: .infinity).padding(.vertical, 9)
                                     .foregroundStyle(used ? .white : .primary)
-                                    .background(used ? (bad ? Color.red.opacity(0.7) : Color(hex: "34C38F")) : Pal.card, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                    .background(used ? (bad ? Color.red.opacity(0.7) : Color(hex: "34C38F")) : Pal.card, in: RoundedRectangle(cornerRadius: Theme.r(10), style: .continuous))
                             }
                             .buttonStyle(.plain)
                             .disabled(used || m.turn != .me)

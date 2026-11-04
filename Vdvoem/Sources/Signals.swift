@@ -151,7 +151,7 @@ struct SignalOverlay: View {
                     Text("от \(store.name(s.who))").font(.subheadline).foregroundStyle(.white.opacity(0.85))
                 }
                 .padding(30)
-                .glass(RoundedRectangle(cornerRadius: 36, style: .continuous), tint: Color(hex: k.hex).opacity(0.5))
+                .glass(RoundedRectangle(cornerRadius: Theme.r(36), style: .continuous), tint: Color(hex: k.hex).opacity(0.5))
                 .transition(.scale(scale: 0.6).combined(with: .opacity))
             }
         }

@@ -278,7 +278,7 @@ struct VoteView: View {
                                 HStack(spacing: 4) { ForEach(o.voters, id: \.self) { Circle().fill(store.color($0)).frame(width: 12, height: 12) } }
                                 if o.voters.contains(voter) { Image(systemName: "checkmark.circle.fill").foregroundStyle(store.color(voter)) }
                             }
-                            .padding(12).background(Pal.field, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .padding(12).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(12), style: .continuous))
                         }
                         .buttonStyle(.plain)
                     }
@@ -444,7 +444,7 @@ struct MoodView: View {
                             Button { set(w, i) } label: {
                                 Text(moods[i]).font(.system(size: 34)).frame(maxWidth: .infinity)
                                     .padding(.vertical, 8)
-                                    .background(current(w) == i ? store.color(w).opacity(0.3) : Color.clear, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .background(current(w) == i ? store.color(w).opacity(0.3) : Color.clear, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                             }
                             .buttonStyle(.plain)
                         }

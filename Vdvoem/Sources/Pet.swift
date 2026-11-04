@@ -71,7 +71,7 @@ struct PetView: View {
             Text("Он будет расти от того, что вы делаете вместе: сообщений, сигналов, фото, игр.")
                 .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
             TextField("Имя питомца", text: $name)
-                .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
             Button { store.hatchPet(name: name) } label: { Text("Вылупить").bigButton() }
         }
         .padding(18).card()
@@ -140,7 +140,7 @@ struct PetView: View {
                 Text(title).font(.caption.weight(.bold)).foregroundStyle(.primary)
             }
             .frame(maxWidth: .infinity).padding(.vertical, 12)
-            .glass(RoundedRectangle(cornerRadius: 18, style: .continuous), interactive: true)
+            .glass(RoundedRectangle(cornerRadius: Theme.r(18), style: .continuous), interactive: true)
         }
         .buttonStyle(.plain)
     }
@@ -173,11 +173,11 @@ struct PetBody: View {
             ZStack {
                 Capsule().fill(b).frame(width: 34, height: 60).rotationEffect(.degrees(-24)).offset(x: -52, y: -108)
                 Capsule().fill(b).frame(width: 34, height: 60).rotationEffect(.degrees(24)).offset(x: 52, y: -108)
-                RoundedRectangle(cornerRadius: 90, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.r(90), style: .continuous)
                     .fill(LinearGradient(colors: [a, b], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(width: 190, height: 170)
                     .shadow(color: b.opacity(0.5), radius: 16, y: 12)
-                RoundedRectangle(cornerRadius: 40, style: .continuous).fill(.white.opacity(0.25)).frame(width: 70, height: 26).rotationEffect(.degrees(-20)).offset(x: -45, y: -52)
+                RoundedRectangle(cornerRadius: Theme.r(40), style: .continuous).fill(.white.opacity(0.25)).frame(width: 70, height: 26).rotationEffect(.degrees(-20)).offset(x: -45, y: -52)
                 HStack(spacing: 46) { eye(blink); eye(blink) }.offset(y: -12)
                 HStack(spacing: 96) { Circle().fill(Color(hex: "FF8FB1").opacity(0.6)).frame(width: 24, height: 16); Circle().fill(Color(hex: "FF8FB1").opacity(0.6)).frame(width: 24, height: 16) }.offset(y: 14)
                 mouth.offset(y: 22)

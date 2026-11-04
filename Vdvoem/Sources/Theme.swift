@@ -46,6 +46,10 @@ enum Theme {
     static var bgStyle = 0
     static var cardStyle = 0
     static var bgPattern = 0
+    /// Текущее скругление (px). Обновляется хранилищем, в том числе во время движения слайдера.
+    static var radius: CGFloat = 22
+    /// Любое «жёсткое» скругление в коде умножается на этот масштаб: слайдер двигает все углы разом.
+    static func r(_ base: CGFloat) -> CGFloat { max(0, base * radius / 22) }
     static var accent = Color(hex: "4C9AF0")
     static var accent2 = Color(hex: "D870A8")
 }
@@ -59,21 +63,29 @@ enum Pal {
 
 /// Фон экрана: цветной верх, мягкие световые пятна, по желанию — медленная «аврора».
 struct ThemeBackground: View {
+    @EnvironmentObject private var store: Store     // перерисовка при смене темы без пересоздания экрана
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         ZStack {
-            Pal.bg
-            if Theme.bgStyle != 2 {
-                if Theme.bgStyle == 1 {
-                    TimelineView(.animation(minimumInterval: 1 / 20)) { tl in
-                        blobs(t: tl.date.timeIntervalSinceReferenceDate)
+            // Смена темы/узора — плавное растворение, без мигания
+            ZStack {
+                Pal.bg
+                if Theme.bgStyle != 2 {
+                    if Theme.bgStyle == 1 {
+                        TimelineView(.animation(minimumInterval: 1 / 20)) { tl in
+                            blobs(t: tl.date.timeIntervalSinceReferenceDate)
+                        }
+                    } else {
+                        blobs(t: 0)
                     }
-                } else {
-                    blobs(t: 0)
                 }
             }
-            PatternOverlay(kind: Theme.bgPattern)
+            .id(store.p.themeID)
+            .transition(.opacity)
+            PatternOverlay(kind: store.p.bgPattern)
+                .id(store.p.bgPattern)
+                .transition(.opacity)
         }
         .ignoresSafeArea()
     }
@@ -292,11 +304,12 @@ struct AppearanceView: View {
                         Text("Объёмные").tag(2)
                     }.pickerStyle(.segmented)
                     HStack {
-                        ForEach(["heart.fill", "calendar", "bubble.left.fill", "star.fill", "gearshape.fill"], id: \.self) {
-                            StyledIcon(systemName: $0, size: 22).frame(maxWidth: .infinity)
+                        ForEach([("heart", "FF8FB1"), ("calendar", "FFB38A"), ("bubble.left.and.bubble.right", "8EC5FF"),
+                                 ("gift", "FFD36E"), ("gearshape", "AEB8C8")], id: \.0) { it in
+                            ArtIcon(symbol: it.0, color: Color(hex: it.1), size: 20).frame(maxWidth: .infinity)
                         }
                     }
-                    Text("Применяется к нижней панели и спискам функций. У «контурных» остаётся родная панель iOS.")
+                    Text("Применяется к нижней панели, плиткам «Ещё» и спискам функций.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 section("Карточки") {
@@ -324,8 +337,9 @@ struct AppearanceView: View {
                     }.pickerStyle(.segmented)
                     HStack {
                         Text("Скругление").font(.subheadline)
-                        Slider(value: Binding(get: { store.p.radius }, set: { store.setRadius($0) }), in: 0...30, step: 1)
-                        Text("\(Int(store.p.radius))px").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
+                        Slider(value: Binding(get: { Double(store.radius) }, set: { store.setRadius($0) }), in: 0...30, step: 1,
+                               onEditingChanged: { editing in if !editing { store.commitRadius() } })
+                        Text("\(Int(store.radius))px").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
                     }
                     Toggle("Вибро-отклик", isOn: $store.data.profile.haptics)
                     Toggle("Звук при смене темы", isOn: $store.data.profile.sound)
@@ -343,7 +357,6 @@ struct AppearanceView: View {
         }
         .animation(Store.spring, value: store.p.themeID)
         .animation(Store.spring, value: store.p.cardStyle)
-        .animation(Store.spring, value: store.p.radius)
         .animation(Store.spring, value: store.p.design)
     }
 
@@ -382,7 +395,7 @@ struct AppearanceView: View {
                     }
                     .foregroundStyle(on ? .white : .primary)
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
-                    .background(on ? AnyShapeStyle(store.meColor) : AnyShapeStyle(Pal.field), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(on ? AnyShapeStyle(store.meColor) : AnyShapeStyle(Pal.field), in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -402,8 +415,8 @@ struct AppearanceView: View {
                 Text(p.id).font(.system(size: 10, weight: .medium)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.7)
             }
             .frame(maxWidth: .infinity).padding(.vertical, 10)
-            .background(Pal.field, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(on ? Color.primary : .clear, lineWidth: 2))
+            .background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous).stroke(on ? Color.primary : .clear, lineWidth: 2))
         }
         .buttonStyle(.plain)
     }
@@ -440,8 +453,8 @@ struct AppearanceView: View {
             VStack(spacing: 6) {
                 WallpaperPreview(id: w.id)
                     .frame(width: 74, height: 110)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous)
                         .stroke(on ? store.meColor : Color.primary.opacity(0.1), lineWidth: on ? 2.5 : 1))
                 Text(w.title).font(.caption2.weight(on ? .bold : .regular)).foregroundStyle(.primary)
             }
@@ -454,12 +467,12 @@ struct AppearanceView: View {
         return Button { setIcon(i) } label: {
             VStack(spacing: 6) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    RoundedRectangle(cornerRadius: Theme.r(15), style: .continuous)
                         .fill(LinearGradient(colors: [Color(hex: i.a), Color(hex: i.b)], startPoint: .topLeading, endPoint: .bottomTrailing))
                     Image(systemName: i.symbol).font(.system(size: 24, weight: .bold)).foregroundStyle(.white)
                 }
                 .frame(width: 56, height: 56)
-                .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .overlay(RoundedRectangle(cornerRadius: Theme.r(15), style: .continuous)
                     .stroke(on ? store.meColor : Color.clear, lineWidth: 3).padding(-3))
                 Text(i.title).font(.caption2.weight(on ? .bold : .regular)).foregroundStyle(.primary)
             }
@@ -523,8 +536,8 @@ struct LivePreview: View {
             .padding(14)
         }
         .frame(height: 290)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(Color.primary.opacity(0.1), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.r(28), style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.r(28), style: .continuous).stroke(Color.primary.opacity(0.1), lineWidth: 1))
         .shadow(color: .black.opacity(0.12), radius: 14, y: 8)
     }
 }

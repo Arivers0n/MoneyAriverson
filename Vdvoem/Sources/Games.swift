@@ -105,21 +105,20 @@ struct GamesView: View {
     }
 
     private func kindTile(_ k: GameKind, locked: Bool) -> some View {
-        let c = Color(hex: k.hex)
-        return ZStack(alignment: .bottomTrailing) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(k.title).font(.system(size: 16, weight: .heavy, design: .rounded)).foregroundStyle(.primary)
-                    .lineLimit(2).minimumScaleFactor(0.75)
-                Text(locked ? "Нужна пара" : k.blurb).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top) {
+                ArtIcon(symbol: k.icon, color: Color(hex: k.hex), size: 22)
                 Spacer(minLength: 0)
+                if locked { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.secondary) }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            Text(k.art).font(.system(size: 46)).shadow(color: c.opacity(0.6), radius: 8, y: 5).rotationEffect(.degrees(-6))
+            Spacer(minLength: 6)
+            Text(k.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(.primary)
+                .lineLimit(2).minimumScaleFactor(0.8)
+            Text(locked ? "Нужна пара" : k.blurb).font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }
-        .padding(14).frame(height: 116)
-        .background(LinearGradient(colors: [c.opacity(0.5), c.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: RoundedRectangle(cornerRadius: max(store.radius, 20), style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: max(store.radius, 20), style: .continuous).stroke(.white.opacity(0.45), lineWidth: 1))
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 132, maxHeight: 132, alignment: .topLeading)
+        .card()
         .opacity(locked ? 0.5 : 1)
     }
 
@@ -149,7 +148,7 @@ struct GamesView: View {
     private func row(_ t: String, _ icon: String, _ sub: String, highlight: Bool = false) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon).font(.title3).frame(width: 44, height: 44)
-                .background(highlight ? store.meColor.opacity(0.25) : Pal.field, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(highlight ? store.meColor.opacity(0.25) : Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(12), style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 Text(t).font(.body.weight(.medium))
                 Text(sub).font(.caption).foregroundStyle(highlight ? store.meColor : .secondary)
@@ -279,7 +278,7 @@ struct MatchView: View {
                 let p = m.board[i]
                 Button { tryMove(m, i) } label: {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        RoundedRectangle(cornerRadius: Theme.r(18), style: .continuous)
                             .fill(win.contains(i) ? store.color(m.winner).opacity(0.28) : Pal.card)
                         if p != 0 {
                             Image(systemName: p == 1 ? "xmark" : "circle")
@@ -313,7 +312,7 @@ struct MatchView: View {
                         }
                     }
                     .padding(4)
-                    .background(Pal.card.opacity(valid.contains(c) && canTap(m) ? 1 : 0.7), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Pal.card.opacity(valid.contains(c) && canTap(m) ? 1 : 0.7), in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -353,7 +352,7 @@ struct MatchView: View {
             }
             .font(.subheadline.weight(.semibold)).padding(.top, 8)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.r(10), style: .continuous))
         .frame(maxWidth: 460)
     }
 }

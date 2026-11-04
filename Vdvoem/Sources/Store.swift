@@ -5,6 +5,8 @@ import UserNotifications
 final class Store: ObservableObject {
     @Published var data: AppData { didSet { save(); sync.dataChanged(data); applyTheme(); location.apply(); WidgetBridge.shared.update(self) } }
     @Published var scope: Scope = .we
+    /// Скругление во время движения слайдера: меняет экран мгновенно, но не пишет на диск/в синхронизацию на каждом шаге.
+    @Published var liveRadius: Double? = nil { didSet { Theme.radius = CGFloat(liveRadius ?? data.profile.radius) } }
     let sync = SyncEngine()
     let location = LocationService()
     private let url: URL
@@ -41,6 +43,7 @@ final class Store: ObservableObject {
         Theme.bgStyle = data.profile.bgStyle
         Theme.cardStyle = data.profile.cardStyle
         Theme.bgPattern = data.profile.bgPattern
+        Theme.radius = CGFloat(liveRadius ?? data.profile.radius)
         Theme.accent = Color(hex: data.profile.myHex)
         Theme.accent2 = Color(hex: data.profile.partnerHex)
     }
@@ -77,7 +80,7 @@ final class Store: ObservableObject {
 
     // MARK: Профиль и тема
     var p: Profile { data.profile }
-    var radius: CGFloat { CGFloat(p.radius) }
+    var radius: CGFloat { CGFloat(liveRadius ?? p.radius) }
     var meColor: Color { Color(hex: p.myHex) }
     var partnerColor: Color { Color(hex: p.partnerHex) }
     var scheme: ColorScheme? {
