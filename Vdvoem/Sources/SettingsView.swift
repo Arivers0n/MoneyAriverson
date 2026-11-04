@@ -43,7 +43,7 @@ struct SettingsView: View {
 
             NavigationLink { AppearanceView() } label: {
                 HStack(spacing: 12) {
-                    Image(systemName: "paintpalette.fill").font(.title3).foregroundStyle(store.meColor)
+                    ArtIcon(symbol: "paintpalette", color: Color(hex: "C084FC"), size: 20).frame(width: 36, height: 36)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Оформление").font(.headline).foregroundStyle(.primary)
                         Text("Темы, обои чата, значок приложения").font(.footnote).foregroundStyle(.secondary)
@@ -74,7 +74,7 @@ struct SettingsView: View {
 
             NavigationLink { ReorderView() } label: {
                 HStack {
-                    Image(systemName: "arrow.up.arrow.down")
+                    ArtIcon(symbol: "arrow.up.arrow.down", color: Color(hex: "AEB8C8"), size: 18).frame(width: 36, height: 36)
                     Text("Порядок и нижняя панель").font(.body.weight(.medium))
                     Spacer()
                     Image(systemName: "chevron.right").foregroundStyle(.tertiary)

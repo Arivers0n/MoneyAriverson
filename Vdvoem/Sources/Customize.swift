@@ -247,23 +247,25 @@ struct ArtIcon: View {
         .padding(box * 0.03)
     }
 
-    // 2. Неоновые: матовое стекло + светящийся градиентный контур
+    // 2. Неоновые: стеклянный суперэллипс с мягким градиентом внутри и свечением снаружи
     private func neon(_ box: CGFloat) -> some View {
         let n1 = color.boosted(minS: 0.7, minB: 1)
         let n2 = (accent ?? store.partnerColor).boosted(minS: 0.65, minB: 1)
-        let shape = RoundedRectangle(cornerRadius: tileRadius(box), style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: tileRadius(box) * 1.1, style: .continuous)
         let grad = LinearGradient(colors: [n1, n2], startPoint: .topLeading, endPoint: .bottomTrailing)
         return ZStack {
             shape.fill(.ultraThinMaterial)
-            shape.fill(LinearGradient(colors: [n1.opacity(0.18), n2.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing))
-            shape.strokeBorder(grad, lineWidth: 1.5)
-                .shadow(color: n1.opacity(0.65), radius: box * 0.1)
+            shape.fill(LinearGradient(colors: [n1.opacity(0.34), n2.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing))
+            // блик стекла сверху
+            shape.fill(LinearGradient(colors: [.white.opacity(0.28), .clear], startPoint: .top, endPoint: .center))
+            shape.strokeBorder(grad, lineWidth: 1.4)
             Image(systemName: symbol)
-                .font(.system(size: size * 0.78, weight: .medium))
+                .font(.system(size: size * 0.8, weight: .medium))
                 .foregroundStyle(grad)
-                .shadow(color: n1.opacity(0.9), radius: size * 0.16)
+                .shadow(color: n1.opacity(0.9), radius: size * 0.14)
         }
-        .padding(box * 0.04)
+        .shadow(color: n1.opacity(0.45), radius: box * 0.16)
+        .padding(box * 0.06)
     }
 
     // 3. Объёмные: глянцевая «мягкая 3D»
@@ -350,24 +352,117 @@ struct TabGlyph: View {
     }
 }
 
-enum TabIcon {
-    private static var cache: [String: UIImage] = [:]
+// MARK: - Сворачивающийся стеклянный док
 
-    /// Картинки кэшируются: смена вкладки и стиля не перерисовывает ничего лишнего.
-    @MainActor
-    static func image(_ t: AppTab, store: Store, selected: Bool, dark: Bool) -> UIImage {
+/// Состояние дока: развёрнутая панель или маленькая круглая кнопка в правом нижнем углу.
+@MainActor
+final class DockState: ObservableObject {
+    @Published var collapsed = false
+    private var last = Date.distantPast
+    private static let gen = UIImpactFeedbackGenerator(style: .soft)
+
+    static let spring = Animation.spring(response: 0.4, dampingFraction: 0.78)
+
+    func set(_ v: Bool, haptics: Bool) {
+        guard v != collapsed else { return }
+        last = Date()
+        if haptics { Self.gen.impactOccurred(intensity: 0.8); Self.gen.prepare() }
+        withAnimation(Self.spring) { collapsed = v }
+    }
+
+    /// Скролл вниз сворачивает, вверх разворачивает. Пауза после смены — чтобы док не дрожал.
+    func scrolled(from old: CGFloat, to new: CGFloat, haptics: Bool) {
+        guard Date().timeIntervalSince(last) > 0.6 else { return }
+        let d = new - old
+        guard abs(d) > 8 else { return }
+        if d > 0, new > 80 { set(true, haptics: haptics) }
+        else if d < 0 { set(false, haptics: haptics) }
+    }
+}
+
+struct DockScroll: ViewModifier {
+    @EnvironmentObject var dock: DockState
+    @EnvironmentObject var store: Store
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y + $0.contentInsets.top }) { old, new in
+                dock.scrolled(from: old, to: new, haptics: store.p.haptics)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    func dockScroll() -> some View { modifier(DockScroll()) }
+}
+
+/// Док: одна стеклянная форма, которая пружинисто сжимается в круг и обратно.
+/// Иконки плавно гаснут и уменьшаются, кружок с мозаикой проявляется.
+struct GlassDock: View {
+    @EnvironmentObject var store: Store
+    @EnvironmentObject var dock: DockState
+    @Environment(\.colorScheme) private var scheme
+    let tabs: [AppTab]
+    @Binding var selected: String
+
+    private let height: CGFloat = 62
+
+    var body: some View {
+        GeometryReader { geo in
+            let full = max(0, geo.size.width - 32)
+            let collapsed = dock.collapsed
+            let shape = RoundedRectangle(cornerRadius: height / 2, style: .continuous)
+            ZStack {
+                HStack(spacing: 0) { ForEach(tabs) { item($0) } }
+                    .padding(.horizontal, 6)
+                    .opacity(collapsed ? 0 : 1)
+                    .scaleEffect(collapsed ? 0.4 : 1, anchor: .trailing)
+                    .allowsHitTesting(!collapsed)
+                Image(systemName: "square.grid.2x2.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(LinearGradient(colors: [store.meColor.boosted(minS: 0.6, minB: 1), store.partnerColor.boosted(minS: 0.5, minB: 1)],
+                                                    startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .shadow(color: store.meColor.opacity(0.7), radius: 6)
+                    .opacity(collapsed ? 1 : 0)
+                    .scaleEffect(collapsed ? 1 : 0.4)
+            }
+            .frame(width: collapsed ? height : full, height: height)
+            .glass(shape, interactive: true)
+            .overlay(shape.strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.5))
+            .shadow(color: (collapsed ? store.meColor : Color.black).opacity(collapsed ? 0.35 : 0.12), radius: collapsed ? 14 : 10, y: 4)
+            .contentShape(shape)
+            .onTapGesture { if collapsed { dock.set(false, haptics: store.p.haptics) } }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: collapsed ? .bottomTrailing : .bottom)
+            .padding(.horizontal, 16)
+            .animation(DockState.spring, value: collapsed)
+        }
+        .frame(height: height + 8)
+        .accessibilityElement(children: .contain)
+    }
+
+    private func item(_ t: AppTab) -> some View {
+        let on = t.id == selected
         let st = store.p.iconStyle
-        let key = "\(t.symbol)|\(t.hex)|\(st)|\(selected)|\(dark)|\(store.p.myHex)|\(store.p.partnerHex)"
-        if let hit = cache[key] { return hit }
-        if cache.count > 300 { cache.removeAll() }
-        let accent = st == 2 ? Color(hex: t.hex) : store.meColor
-        let view = TabGlyph(symbol: t.symbol, color: accent, color2: store.partnerColor,
-                            style: st, selected: selected, dark: dark)
-        let r = ImageRenderer(content: view)
-        r.scale = 3
-        let img = (r.uiImage ?? UIImage()).withRenderingMode(.alwaysOriginal)
-        cache[key] = img
-        return img
+        return Button {
+            if selected != t.id { store.tap() }
+            withAnimation(Store.spring) { selected = t.id }
+        } label: {
+            VStack(spacing: 0) {
+                TabGlyph(symbol: t.symbol, color: st == 2 ? Color(hex: t.hex) : store.meColor, color2: store.partnerColor,
+                         style: st, selected: on, dark: scheme == .dark)
+                    .scaleEffect(on ? 0.92 : 0.84)
+                Text(t.title).font(.system(size: 10, weight: on ? .semibold : .medium))
+                    .foregroundStyle(on ? store.meColor : Color.secondary).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity, minHeight: height)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .animation(Store.spring, value: on)
+        .accessibilityLabel(t.title)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -378,7 +473,7 @@ struct PatternOverlay: View {
     var body: some View {
         if kind > 0 {
             Canvas { ctx, size in
-                let ink = Color.primary.opacity(0.04)
+                let ink = Color.primary.opacity(0.03)
                 switch kind {
                 case 1:
                     let step: CGFloat = 28

@@ -116,6 +116,7 @@ struct Screen<Content: View>: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 30)
         }
+        .dockScroll()
         .background(ThemeBackground())
     }
 }

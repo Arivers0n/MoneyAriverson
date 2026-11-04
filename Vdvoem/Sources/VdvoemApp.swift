@@ -36,7 +36,7 @@ struct VdvoemApp: App {
 
 struct RootView: View {
     @EnvironmentObject var store: Store
-    @Environment(\.colorScheme) private var scheme
+    @StateObject private var dock = DockState()
     @State private var selected = ""
 
     private var tabs: [AppTab] {
@@ -46,26 +46,29 @@ struct RootView: View {
     private var current: String { tabs.contains { $0.id == selected } ? selected : (tabs.first?.id ?? "more") }
 
     var body: some View {
-        // Родной TabView: системное стекло, размытие, разделитель и safe area для всех iPhone.
+        // TabView хранит состояние вкладок, а системную панель прячем: вместо неё — свой стеклянный док.
         TabView(selection: Binding(get: { current }, set: { selected = $0 })) {
             ForEach(tabs) { t in
                 NavigationStack {
                     if t.id == "more" { MoreView() }
                     else if let m = Module(rawValue: t.id) { ModuleView(module: m) }
                 }
-                .tabItem {
-                    Label {
-                        Text(t.title)
-                    } icon: {
-                        Image(uiImage: TabIcon.image(t, store: store, selected: t.id == current, dark: scheme == .dark))
-                    }
-                }
+                // Место под док (и под круглую кнопку): контент и нижние кнопки не перекрываются.
+                .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: 74) }
+                .toolbar(.hidden, for: .tabBar)
                 .tag(t.id)
             }
         }
+        .overlay(alignment: .bottom) {
+            GlassDock(tabs: tabs, selected: Binding(get: { current }, set: { selected = $0 }))
+                .padding(.bottom, 2)
+        }
         .overlay { SignalOverlay() }
+        .environmentObject(dock)
         .onAppear { if selected.isEmpty { selected = tabs.first?.id ?? "more" } }
-        .onChange(of: selected) { _, _ in store.tap() }
+        // «Ещё» сворачивает док в круг, любая другая вкладка разворачивает.
+        .onChange(of: current) { _, new in dock.set(new == "more", haptics: store.p.haptics) }
+        .ignoresSafeArea(.keyboard)
     }
 }
 
