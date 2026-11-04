@@ -56,7 +56,7 @@ struct CardBG: ViewModifier {
             content.background(Pal.card.opacity(0.45), in: shape)
                 .overlay(shape.stroke(Color.primary.opacity(0.14), lineWidth: 1.2))
         default:
-            content.glass(shape)
+            content.background(Pal.card.opacity(0.4), in: shape).glass(shape)
                 .shadow(color: Theme.accent.opacity(0.10), radius: 14, y: 8)
         }
     }

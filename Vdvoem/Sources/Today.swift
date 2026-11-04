@@ -201,7 +201,7 @@ struct TodayView: View {
     private func tile<D: View>(_ title: String, _ icon: String, _ hex: String, detail: String, @ViewBuilder dest: @escaping () -> D) -> some View {
         NavigationLink { dest() } label: {
             VStack(alignment: .leading, spacing: 10) {
-                ArtIcon(symbol: icon, color: Color(hex: hex), size: 20)
+                ArtIcon(symbol: icon, color: Color(hex: hex), size: 24)
                 Text(title).font(.subheadline.weight(.bold)).foregroundStyle(.primary)
                 Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2).frame(height: 30, alignment: .topLeading)
             }

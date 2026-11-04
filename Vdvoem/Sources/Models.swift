@@ -79,7 +79,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .calendar: return "calendar"
         case .wishes: return "gift"
         case .lists: return "list.bullet.rectangle"
-        case .chat: return "bubble.left.and.bubble.right"
+        case .chat: return "bubble.left"
         case .plans: return "safari"
         case .files: return "lock"
         case .cards: return "creditcard"
@@ -206,7 +206,7 @@ struct Profile: Codable {
     var bubbleStyle = 0
     var cardStyle = 0              // 0 — мягкие с тенью, 1 — плоские, 2 — контур
     var bgStyle = 0                // 0 — свечение, 1 — аврора (движется), 2 — однотонный
-    var iconStyle = 0              // 0 — контурные, 1 — неоновые, 2 — объёмные
+    var iconStyle = 1              // 0 — контурные, 1 — неоновые, 2 — объёмные
     var bgPattern = 0              // 0 — без узора, 1 — точки, 2 — сердечки, 3 — волны
     var sound = true               // «стеклянный» звук при выборе темы
 
@@ -240,7 +240,7 @@ struct Profile: Codable {
         bubbleStyle = v(.bubbleStyle, 0)
         cardStyle = v(.cardStyle, 0)
         bgStyle = v(.bgStyle, 0)
-        iconStyle = v(.iconStyle, 0)
+        iconStyle = v(.iconStyle, 1)
         bgPattern = v(.bgPattern, 0)
         sound = v(.sound, true)
     }

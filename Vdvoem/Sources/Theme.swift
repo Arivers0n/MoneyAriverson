@@ -292,10 +292,10 @@ struct AppearanceView: View {
                     choice([("Свечение", "sparkles"), ("Аврора", "wind"), ("Однотонный", "square.fill")], $store.data.profile.bgStyle)
                     Text("«Аврора» — цветные пятна медленно плавают за карточками.").font(.caption).foregroundStyle(.secondary)
                     Text("Узор").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(.top, 4)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 14) { ForEach(0..<4, id: \.self) { k in patternDot(k) } }
-                            .padding(.vertical, 8).padding(.horizontal, 6)
+                    HStack(spacing: 0) {
+                        ForEach(0..<4, id: \.self) { k in patternDot(k).frame(maxWidth: .infinity) }
                     }
+                    .padding(.vertical, 6)
                 }
                 section("Иконки") {
                     Picker("Стиль иконок", selection: Binding(get: { store.p.iconStyle }, set: { store.setIconStyle($0) })) {
@@ -306,7 +306,7 @@ struct AppearanceView: View {
                     HStack {
                         ForEach([("heart", "FF8FB1"), ("calendar", "FFB38A"), ("bubble.left.and.bubble.right", "8EC5FF"),
                                  ("gift", "FFD36E"), ("gearshape", "AEB8C8")], id: \.0) { it in
-                            ArtIcon(symbol: it.0, color: Color(hex: it.1), size: 20).frame(maxWidth: .infinity)
+                            ArtIcon(symbol: it.0, color: Color(hex: it.1), size: 24).frame(maxWidth: .infinity)
                         }
                     }
                     Text("Применяется к нижней панели, плиткам «Ещё» и спискам функций.")
@@ -335,11 +335,14 @@ struct AppearanceView: View {
                     Picker("Шрифт", selection: Binding(get: { store.p.design }, set: { store.setFont($0) })) {
                         ForEach(DesignStyle.allCases, id: \.self) { Text($0.title).tag($0) }
                     }.pickerStyle(.segmented)
-                    HStack {
-                        Text("Скругление").font(.subheadline)
+                    VStack(spacing: 6) {
+                        HStack {
+                            Text("Скругление").font(.subheadline)
+                            Spacer()
+                            Text("\(Int(store.radius))px").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                        }
                         Slider(value: Binding(get: { Double(store.radius) }, set: { store.setRadius($0) }), in: 0...30, step: 1,
                                onEditingChanged: { editing in if !editing { store.commitRadius() } })
-                        Text("\(Int(store.radius))px").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
                     }
                     Toggle("Вибро-отклик", isOn: $store.data.profile.haptics)
                     Toggle("Звук при смене темы", isOn: $store.data.profile.sound)

@@ -107,7 +107,7 @@ struct GamesView: View {
     private func kindTile(_ k: GameKind, locked: Bool) -> some View {
         return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top) {
-                ArtIcon(symbol: k.icon, color: Color(hex: k.hex), size: 22)
+                ArtIcon(symbol: k.icon, color: Color(hex: k.hex), size: 26)
                 Spacer(minLength: 0)
                 if locked { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.secondary) }
             }

@@ -15,20 +15,20 @@ struct ThemeLook {
     static func of(_ id: String) -> ThemeLook {
         switch id {
         case "classic":  return ThemeLook(icon: 0, font: .standard, radius: 18, pattern: 0)
-        case "mint":     return ThemeLook(icon: 0, font: .rounded, radius: 20, pattern: 3)
-        case "lavender": return ThemeLook(icon: 2, font: .rounded, radius: 24, pattern: 1)
-        case "peach":    return ThemeLook(icon: 2, font: .rounded, radius: 26, pattern: 2)
-        case "ocean":    return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 3)
+        case "mint":     return ThemeLook(icon: 0, font: .rounded, radius: 20, pattern: 0)
+        case "lavender": return ThemeLook(icon: 2, font: .rounded, radius: 24, pattern: 0)
+        case "peach":    return ThemeLook(icon: 2, font: .rounded, radius: 26, pattern: 0)
+        case "ocean":    return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0)
         case "sunset":   return ThemeLook(icon: 2, font: .rounded, radius: 26, pattern: 0)
-        case "sakura":   return ThemeLook(icon: 2, font: .rounded, radius: 28, pattern: 2)
+        case "sakura":   return ThemeLook(icon: 2, font: .rounded, radius: 28, pattern: 0)
         case "graphite": return ThemeLook(icon: 0, font: .standard, radius: 12, pattern: 0)
-        case "cosmos":   return ThemeLook(icon: 1, font: .standard, radius: 22, pattern: 1,
+        case "cosmos":   return ThemeLook(icon: 1, font: .standard, radius: 22, pattern: 0,
                                           pair: ("A78BFA", "F472B6"), mode: .dark)
         case "neon":     return ThemeLook(icon: 1, font: .mono, radius: 10, pattern: 0,
                                           pair: ("19F0E0", "FF3DCB"), mode: .dark)
-        case "organic":  return ThemeLook(icon: 2, font: .serif, radius: 14, pattern: 3,
+        case "organic":  return ThemeLook(icon: 2, font: .serif, radius: 14, pattern: 0,
                                           pair: ("8A6A3C", "6B8E4E"))
-        default:         return ThemeLook(icon: 0, font: .rounded, radius: 22, pattern: 0)   // «Свежесть» — стандарт
+        default:         return ThemeLook(icon: 1, font: .rounded, radius: 22, pattern: 0)   // «Свежесть» — стандарт
         }
     }
 }
@@ -234,17 +234,17 @@ struct ArtIcon: View {
 
     private func tileRadius(_ box: CGFloat) -> CGFloat { min(Theme.r(18) * box / 64, box / 2) }
 
-    // 1. Контурные
+    // 1. Контурные: тонкая линия цвета раздела на лёгкой цветной подложке
     private func outline(_ box: CGFloat) -> some View {
-        let c = active ? (accent ?? store.meColor) : Color.secondary
+        let c = active ? color.boosted(minS: 0.55, minB: 0.85) : Color.secondary
         return ZStack {
-            if box >= 44 {
-                Circle().strokeBorder(c.opacity(0.28), lineWidth: 1).padding(box * 0.04)
-            }
+            Circle().fill(c.opacity(0.12))
+            Circle().strokeBorder(c.opacity(0.45), lineWidth: 1)
             Image(systemName: symbol)
-                .font(.system(size: size * 0.82, weight: .thin))
+                .font(.system(size: size * 0.86, weight: .light))
                 .foregroundStyle(c)
         }
+        .padding(box * 0.03)
     }
 
     // 2. Неоновые: матовое стекло + светящийся градиентный контур
@@ -294,7 +294,7 @@ struct ArtIcon: View {
     }
 }
 
-// MARK: - Единый таб-бар (всегда свой, для всех тем и стилей)
+// MARK: - Нижняя панель: системная (стекло iOS), своя только картинка иконки
 
 struct AppTab: Identifiable, Hashable {
     let id: String
@@ -303,54 +303,71 @@ struct AppTab: Identifiable, Hashable {
     let hex: String
 }
 
-/// Размытое стекло по всей ширине, тонкая обводка сверху. Иконки меняют стиль вместе со всей системой.
-struct AppTabBar: View {
-    @EnvironmentObject var store: Store
-    let tabs: [AppTab]
-    @Binding var selected: String
-    @State private var popped: String? = nil
+/// Иконка вкладки в выбранном стиле. Рисуется один раз в картинку и отдаётся системной панели,
+/// поэтому стекло, размытие, разделитель и высота остаются родными для iOS.
+struct TabGlyph: View {
+    let symbol: String
+    let color: Color
+    let color2: Color
+    let style: Int
+    let selected: Bool
+    let dark: Bool
+
+    private var idle: Color {
+        Color(UIColor.secondaryLabel.resolvedColor(with: UITraitCollection(userInterfaceStyle: dark ? .dark : .light)))
+    }
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(tabs) { item($0) }
-        }
-        .padding(.horizontal, 8).padding(.top, 6).padding(.bottom, 2)
-        .background {
-            ZStack(alignment: .top) {
-                Rectangle().fill(.ultraThinMaterial)
-                Rectangle().fill(Pal.bg.opacity(0.35))
-                Rectangle().fill(Color.primary.opacity(0.12)).frame(height: 0.5)
+        let size: CGFloat = selected ? 28 : 25.5          // активная чуть крупнее (≈ ×1.1)
+        let n1 = color.boosted(minS: 0.7, minB: 1)
+        let n2 = color2.boosted(minS: 0.65, minB: 1)
+        Group {
+            switch style {
+            case 1:
+                let g = LinearGradient(colors: [n1, n2], startPoint: .topLeading, endPoint: .bottomTrailing)
+                if selected {
+                    Image(systemName: symbol).font(.system(size: size, weight: .semibold))
+                        .foregroundStyle(g).shadow(color: n1.opacity(0.85), radius: 3.5)
+                } else {
+                    Image(systemName: symbol).font(.system(size: size, weight: .medium)).foregroundStyle(idle)
+                }
+            case 2:
+                let g = LinearGradient(colors: [color.boosted(minS: 0.45, minB: 0.95).hsb(dS: -0.12, dB: 0.06),
+                                                color.boosted(minS: 0.55, minB: 0.9).hsb(dS: 0.12, dB: -0.18)],
+                                       startPoint: .top, endPoint: .bottom)
+                if selected {
+                    Image(systemName: symbol).symbolVariant(.fill).font(.system(size: size, weight: .bold))
+                        .foregroundStyle(g).shadow(color: color.opacity(0.35), radius: 2, y: 1.5)
+                } else {
+                    Image(systemName: symbol).symbolVariant(.fill).font(.system(size: size, weight: .semibold)).foregroundStyle(idle)
+                }
+            default:
+                Image(systemName: symbol).font(.system(size: size, weight: selected ? .regular : .light))
+                    .foregroundStyle(selected ? color : idle)
             }
-            .ignoresSafeArea(edges: .bottom)     // стекло продолжается под home-индикатор
         }
+        .frame(width: 38, height: 32)
     }
+}
 
-    private func item(_ t: AppTab) -> some View {
-        let on = t.id == selected
-        return Button { choose(t) } label: {
-            VStack(spacing: 1) {
-                ArtIcon(symbol: t.symbol, color: Color(hex: t.hex), size: 20, active: on)
-                    .scaleEffect(popped == t.id ? 1.15 : 1)
-                Text(t.title)
-                    .font(.system(size: 10, weight: on ? .semibold : .medium))
-                    .foregroundStyle(on ? store.meColor : Color.secondary)
-                    .lineLimit(1).minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(t.title)
-        .accessibilityAddTraits(on ? .isSelected : [])
-    }
+enum TabIcon {
+    private static var cache: [String: UIImage] = [:]
 
-    /// Выбор вкладки: иконка слегка пружинит (1.0 → 1.15 → 1.0).
-    private func choose(_ t: AppTab) {
-        if selected != t.id { selected = t.id; store.tap() }
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.5)) { popped = t.id }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { if popped == t.id { popped = nil } }
-        }
+    /// Картинки кэшируются: смена вкладки и стиля не перерисовывает ничего лишнего.
+    @MainActor
+    static func image(_ t: AppTab, store: Store, selected: Bool, dark: Bool) -> UIImage {
+        let st = store.p.iconStyle
+        let key = "\(t.symbol)|\(t.hex)|\(st)|\(selected)|\(dark)|\(store.p.myHex)|\(store.p.partnerHex)"
+        if let hit = cache[key] { return hit }
+        if cache.count > 300 { cache.removeAll() }
+        let accent = st == 2 ? Color(hex: t.hex) : store.meColor
+        let view = TabGlyph(symbol: t.symbol, color: accent, color2: store.partnerColor,
+                            style: st, selected: selected, dark: dark)
+        let r = ImageRenderer(content: view)
+        r.scale = 3
+        let img = (r.uiImage ?? UIImage()).withRenderingMode(.alwaysOriginal)
+        cache[key] = img
+        return img
     }
 }
 
@@ -361,14 +378,14 @@ struct PatternOverlay: View {
     var body: some View {
         if kind > 0 {
             Canvas { ctx, size in
-                let ink = Color.primary.opacity(0.09)
+                let ink = Color.primary.opacity(0.04)
                 switch kind {
                 case 1:
                     let step: CGFloat = 28
                     for row in 0..<Int(size.height / step) + 1 {
                         for col in 0..<Int(size.width / step) + 1 {
                             let x = CGFloat(col) * step + (row.isMultiple(of: 2) ? 0 : step / 2)
-                            ctx.fill(Path(ellipseIn: CGRect(x: x, y: CGFloat(row) * step, width: 4, height: 4)), with: .color(ink))
+                            ctx.fill(Path(ellipseIn: CGRect(x: x, y: CGFloat(row) * step, width: 3, height: 3)), with: .color(ink))
                         }
                     }
                 case 2:
@@ -392,7 +409,7 @@ struct PatternOverlay: View {
                             path.addLine(to: CGPoint(x: x, y: y0 + sin(x / 26 + CGFloat(row)) * 6))
                             x += 4
                         }
-                        ctx.stroke(path, with: .color(ink), lineWidth: 1.5)
+                        ctx.stroke(path, with: .color(ink), lineWidth: 1)
                     }
                 }
             }
