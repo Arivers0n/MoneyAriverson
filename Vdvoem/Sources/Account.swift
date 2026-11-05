@@ -165,3 +165,43 @@ struct SignInSheet: View {
         finish(await sync.loginYandex())
     }
 }
+
+// MARK: - Стартовый экран подключения
+
+/// Показывается при запуске, пока нет аккаунта и пары: вход, код партнёра или «пока пропустить».
+struct ConnectGate: View {
+    @EnvironmentObject var store: Store
+    @EnvironmentObject var sync: SyncEngine
+    @Environment(\.dismiss) private var dismiss
+
+    private var connected: Bool { sync.isPaired || sync.isSignedIn }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                PairMark(size: 46).padding(.top, 28)
+                Text("Подключитесь вдвоём").font(.title.weight(.semibold)).multilineTextAlignment(.center)
+                Text("Войдите в аккаунт, чтобы пара не потерялась, а затем создайте код или введите код партнёра. Чат, задачи, статусы и всё остальное появятся у вас обоих сразу.")
+                    .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+                AccountPanel()
+                PairPanel()
+                Button {
+                    UserDefaults.standard.set(true, forKey: "vd.skipConnect")
+                    store.tap()
+                    dismiss()
+                } label: {
+                    Text(connected ? "Готово" : "Пока пропустить").font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                }
+                .buttonStyle(.bordered)
+                Text("Это можно сделать позже: «Ещё» → «Настройки».")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 20).padding(.bottom, 30)
+            .animation(Motion.curve(0.25), value: connected)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(ThemeBackground())
+    }
+}

@@ -43,6 +43,8 @@ struct RootView: View {
     @EnvironmentObject var store: Store
     @StateObject private var dock = DockState()
     @State private var selected = ""
+    @EnvironmentObject var sync: SyncEngine
+    @State private var gate = false
 
     private var tabs: [AppTab] {
         store.bar.map { AppTab(id: $0.rawValue, title: $0.title, symbol: $0.icon, hex: $0.hex) }
@@ -96,7 +98,12 @@ struct RootView: View {
         .animation(Motion.enter, value: noDock)
         .overlay { SignalOverlay() }
         .environmentObject(dock)
-        .onAppear { if selected.isEmpty { selected = tabs.first?.id ?? "more" } }
+        // Запуск всегда с «Сегодня» (если раздел в панели), а не с того, что окажется первым.
+        .onAppear {
+            if selected.isEmpty { selected = tabs.first(where: { $0.id == Module.today.rawValue })?.id ?? tabs.first?.id ?? "more" }
+            if !sync.isSignedIn && !sync.isPaired && !UserDefaults.standard.bool(forKey: "vd.skipConnect") { gate = true }
+        }
+        .fullScreenCover(isPresented: $gate) { ConnectGate() }
         .onChange(of: current) { old, _ in
             leaving = old
             Task {
