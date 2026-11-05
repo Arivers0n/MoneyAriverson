@@ -139,6 +139,13 @@ struct WallpaperView: View {
     var body: some View {
         let w = WallpaperDef.find(id)
         let dark = scheme == .dark
+        if id == "none" || w.id == "none" {
+            // Без обоев — фон самой темы, чтобы чат не выбивался из экрана.
+            ThemeBackground()
+        } else { paper(w, dark: dark) }
+    }
+
+    @ViewBuilder private func paper(_ w: WallpaperDef, dark: Bool) -> some View {
         let a = Color(hex: dark ? w.darkA : w.lightA)
         let b = Color(hex: dark ? w.darkB : w.lightB)
         ZStack {
