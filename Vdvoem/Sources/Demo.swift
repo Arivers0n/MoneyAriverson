@@ -30,6 +30,7 @@ extension Store {
         p.design = look.font
         p.radius = look.radius
         p.bgPattern = look.pattern
+        if let v = Demo.value("-icons"), let n = Int(v) { p.iconStyle = n }
         if let pair = look.pair { p.myHex = pair.0; p.partnerHex = pair.1 }
         p.theme = look.mode ?? (Demo.value("-scheme") == "dark" ? .dark : .light)
         d.profile = p

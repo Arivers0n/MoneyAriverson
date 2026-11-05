@@ -82,12 +82,13 @@ jobs:
               echo "$name: кадр пустой, попытка $try"
             done
           }
-          shot today-lagoon          -demo today-both
-          shot today-midnight        -demo today-both -theme midnight
-          shot more-lagoon           -demo more
-          shot tasks-lagoon          -demo tasks
+          shot root-lagoon           -demo root
+          shot root-midnight         -demo root -theme midnight
+          shot more-icons0           -demo more
+          shot more-icons1           -demo more -icons 1
+          shot more-icons2           -demo more -icons 2
+          shot root-icons1-malachite -demo root -theme malachite -icons 1
           shot appearance-lagoon     -demo appearance
-          shot root-malachite        -demo root -theme malachite
           ls -la shots
 
       - uses: actions/upload-artifact@v4

@@ -200,9 +200,9 @@ extension Color {
 // MARK: - Иконка в трёх стилях (общая для плиток «Ещё», таб-бара, списков)
 
 /// Одна и та же иконка рисуется тремя разными способами и мгновенно переключается вместе с темой.
-///  • Контурные — тонкая линия, без заливки.
-///  • Неоновые — матовое стекло и светящийся градиентный контур.
-///  • Объёмные — глянцевая «мягкая 3D» плитка с бликом и тенью.
+///  • Мягкие — пастельная плитка и двухтонный глиф.
+///  • Цветные — плотная плитка с градиентом и белым глифом.
+///  • Тонкие — лёгкий двухтонный глиф без плитки.
 struct ArtIcon: View {
     @EnvironmentObject var store: Store
     let symbol: String
@@ -219,9 +219,9 @@ struct ArtIcon: View {
         let box = size * 1.7
         ZStack {
             switch st {
-            case 1: neon(box)
-            case 2: solid(box)
-            default: outline(box)
+            case 1: filled(box)
+            case 2: thin(box)
+            default: soft(box)
             }
         }
         .id(st)
@@ -233,65 +233,46 @@ struct ArtIcon: View {
 
     private func tileRadius(_ box: CGFloat) -> CGFloat { min(Theme.r(18) * box / 64, box / 2) }
 
-    // 1. Контурные: тонкая линия цвета раздела на лёгкой цветной подложке
-    private func outline(_ box: CGFloat) -> some View {
-        let c = active ? color.boosted(minS: 0.55, minB: 0.85) : Color.secondary
+    /// Цвет глифа: насыщенный, но не кислотный, чтобы читался и на светлой, и на тёмной теме.
+    private var ink: Color { color.boosted(minS: 0.55, minB: 0.8) }
+
+    // 0. Мягкие: пастельная плитка-«сквиркл» и двухтонный глиф — основной стиль
+    private func soft(_ box: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: box * 0.31, style: .continuous)
+        let c = ink
         return ZStack {
-            Circle().fill(c.opacity(0.12))
-            Circle().strokeBorder(c.opacity(0.45), lineWidth: 1)
-            Image(systemName: symbol)
-                .font(.system(size: size * 0.86, weight: .light))
-                .foregroundStyle(c)
+            shape.fill(c.opacity(0.16))
+            shape.strokeBorder(c.opacity(0.12), lineWidth: 0.5)
+            Image(systemName: symbol).symbolVariant(.fill).symbolRenderingMode(.palette)
+                .foregroundStyle(c, c.opacity(0.42))
+                .font(.system(size: size, weight: .medium))
         }
+        .padding(box * 0.02)
+    }
+
+    // 1. Цветные: плотная плитка с мягким градиентом цвета раздела и белым глифом (как в «Настройках» iOS)
+    private func filled(_ box: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: box * 0.31, style: .continuous)
+        let base = color.boosted(minS: 0.5, minB: 0.86)
+        let top = base.hsb(dS: -0.08, dB: 0.05)
+        let bottom = base.hsb(dS: 0.06, dB: -0.08)
+        return ZStack {
+            shape.fill(LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom))
+            shape.strokeBorder(.white.opacity(0.22), lineWidth: 0.75)
+            Image(systemName: symbol).symbolVariant(.fill)
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(base.onAccent)
+        }
+        .shadow(color: bottom.opacity(0.22), radius: box * 0.07, y: box * 0.04)
         .padding(box * 0.03)
     }
 
-    // 2. Неоновые: стеклянный суперэллипс с мягким градиентом внутри и свечением снаружи
-    private func neon(_ box: CGFloat) -> some View {
-        let n1 = color.boosted(minS: 0.7, minB: 1)
-        let n2 = (accent ?? store.partnerColor).boosted(minS: 0.65, minB: 1)
-        let shape = RoundedRectangle(cornerRadius: tileRadius(box) * 1.1, style: .continuous)
-        let grad = LinearGradient(colors: [n1, n2], startPoint: .topLeading, endPoint: .bottomTrailing)
-        return ZStack {
-            shape.fill(.ultraThinMaterial)
-            shape.fill(LinearGradient(colors: [n1.opacity(0.34), n2.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing))
-            // блик стекла сверху
-            shape.fill(LinearGradient(colors: [.white.opacity(0.28), .clear], startPoint: .top, endPoint: .center))
-            shape.strokeBorder(grad, lineWidth: 1.4)
-            Image(systemName: symbol)
-                .font(.system(size: size * 0.8, weight: .medium))
-                .foregroundStyle(grad)
-                .shadow(color: n1.opacity(0.9), radius: size * 0.14)
-        }
-        .shadow(color: n1.opacity(0.45), radius: box * 0.16)
-        .padding(box * 0.06)
-    }
-
-    // 3. Объёмные: глянцевая «мягкая 3D»
-    private func solid(_ box: CGFloat) -> some View {
-        let base = color.boosted(minS: 0.5, minB: 0.9)
-        let top = base.hsb(dS: -0.14, dB: 0.04)
-        let bottom = base.hsb(dS: 0.18, dB: -0.2)
-        let shape = RoundedRectangle(cornerRadius: tileRadius(box), style: .continuous)
-        return ZStack {
-            shape.fill(LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom))
-            // глянцевый блик сверху
-            Ellipse()
-                .fill(LinearGradient(colors: [.white.opacity(0.6), .white.opacity(0)], startPoint: .top, endPoint: .bottom))
-                .frame(width: box * 0.9, height: box * 0.52)
-                .offset(y: -box * 0.26)
-            // светлая кромка и мягкая нижняя тень внутри
-            shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.85), .white.opacity(0.05), .black.opacity(0.14)],
-                                              startPoint: .top, endPoint: .bottom), lineWidth: 1.2)
-            Image(systemName: symbol)
-                .symbolVariant(.fill)
-                .font(.system(size: size * 0.8, weight: .semibold))
-                .foregroundStyle(.white)
-                .shadow(color: bottom.opacity(0.7), radius: size * 0.1, y: size * 0.08)
-        }
-        .clipShape(shape)
-        .shadow(color: bottom.opacity(0.45), radius: box * 0.14, y: box * 0.1)
-        .padding(box * 0.04)
+    // 2. Тонкие: только лёгкий двухтонный глиф без плитки — воздушный минимализм
+    private func thin(_ box: CGFloat) -> some View {
+        let c = ink
+        return Image(systemName: symbol).symbolRenderingMode(.palette)
+            .foregroundStyle(c, c.opacity(0.4))
+            .font(.system(size: size * 1.28, weight: .light))
     }
 }
 
@@ -319,32 +300,38 @@ struct TabGlyph: View {
     }
 
     var body: some View {
-        let size: CGFloat = selected ? 28 : 25.5          // активная чуть крупнее (≈ ×1.1)
-        let n1 = color.boosted(minS: 0.7, minB: 1)
-        let n2 = color2.boosted(minS: 0.65, minB: 1)
+        let size: CGFloat = selected ? 24 : 22
+        let c = color.boosted(minS: 0.55, minB: 0.8)
         Group {
             switch style {
             case 1:
-                let g = LinearGradient(colors: [n1, n2], startPoint: .topLeading, endPoint: .bottomTrailing)
+                // Цветные: у выбранной вкладки — мини-плитка с белым глифом
                 if selected {
-                    Image(systemName: symbol).font(.system(size: size, weight: .semibold))
-                        .foregroundStyle(g).shadow(color: n1.opacity(0.85), radius: 3.5)
+                    let base = color.boosted(minS: 0.5, minB: 0.86)
+                    let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    ZStack {
+                        shape.fill(LinearGradient(colors: [base.hsb(dS: -0.08, dB: 0.05), base.hsb(dS: 0.06, dB: -0.08)],
+                                                  startPoint: .top, endPoint: .bottom))
+                        Image(systemName: symbol).symbolVariant(.fill).font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(base.onAccent)
+                    }
+                    .frame(width: 32, height: 28)
                 } else {
-                    Image(systemName: symbol).font(.system(size: size, weight: .medium)).foregroundStyle(idle)
+                    Image(systemName: symbol).font(.system(size: size - 2, weight: .regular)).foregroundStyle(idle)
                 }
             case 2:
-                let g = LinearGradient(colors: [color.boosted(minS: 0.45, minB: 0.95).hsb(dS: -0.12, dB: 0.06),
-                                                color.boosted(minS: 0.55, minB: 0.9).hsb(dS: 0.12, dB: -0.18)],
-                                       startPoint: .top, endPoint: .bottom)
-                if selected {
-                    Image(systemName: symbol).symbolVariant(.fill).font(.system(size: size, weight: .semibold))
-                        .foregroundStyle(g).shadow(color: color.opacity(0.35), radius: 2, y: 1.5)
-                } else {
-                    Image(systemName: symbol).symbolVariant(.fill).font(.system(size: size, weight: .semibold)).foregroundStyle(idle)
-                }
+                // Тонкие
+                Image(systemName: symbol).symbolRenderingMode(.palette)
+                    .foregroundStyle(selected ? c : idle, selected ? c.opacity(0.4) : idle.opacity(0.5))
+                    .font(.system(size: size, weight: .light))
             default:
-                Image(systemName: symbol).font(.system(size: size, weight: selected ? .regular : .light))
-                    .foregroundStyle(selected ? color : idle)
+                // Мягкие: выбранная — двухтонная заливка цветом, остальные — контур
+                if selected {
+                    Image(systemName: symbol).symbolVariant(.fill).symbolRenderingMode(.palette)
+                        .foregroundStyle(c, c.opacity(0.42)).font(.system(size: size, weight: .medium))
+                } else {
+                    Image(systemName: symbol).font(.system(size: size - 1, weight: .regular)).foregroundStyle(idle)
+                }
             }
         }
         .frame(width: 38, height: 32)

@@ -56,31 +56,33 @@ struct RootView: View {
     var body: some View {
         // Все вкладки создаются сразу (прокрутка и ввод сохраняются, на первом заходе ничего не «выскакивает»).
         // Новая вкладка плавно проявляется поверх старой, старая гаснет только после этого.
-        ZStack {
-            ForEach(tabs) { t in
-                let on = t.id == current
-                NavigationStack {
-                    if t.id == "more" { MoreView() }
-                    else if let m = Module(rawValue: t.id) { ModuleView(module: m) }
+        ZStack(alignment: .bottom) {
+            ThemeBackground()
+            VStack(spacing: 0) {
+                ZStack {
+                    ForEach(tabs) { t in
+                        let on = t.id == current
+                        NavigationStack {
+                            if t.id == "more" { MoreView() }
+                            else if let m = Module(rawValue: t.id) { ModuleView(module: m) }
+                        }
+                        .opacity(on || t.id == leaving ? 1 : 0)
+                        .allowsHitTesting(on)
+                        .accessibilityHidden(!on)
+                        .zIndex(on ? 2 : (t.id == leaving ? 1 : 0))
+                    }
                 }
-                .opacity(on || t.id == leaving ? 1 : 0)
-                .allowsHitTesting(on)
-                .accessibilityHidden(!on)
-                .zIndex(on ? 2 : (t.id == leaving ? 1 : 0))
+                .animation(Motion.enter, value: current)
+                // Место под док: содержимое любого экрана заканчивается выше панели и ничем не перекрывается.
+                Color.clear.frame(height: typing ? 0 : 78)
             }
-        }
-        .animation(Motion.enter, value: current)
-        .background(DockInset(bottom: typing ? 0 : 78))
-        .overlay(alignment: .bottom) {
-            // Док стоит у самого низа экрана (над индикатором «домой»), а не выше нашей вставки.
             GlassDock(tabs: tabs, selected: Binding(get: { current }, set: { selected = $0 }))
-                .padding(.bottom, Screen2.homeInset + 2)
-                .ignoresSafeArea(.container, edges: .bottom)
+                .padding(.bottom, 2)
                 .opacity(typing ? 0 : 1)
                 .offset(y: typing ? 24 : 0)
                 .allowsHitTesting(!typing)
-                .animation(Motion.enter, value: typing)
         }
+        .animation(Motion.enter, value: typing)
         .overlay { SignalOverlay() }
         .environmentObject(dock)
         .onAppear { if selected.isEmpty { selected = tabs.first?.id ?? "more" } }

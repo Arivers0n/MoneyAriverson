@@ -304,9 +304,9 @@ struct AppearanceView: View {
                 }
                 section("Иконки") {
                     Picker("Стиль иконок", selection: Binding(get: { store.p.iconStyle }, set: { store.setIconStyle($0) })) {
-                        Text("Контурные").tag(0)
-                        Text("Неоновые").tag(1)
-                        Text("Объёмные").tag(2)
+                        Text("Мягкие").tag(0)
+                        Text("Цветные").tag(1)
+                        Text("Тонкие").tag(2)
                     }.pickerStyle(.segmented)
                     HStack {
                         ForEach([("heart", "FF8FB1"), ("calendar", "FFB38A"), ("bubble.left.and.bubble.right", "8EC5FF"),
