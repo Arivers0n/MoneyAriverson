@@ -202,9 +202,10 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         Circle().fill(store.color(w)).frame(width: 8, height: 8)
-                        Text(store.name(w)).font(.caption.weight(.medium)).foregroundStyle(.secondary).lineLimit(1)
-                        Image(systemName: b?.charging == true ? "bolt.fill" : "battery.50")
-                            .font(.caption).foregroundStyle(.tertiary)
+                        Text(store.name(w)).font(.caption.weight(.medium)).foregroundStyle(.secondary).lineLimit(1).layoutPriority(1)
+                        if b?.charging == true {
+                            Image(systemName: "bolt.fill").font(.caption).foregroundStyle(.tertiary)
+                        }
                         Spacer()
                         Text(b.map { "\(Int($0.level * 100))%" } ?? "—").font(.subheadline.weight(.medium).monospacedDigit())
                     }

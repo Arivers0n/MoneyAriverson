@@ -258,26 +258,26 @@ struct MoreView: View {
 
     /// Плитка раздела: аккуратная стеклянная карточка, текст слева сверху, крупная иконка справа снизу.
     private func tile(_ title: String, _ sub: String, symbol: String, hex: String, locked: Bool, dot: Bool) -> some View {
-        ZStack(alignment: .topLeading) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary)
-                    .lineLimit(2).minimumScaleFactor(0.85)
-                Text(sub).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
-            }
-            .padding(.trailing, 4)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            ArtIcon(symbol: symbol, color: Color(hex: hex), size: 32)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .offset(x: 4, y: 4)
-            HStack(spacing: 6) {
+        ZStack(alignment: .topTrailing) {
+            // Текст и иконка идут столбиком, а не друг поверх друга: длинная подпись не налезает на иконку.
+            VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary)
+                        .lineLimit(2).minimumScaleFactor(0.85)
+                    Text(sub).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
+                }
                 Spacer(minLength: 0)
+                ArtIcon(symbol: symbol, color: Color(hex: hex), size: 32)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            HStack(spacing: 6) {
                 if dot { Circle().fill(store.partnerColor).frame(width: 9, height: 9) }
                 if locked { Image(systemName: "lock.fill").font(.caption2).foregroundStyle(.secondary) }
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 112, maxHeight: 112, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 148, maxHeight: 148, alignment: .topLeading)
         .card()
     }
 

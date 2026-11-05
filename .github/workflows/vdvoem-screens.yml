@@ -68,7 +68,14 @@ jobs:
           shot() { # имя, аргументы запуска...
             name=$1; shift
             xcrun simctl terminate "$UDID" ru.vdvoem.app >/dev/null 2>&1 || true
+            sleep 3
             xcrun simctl launch "$UDID" ru.vdvoem.app "$@"
+            # Приложение могло упасть на старте: убеждаемся, что оно живо, иначе запускаем ещё раз.
+            sleep 4
+            if ! xcrun simctl spawn "$UDID" launchctl list | grep -q ru.vdvoem.app; then
+              echo "$name: приложение не запущено, перезапуск"
+              xcrun simctl launch "$UDID" ru.vdvoem.app "$@"
+            fi
             # Медленный Intel-раннер: ждём, пока вместо пустого белого кадра появится интерфейс.
             for try in 1 2 3 4 5 6; do
               sleep 6
