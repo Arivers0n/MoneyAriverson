@@ -69,8 +69,13 @@ jobs:
             name=$1; shift
             xcrun simctl terminate "$UDID" ru.vdvoem.app >/dev/null 2>&1 || true
             xcrun simctl launch "$UDID" ru.vdvoem.app "$@"
-            sleep 5
-            xcrun simctl io "$UDID" screenshot "shots/$name.png"
+            # Медленный Intel-раннер: ждём, пока вместо пустого белого кадра появится интерфейс.
+            for try in 1 2 3 4 5 6; do
+              sleep 6
+              xcrun simctl io "$UDID" screenshot "shots/$name.png"
+              [ "$(stat -f%z "shots/$name.png")" -gt 150000 ] && break
+              echo "$name: кадр пустой, попытка $try"
+            done
           }
           shot today-lagoon          -demo today
           shot today-both-lagoon     -demo today-both
