@@ -539,7 +539,7 @@ struct LivePreview: View {
             }
             .padding(14)
         }
-        .frame(height: 290)
+        .frame(height: 252)
         .clipShape(RoundedRectangle(cornerRadius: Theme.r(28), style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Theme.r(28), style: .continuous).stroke(Color.primary.opacity(0.1), lineWidth: 1))
         .shadow(color: .black.opacity(0.06), radius: 12, y: 6)
