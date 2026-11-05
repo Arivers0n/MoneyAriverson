@@ -170,10 +170,16 @@ routerAdd("POST", "/api/vd/account/setpass", (e) => {
     const body = e.requestInfo().body || {}
     const pw = String(body.password || "")
     if (pw.length < 8) throw new BadRequestError("Слишком короткий пароль")
-    if (!e.auth.getString("email")) e.auth.setEmail(e.auth.id + "@oauth.vdvoem.app")
-    e.auth.setPassword(pw)
-    e.app.save(e.auth)
-    return e.json(200, { email: e.auth.getString("email"), name: e.auth.getString("name") })
+    try {
+        const rec = e.app.findRecordById("vd_users", e.auth.id)
+        if (!rec.getString("email")) rec.setEmail(rec.id + "@oauth.vdvoem.app")
+        rec.setPassword(pw)
+        e.app.save(rec)
+        return e.json(200, { email: rec.getString("email"), name: rec.getString("name") })
+    } catch (err) {
+        console.log("Vdvoem: setpass не удался:", err)
+        throw new BadRequestError("Не удалось задать пароль устройства")
+    }
 }, $apis.requireAuth("vd_users"))
 
 // Перенос пары с «безымянного» аккаунта телефона на настоящий (при входе). Старый аккаунт удаляется, если опустел.

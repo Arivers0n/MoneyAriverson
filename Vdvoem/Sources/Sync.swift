@@ -375,6 +375,20 @@ final class SyncEngine: ObservableObject {
     }
 
     private func login() async throws {
+        if accountKind == "yandex", (Keychain.get("pass") ?? "").isEmpty {
+            // Аккаунт Яндекса без пароля: продлеваем сохранённый токен.
+            let old = Keychain.get("vdtoken") ?? ""
+            let (d, code) = try await raw("/api/collections/vd_users/auth-refresh", Data("{}".utf8), bearer: old)
+            guard (200..<300).contains(code),
+                  let o = try JSONSerialization.jsonObject(with: d) as? [String: Any],
+                  let t = o["token"] as? String, !t.isEmpty else {
+                throw SyncError.server("Вход через Яндекс устарел — войдите снова в «Настройки → Аккаунт».")
+            }
+            token = t
+            Keychain.set("vdtoken", t)
+            if let id = (o["record"] as? [String: Any])?["id"] as? String { myId = id; saveState() }
+            return
+        }
         var email = Keychain.get("email")
         var pass = Keychain.get("pass")
         if email == nil || pass == nil {
@@ -525,21 +539,31 @@ final class SyncEngine: ObservableObject {
             let (d, code) = try await raw("/api/collections/vd_users/auth-with-oauth2",
                                           obj(["provider": "yandex", "code": q("code"), "codeVerifier": verifier, "redirectURL": redirect]),
                                           bearer: nil)
-            guard (200..<300).contains(code) else { return Self.errText(d, code) }
+            guard (200..<300).contains(code) else { return "Яндекс (вход): " + Self.errText(d, code) }
             let o = try JSONSerialization.jsonObject(with: d) as? [String: Any]
             let t = o?["token"] as? String ?? ""
             let rec = o?["record"] as? [String: Any]
+            let meta = o?["meta"] as? [String: Any]
             let id = rec?["id"] as? String ?? ""
             guard !t.isEmpty, !id.isEmpty else { return "Не удалось войти" }
-            // Пароль устройства: по нему приложение само перезаходит, когда токен устареет.
-            let pass = UUID().uuidString + UUID().uuidString
-            let (sd, sc) = try await raw("/api/vd/account/setpass", obj(["password": pass]), bearer: t)
-            guard (200..<300).contains(sc), let so = try JSONSerialization.jsonObject(with: sd) as? [String: Any],
-                  let email = so["email"] as? String, !email.isEmpty else { return Self.errText(sd, sc) }
-            if let n = so["name"] as? String, !n.isEmpty, let s = store, s.p.myName.trimmingCharacters(in: .whitespaces).isEmpty {
-                s.data.profile.myName = String(n.prefix(40))
+            var email = (rec?["email"] as? String) ?? (meta?["email"] as? String) ?? ""
+            var pass = ""
+            var name = (rec?["name"] as? String) ?? (meta?["name"] as? String) ?? ""
+            // Пароль устройства (по нему приложение само перезаходит). Если сервер его не принял — живём на токене с продлением.
+            let candidate = UUID().uuidString + UUID().uuidString
+            if let (sd, sc) = try? await raw("/api/vd/account/setpass", obj(["password": candidate]), bearer: t),
+               (200..<300).contains(sc),
+               let so = try? JSONSerialization.jsonObject(with: sd) as? [String: Any] {
+                pass = candidate
+                if let e = so["email"] as? String, !e.isEmpty { email = e }
+                if let n = so["name"] as? String, !n.isEmpty { name = n }
             }
-            try await switchAccount(token: t, id: id, email: email, pass: pass, kind: "yandex")
+            if email.isEmpty { email = id + "@oauth.vdvoem.app" }
+            if let s = store, !name.isEmpty, s.p.myName.trimmingCharacters(in: .whitespaces).isEmpty {
+                s.data.profile.myName = String(name.prefix(40))
+            }
+            do { try await switchAccount(token: t, id: id, email: email, pass: pass, kind: "yandex") }
+            catch { return "Привязка пары: " + Self.human(error) }
             return nil
         } catch { return Self.human(error) }
     }
@@ -552,6 +576,7 @@ final class SyncEngine: ObservableObject {
         let before = pair?.id
         Keychain.set("email", email)
         Keychain.set("pass", pass)
+        if pass.isEmpty { Keychain.set("vdtoken", t) } else { Keychain.remove("vdtoken") }
         token = t
         myId = id
         if wasAnon, oldEmail.hasSuffix("@vdvoem.app"), !oldPass.isEmpty {
@@ -576,6 +601,7 @@ final class SyncEngine: ObservableObject {
         stop()
         Keychain.remove("email")
         Keychain.remove("pass")
+        Keychain.remove("vdtoken")
         token = ""
         myId = ""
         if let p = pair { UserDefaults.standard.removeObject(forKey: "vd.seeded." + p.id) }
