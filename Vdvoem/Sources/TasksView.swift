@@ -42,7 +42,7 @@ struct TasksView: View {
         if !items.isEmpty {
             SectionTitle("\(title) · \(items.count)", color: muted ? .secondary : store.color(who))
             ForEach(items) { t in
-                TaskRow(t: store.bind(\.tasks, t))
+                TaskRow(t: store.bind(\.tasks, t), showOwner: muted)
             }
         }
     }
@@ -51,6 +51,8 @@ struct TasksView: View {
 struct TaskRow: View {
     @EnvironmentObject var store: Store
     @Binding var t: TaskItem
+    /// В группах по человеку имя уже в заголовке; показываем его только там, где группа смешанная.
+    var showOwner = true
 
     var body: some View {
         HStack(spacing: 12) {
@@ -68,8 +70,10 @@ struct TaskRow: View {
                 Text(t.title).font(.body.weight(.medium))
                     .strikethrough(t.done).foregroundStyle(t.done ? .secondary : .primary)
                 HStack(spacing: 6) {
-                    if let o = t.owner { Chip(text: store.name(o), color: store.color(o)) }
-                    else { Chip(text: "Свободная") }
+                    if showOwner {
+                        if let o = t.owner { Chip(text: store.name(o), color: store.color(o)) }
+                        else { Chip(text: "Свободная") }
+                    }
                     if let d = t.due {
                         Label(d.formatted(Date.FormatStyle().locale(ruLocale).day().month(.abbreviated)), systemImage: "calendar")
                             .font(.caption).foregroundStyle(d < Date() && !t.done ? Color.red : Color.secondary)

@@ -44,12 +44,12 @@ struct PlacesView: View {
                     Label("Между вами \(d.kmText)", systemImage: "location.fill")
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 14).padding(.vertical, 9)
-                        .background(.ultraThinMaterial, in: Capsule())
+                        .glassCapsule()
                 }
                 if store.data.pins.isEmpty && draft == nil {
                     Text("Нажмите на карту, чтобы поставить общую метку")
                         .font(.footnote).padding(.horizontal, 14).padding(.vertical, 9)
-                        .background(.ultraThinMaterial, in: Capsule())
+                        .glassCapsule()
                 }
             }
             .padding(.bottom, 24)

@@ -55,8 +55,8 @@ struct SignalView: View {
                 Button {
                     store.sendSignal("miss")
                     burst += 1
-                    withAnimation(.spring(response: 0.25, dampingFraction: 0.45)) { pulse = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { withAnimation(.spring()) { pulse = false } }
+                    withAnimation(Motion.spring) { pulse = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { withAnimation(Motion.spring) { pulse = false } }
                 } label: {
                     ZStack {
                         Circle().fill(Color(hex: "FF5C8A").opacity(0.14)).frame(width: 250, height: 250)
@@ -114,7 +114,7 @@ struct SignalView: View {
         .scrollIndicators(.hidden)
         .background(ThemeBackground())
         .navigationTitle("Сигнал")
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: store.data.signals.count)
+        .animation(Motion.spring, value: store.data.signals.count)
     }
 
     private func count(_ w: Who, _ n: Int) -> some View {
@@ -143,7 +143,7 @@ struct SignalOverlay: View {
                     Text(k.emoji).font(.system(size: CGFloat(24 + (i * 7) % 30)))
                         .offset(x: CGFloat((i * 53) % 260) - 130, y: rise ? -420 - CGFloat((i * 31) % 160) : 360)
                         .opacity(rise ? 0 : 1)
-                        .animation(.easeOut(duration: 2.4).delay(Double(i) * 0.07), value: rise)
+                        .animation(Motion.curve(2.4).delay(Double(i) * 0.07), value: rise)
                 }
                 VStack(spacing: 10) {
                     Text(k.emoji).font(.system(size: 110))
@@ -161,7 +161,7 @@ struct SignalOverlay: View {
             guard let s = list.filter({ $0.who == .partner }).max(by: { $0.date < $1.date }),
                   !shown.contains(s.id), Date().timeIntervalSince(s.date) < 25 else { return }
             shown.insert(s.id)
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.7)) { current = s }
+            withAnimation(Motion.spring) { current = s }
             rise = false
             DispatchQueue.main.async { rise = true }
             UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -169,5 +169,5 @@ struct SignalOverlay: View {
         }
     }
 
-    private func dismiss() { withAnimation(.easeOut(duration: 0.25)) { current = nil } }
+    private func dismiss() { withAnimation(Motion.curve(0.25)) { current = nil } }
 }

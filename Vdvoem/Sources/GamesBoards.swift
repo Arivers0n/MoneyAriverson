@@ -33,7 +33,7 @@ struct DotsBoard: View {
                             .overlay(Text(v == 0 ? "" : String(store.name(GameLogic.owner(v) ?? .me).prefix(1)).uppercased())
                                 .font(.system(size: s * 0.38, weight: .medium)).foregroundStyle(ownerColor(store, v)))
                             .offset(x: pad + CGFloat(c) * s + 3, y: pad + CGFloat(r) * s + 3)
-                            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: v)
+                            .animation(Motion.spring, value: v)
                     }
                     // рёбра
                     ForEach(0..<40, id: \.self) { e in
@@ -192,7 +192,7 @@ struct BattleshipBoard: View {
                         let ship = ships?[i] == 1
                         let shot = shotsAt?[i] ?? 0
                         Button {
-                            if enemy, m.turn == .me, shot == 0 { withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { store.move(m.id, i, by: .me) } }
+                            if enemy, m.turn == .me, shot == 0 { withAnimation(Motion.spring) { store.move(m.id, i, by: .me) } }
                         } label: {
                             ZStack {
                                 Rectangle().fill(Color(hex: enemy ? "1F6F9E" : "2F86B8").opacity(0.55))
@@ -325,7 +325,7 @@ struct DurakBoard: View {
             Text(m.turn == .me ? (iAttack ? (open == nil && !table.isEmpty ? "Подкиньте карту того же достоинства или нажмите «Бито»" : "Ваша атака") : "Побейте карту старше мастью или козырем — или возьмите") : "Ходит \(store.name(.partner))")
                 .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: m.moves)
+        .animation(Motion.spring, value: m.moves)
     }
 }
 
@@ -362,7 +362,7 @@ struct MemoryBoard: View {
                         }
                         .aspectRatio(0.85, contentMode: .fit)
                         .rotation3DEffect(.degrees(v == 0 ? 0 : 360), axis: (x: 0, y: 1, z: 0))
-                        .animation(.easeInOut(duration: 0.4), value: v)
+                        .animation(Motion.curve(0.4), value: v)
                     }
                     .buttonStyle(.plain)
                     .disabled(!enabled || v != 0)
@@ -420,7 +420,7 @@ struct RPSBoard: View {
                 Text("Побеждает тот, кто первым выиграет два раунда").font(.footnote).foregroundStyle(.secondary)
             }
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: m.moves)
+        .animation(Motion.spring, value: m.moves)
     }
 
     private func scoreView(_ w: Who, _ n: Int) -> some View {
@@ -479,7 +479,7 @@ struct HangmanBoard: View {
                 let wrong = Hangman.wrongCount(m)
                 Gallows(stage: wrong).stroke(Color.primary, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
                     .frame(width: 180, height: 170)
-                    .animation(.easeOut(duration: 0.3), value: wrong)
+                    .animation(Motion.curve(0.3), value: wrong)
                 HStack(spacing: 6) {
                     ForEach(Array(w.enumerated()), id: \.offset) { _, ch in
                         let shown = g.contains(ch) || m.state != .playing || iSet

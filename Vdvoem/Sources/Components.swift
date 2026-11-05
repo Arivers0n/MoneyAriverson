@@ -74,9 +74,10 @@ struct CardBG: ViewModifier {
             content.background(Pal.card.opacity(0.45), in: shape)
                 .overlay(shape.stroke(Color.primary.opacity(0.12), lineWidth: 1))
         default:
-            content.background(Pal.card.opacity(0.4), in: shape).glass(shape)
-                .overlay(shape.stroke(Color.primary.opacity(0.06), lineWidth: 1))
-                .shadow(color: .black.opacity(0.05), radius: 12, y: 6)
+            content.background(Pal.card.opacity(0.78), in: shape)
+                .background(.ultraThinMaterial, in: shape)
+                .overlay(shape.strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5))
+                .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
         }
     }
 }
@@ -89,8 +90,7 @@ struct BigButton: ViewModifier {
             .foregroundStyle(store.meColor.onAccent)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .glass(RoundedRectangle(cornerRadius: min(store.radius, 26), style: .continuous), tint: store.meColor, interactive: true)
-            .background(store.meColor.opacity(0.85), in: RoundedRectangle(cornerRadius: min(store.radius, 26), style: .continuous))
+            .modifier(AccentGlass(color: store.meColor, shape: RoundedRectangle(cornerRadius: min(store.radius, 26), style: .continuous)))
     }
 }
 
@@ -303,5 +303,19 @@ extension Calendar {
         c.firstWeekday = 2
         c.locale = Locale(identifier: "ru_RU")
         return c
+    }
+}
+
+
+/// Основная кнопка: на iOS 26 — цветное Liquid Glass, раньше — плотная заливка. Без двойного фона.
+struct AccentGlass<S: Shape>: ViewModifier {
+    let color: Color
+    let shape: S
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.tint(color).interactive(), in: shape)
+        } else {
+            content.background(color, in: shape)
+        }
     }
 }

@@ -47,18 +47,27 @@ struct RootView: View {
     }
     private var current: String { tabs.contains { $0.id == selected } ? selected : (tabs.first?.id ?? "more") }
 
+    @State private var visited: Set<String> = []
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        // TabView хранит состояние вкладок, а системную панель прячем: вместо неё — свой стеклянный док.
-        TabView(selection: Binding(get: { current }, set: { selected = $0 })) {
-            ForEach(tabs) { t in
+        // Вкладки живут вместе (состояние и прокрутка сохраняются), а переключаются плавным
+        // растворением: новая выходит поверх, старая исчезает только когда новая уже видна.
+        ZStack {
+            ForEach(tabs.filter { visited.contains($0.id) || $0.id == current }) { t in
+                let on = t.id == current
                 NavigationStack {
                     if t.id == "more" { MoreView() }
                     else if let m = Module(rawValue: t.id) { ModuleView(module: m) }
                 }
                 // Место под док (и под круглую кнопку): контент и нижние кнопки не перекрываются.
                 .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: 74) }
-                .toolbar(.hidden, for: .tabBar)
-                .tag(t.id)
+                .opacity(on ? 1 : 0)
+                .scaleEffect(on || reduceMotion ? 1 : 0.985)
+                .allowsHitTesting(on)
+                .accessibilityHidden(!on)
+                .zIndex(on ? 1 : 0)
+                .animation(on ? Motion.enter : Motion.exit, value: on)
             }
         }
         .overlay(alignment: .bottom) {
@@ -67,7 +76,8 @@ struct RootView: View {
         }
         .overlay { SignalOverlay() }
         .environmentObject(dock)
-        .onAppear { if selected.isEmpty { selected = tabs.first?.id ?? "more" } }
+        .onAppear { if selected.isEmpty { selected = tabs.first?.id ?? "more" }; visited.insert(current) }
+        .onChange(of: current) { _, new in visited.insert(new) }
         // «Ещё» сворачивает док в круг, любая другая вкладка разворачивает.
         .onChange(of: current) { _, new in dock.set(new == "more", haptics: store.p.haptics) }
         .ignoresSafeArea(.keyboard)

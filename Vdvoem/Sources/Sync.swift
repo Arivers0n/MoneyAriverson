@@ -663,7 +663,7 @@ struct PairPanel: View {
                 Text(m).font(.footnote).foregroundStyle(.red).frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: sync.pair)
+        .animation(Motion.curve(0.25), value: sync.pair)
     }
 
     private var unpaired: some View {

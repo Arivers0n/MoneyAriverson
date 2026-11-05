@@ -45,7 +45,7 @@ struct RemoteImage: View {
                 ProgressView()
             }
         }
-        .animation(.easeOut(duration: 0.25), value: image != nil)
+        .animation(Motion.curve(0.25), value: image != nil)
         .task(id: media + file + (thumb ?? "")) { await load() }
     }
 

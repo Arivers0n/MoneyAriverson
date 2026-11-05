@@ -43,7 +43,7 @@ struct ChatView: View {
                         }
                     }
                     .padding(16)
-                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: store.data.messages.count)
+                    .animation(Motion.spring, value: store.data.messages.count)
                 }
                 .onChange(of: store.data.messages.count) { _, _ in
                     if let last = store.data.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }

@@ -22,7 +22,7 @@ struct MemoriesView: View {
             }
         }
         .navigationTitle("Воспоминания")
-        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.data.photos.count)
+        .animation(Motion.spring, value: store.data.photos.count)
         .pairToolbar(scope: false) { composing = true }
         .sheet(isPresented: $composing) { PhotoComposer().environmentObject(store).environmentObject(store.sync) }
         .fullScreenCover(item: $opened) { p in PhotoViewer(photo: p).environmentObject(store) }
@@ -71,7 +71,7 @@ struct ReactionBar: View {
         HStack(spacing: 6) {
             ForEach(reactionEmojis, id: \.self) { e in
                 Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) { store.react(photo.id, emoji: e) }
+                    withAnimation(Motion.spring) { store.react(photo.id, emoji: e) }
                 } label: {
                     Text(e).font(.system(size: 20))
                         .frame(width: 38, height: 34)

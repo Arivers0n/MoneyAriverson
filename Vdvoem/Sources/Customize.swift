@@ -36,7 +36,7 @@ struct ThemeLook {
 
 extension Store {
     /// Единая мягкая анимация для любых правок оформления — без рывков.
-    static let spring = Animation.spring(response: 0.35, dampingFraction: 0.86)
+    static let spring = Motion.spring
 
     private static let selectionGen = UISelectionFeedbackGenerator()
     private static let edgeGen = UIImpactFeedbackGenerator(style: .medium)
@@ -360,7 +360,7 @@ final class DockState: ObservableObject {
     private var last = Date.distantPast
     private static let gen = UIImpactFeedbackGenerator(style: .soft)
 
-    static let spring = Animation.spring(response: 0.4, dampingFraction: 0.9)
+    static let spring = Motion.spring
 
     func set(_ v: Bool, haptics: Bool) {
         guard v != collapsed else { return }
@@ -427,8 +427,6 @@ struct GlassDock: View {
             }
             .frame(width: collapsed ? height : full, height: height)
             .glass(shape, interactive: true)
-            .overlay(shape.strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.10), radius: 10, y: 4)
             .contentShape(shape)
             .onTapGesture { if collapsed { dock.set(false, haptics: store.p.haptics) } }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: collapsed ? .bottomTrailing : .bottom)

@@ -65,8 +65,9 @@ struct PetView: View {
         VStack(spacing: 16) {
             Text("🥚").font(.system(size: 120)).padding(.top, 30)
                 .rotationEffect(.degrees(jump ? 6 : -6))
-                .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: jump)
+                .animation(Motion.spring, value: jump)
                 .onAppear { jump = true }
+                .onTapGesture { jump.toggle() }
             Text("Вылупите питомца").font(.title2.weight(.medium))
             Text("Он будет расти от того, что вы делаете вместе: сообщений, сигналов, фото, игр.")
                 .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
@@ -155,7 +156,7 @@ struct PetView: View {
         store.tap()
         bounce()
         let id = UUID()
-        withAnimation(.easeOut(duration: 0.6)) { hearts.append(id) }
+        withAnimation(Motion.curve(0.6)) { hearts.append(id) }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { hearts.removeAll { $0 == id } }
     }
 }

@@ -101,7 +101,7 @@ struct GamesView: View {
         }
         .navigationTitle("Игры")
         .navigationDestination(item: $openID) { id in MatchView(matchID: id) }
-        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: store.data.matches.count)
+        .animation(Motion.spring, value: store.data.matches.count)
     }
 
     private func kindTile(_ k: GameKind, locked: Bool) -> some View {
@@ -228,7 +228,7 @@ struct MatchView: View {
             if let who { Circle().fill(store.color(who)).frame(width: 14, height: 14) }
             Text(text).font(.headline).contentTransition(.opacity)
         }
-        .animation(.easeInOut(duration: 0.2), value: text)
+        .animation(Motion.curve(0.2), value: text)
     }
 
     private func footer(_ m: GameMatch) -> some View {
@@ -252,7 +252,7 @@ struct MatchView: View {
 
     private func tryMove(_ m: GameMatch, _ index: Int) {
         guard canTap(m) else { return }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { store.move(m.id, index, by: m.turn) }
+        withAnimation(Motion.spring) { store.move(m.id, index, by: m.turn) }
     }
 
     @ViewBuilder

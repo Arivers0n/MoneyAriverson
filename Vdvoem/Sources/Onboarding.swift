@@ -53,7 +53,7 @@ struct OnboardingView: View {
             .padding(.horizontal, 24).padding(.bottom, 16).padding(.top, 8)
         }
         .background(Pal.bg.ignoresSafeArea())
-        .animation(.easeInOut(duration: 0.25), value: step)
+        .animation(Motion.curve(0.25), value: step)
     }
 
     private var canNext: Bool {

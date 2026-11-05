@@ -52,7 +52,7 @@ struct TodayView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showStatus) { StatusSheet().environmentObject(store) }
-        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: store.data.statuses)
+        .animation(Motion.spring, value: store.data.statuses)
         .onAppear { store.location.refresh() }
     }
 
@@ -101,35 +101,33 @@ struct TodayView: View {
 
     private func statusHero(_ s: StatusItem, who: Who) -> some View {
         let k = statusKind(s.kind)
-        let c = Color(hex: k.hex).hsb(dS: 0.05, dB: -0.2)
-        let big = who == .me
-        let shape = RoundedRectangle(cornerRadius: Theme.r(24), style: .continuous)
+        let c = Color(hex: k.hex).boosted(minS: 0.55, minB: 0.8)
+        let shape = RoundedRectangle(cornerRadius: Theme.r(20), style: .continuous)
+        let extra = [s.place, s.note].filter { !$0.isEmpty }.joined(separator: " · ")
         return Button {
             if who == .me { showStatus = true; store.tap() }
         } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text("Статус на 24 часа").font(.footnote).opacity(0.8)
-                    Spacer()
+            HStack(spacing: 16) {
+                Image(systemName: k.symbol)
+                    .font(.system(size: 26, weight: .regular)).foregroundStyle(c)
+                    .frame(width: 56, height: 56)
+                    .background(c.opacity(0.14), in: Circle())
+                VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
-                        Circle().fill(store.color(who)).frame(width: 12, height: 12)
-                            .overlay(Circle().stroke(.white, lineWidth: 1.5))
-                        Text(who == .me ? "Я" : store.name(who)).font(.footnote.weight(.medium))
+                        Circle().fill(store.color(who)).frame(width: 8, height: 8)
+                        Text(who == .me ? "Я" : store.name(who)).font(.footnote).foregroundStyle(.secondary)
                     }
+                    Text(s.title).font(.system(size: 22, weight: .medium))
+                    Text(extra.isEmpty ? s.started.agoText : extra + " · " + s.started.agoText)
+                        .font(.footnote).foregroundStyle(.secondary).lineLimit(2)
                 }
-                Spacer(minLength: 16)
-                Image(systemName: k.symbol).font(.system(size: big ? 56 : 40, weight: .regular))
-                Spacer(minLength: 16)
-                Text(s.title).font(.system(size: big ? 28 : 24, weight: .medium))
-                let extra = [s.place, s.note].filter { !$0.isEmpty }.joined(separator: " · ")
-                Text(extra.isEmpty ? s.started.agoText : extra + " · " + s.started.agoText)
-                    .font(.footnote).opacity(0.8).lineLimit(2).padding(.top, 4)
+                Spacer(minLength: 0)
             }
-            .foregroundStyle(.white).padding(20)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: big ? 240 : 188)
-            .background(c, in: shape)
-            .overlay(shape.stroke(.white.opacity(0.12), lineWidth: 1))
+            .background(c.opacity(0.08), in: shape)
+            .modifier(CardBG())
+            .overlay(shape.strokeBorder(c.opacity(0.28), lineWidth: 0.5))
         }
         .buttonStyle(.plain)
         .transition(.opacity)
@@ -234,7 +232,7 @@ struct TodayView: View {
 
     private var historyBlock: some View {
         VStack(spacing: 8) {
-            Button { withAnimation(.easeOut(duration: 0.25)) { history.toggle() } } label: {
+            Button { withAnimation(Motion.curve(0.25)) { history.toggle() } } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.down").rotationEffect(.degrees(history ? 180 : 0))
                     Text("История").font(.subheadline.weight(.medium))
@@ -285,7 +283,7 @@ struct StatusSheet: View {
                         ForEach(statusKinds) { k in
                             let on = picked?.id == k.id
                             Button {
-                                withAnimation(.easeOut(duration: 0.15)) { picked = k }
+                                withAnimation(Motion.curve(0.15)) { picked = k }
                                 store.tap()
                             } label: {
                                 VStack(spacing: 6) {
@@ -365,7 +363,7 @@ struct SleepRing: View {
             }
         }
         .frame(width: size, height: size)
-        .onAppear { withAnimation(.easeOut(duration: 0.9)) { shown = true } }
+        .onAppear { withAnimation(Motion.curve(0.9)) { shown = true } }
     }
 }
 
@@ -452,7 +450,7 @@ struct SleepView: View {
         .scrollIndicators(.hidden)
         .background(ThemeBackground())
         .navigationTitle("Сон")
-        .animation(.easeOut(duration: 0.2), value: quality)
+        .animation(Motion.curve(0.2), value: quality)
         .onAppear {
             if let e = store.sleep(of: .me, day: Date().dayKey) {
                 bed = e.bedtime; wake = e.wake; quality = e.quality; manualQuality = true
@@ -524,7 +522,7 @@ struct TrackerView: View {
             }
             Button {
                 bump = c.id
-                withAnimation(.easeOut(duration: 0.2)) { store.addTrack(c.id) }
+                withAnimation(Motion.curve(0.2)) { store.addTrack(c.id) }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { bump = nil }
             } label: {
                 ZStack {

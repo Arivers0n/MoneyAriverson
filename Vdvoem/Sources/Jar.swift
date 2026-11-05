@@ -159,7 +159,7 @@ struct JarView: View {
         .onAppear {
             model.scene.ownerColor = { [store] w in UIColor(store.color(w)) }
             model.scene.onTapBall = { id in
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { selected = store.data.jar.first { $0.id == id } }
+                withAnimation(Motion.spring) { selected = store.data.jar.first { $0.id == id } }
             }
             model.scene.sync(store.data.jar)
         }
@@ -170,7 +170,7 @@ struct JarView: View {
         ZStack(alignment: .top) {
             RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous)
                 .fill(LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous))
+                .glass(RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous))
             SpriteView(scene: model.scene, options: [.allowsTransparency])
                 .clipShape(RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous))
             RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous)

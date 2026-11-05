@@ -138,7 +138,7 @@ struct CardsView: View {
             Text("Для скидочных и бонусных карт. Банковские карты здесь не храните. Удалить карту — долгое нажатие.")
                 .font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6)
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.data.cards.count)
+        .animation(Motion.spring, value: store.data.cards.count)
         .pairToolbar(scope: false, add: { adding = true })
         .sheet(isPresented: $adding) { AddCardSheet().environmentObject(store) }
         .fullScreenCover(item: $opened) { c in CardShowView(card: c).environmentObject(store) }
