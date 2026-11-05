@@ -329,11 +329,11 @@ routerAdd("POST", "/api/vd/account/adopt", (e) => {
     return e.json(200, { adopted: adopted })
 }, $apis.requireAuth("vd_users"))
 
-// Вход через Яндекс в коллекции vd_users. Ключи — те же, что у «Копилки» (/etc/kopilka.env): KP_YANDEX_ID / KP_YANDEX_SECRET.
+// Вход через Яндекс в коллекции vd_users. Ключи в /etc/kopilka.env: VD_YANDEX_ID / VD_YANDEX_SECRET (если их нет — берутся KP_YANDEX_* от «Копилки»).
 onBootstrap((e) => {
     e.next()
-    const id = $os.getenv("KP_YANDEX_ID")
-    const secret = $os.getenv("KP_YANDEX_SECRET")
+    const id = $os.getenv("VD_YANDEX_ID") || $os.getenv("KP_YANDEX_ID")
+    const secret = $os.getenv("VD_YANDEX_SECRET") || $os.getenv("KP_YANDEX_SECRET")
     if (!id || !secret) return
     try {
         const c = e.app.findCollectionByNameOrId("vd_users")
