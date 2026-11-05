@@ -33,6 +33,8 @@ struct VdvoemApp: App {
             .preferredColorScheme(store.scheme)
             .tint(store.meColor)
             .animation(Store.spring, value: store.p.design)
+            // Короткое содержимое не «пружинит» вверх-вниз: шапка и экран стоят на месте.
+            .scrollBounceBehavior(.basedOnSize)
         }
     }
 }
@@ -52,6 +54,8 @@ struct RootView: View {
     @State private var leaving: String?
     /// Пока открыта клавиатура, док прячется, а вставка под него убирается.
     @State private var typing = false
+    /// Док не нужен, пока открыта клавиатура или экран его скрывает (чат).
+    private var noDock: Bool { typing || dock.hidden }
 
     var body: some View {
         // Все вкладки создаются сразу (прокрутка и ввод сохраняются, на первом заходе ничего не «выскакивает»).
@@ -77,19 +81,19 @@ struct RootView: View {
                     VStack(spacing: 0) {
                         Rectangle()
                         LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
-                            .frame(height: typing ? 0 : 16)
+                            .frame(height: noDock ? 0 : 16)
                     }
                 }
                 // Место под док: содержимое любого экрана заканчивается выше панели и ничем не перекрывается.
-                Color.clear.frame(height: typing ? 0 : 78)
+                Color.clear.frame(height: noDock ? 0 : 78)
             }
             GlassDock(tabs: tabs, selected: Binding(get: { current }, set: { selected = $0 }))
                 .padding(.bottom, 2)
-                .opacity(typing ? 0 : 1)
-                .offset(y: typing ? 24 : 0)
-                .allowsHitTesting(!typing)
+                .opacity(noDock ? 0 : 1)
+                .offset(y: noDock ? 40 : 0)
+                .allowsHitTesting(!noDock)
         }
-        .animation(Motion.enter, value: typing)
+        .animation(Motion.enter, value: noDock)
         .overlay { SignalOverlay() }
         .environmentObject(dock)
         .onAppear { if selected.isEmpty { selected = tabs.first?.id ?? "more" } }
@@ -101,8 +105,8 @@ struct RootView: View {
                 withTransaction(t) { leaving = nil }
             }
         }
-        // «Ещё» сворачивает док в круг, любая другая вкладка разворачивает.
-        .onChange(of: current) { _, new in dock.set(new == "more", haptics: store.p.haptics) }
+        // Новая вкладка всегда показывается с развёрнутым доком.
+        .onChange(of: current) { _, _ in dock.set(false, haptics: false) }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in typing = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in typing = false }
     }

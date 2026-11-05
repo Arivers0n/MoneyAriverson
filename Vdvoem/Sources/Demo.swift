@@ -37,10 +37,12 @@ extension Store {
 
         let now = Date()
         d.statuses = [StatusItem(who: .partner, kind: "cook", title: "Готовлю", note: "паста", place: "Дома",
-                                 started: now.addingTimeInterval(-600), expires: now.addingTimeInterval(23 * 3600))]
+                                 started: now.addingTimeInterval(-600))]
         if Demo.screen == "today-both" {
-            d.statuses.append(StatusItem(who: .me, kind: "walk", title: "Гуляю", note: "", place: "Парк",
-                                         started: now.addingTimeInterval(-1200), expires: now.addingTimeInterval(23 * 3600)))
+            var mine = StatusItem(who: .me, kind: "custom", title: "Грущу", note: "тяжёлый день", place: "",
+                                  started: now.addingTimeInterval(-1200))
+            mine.emoji = "😔"
+            d.statuses.append(mine)
         }
         d.messages = [
             ChatMessage(text: "Что на ужин?", from: .partner, date: now.addingTimeInterval(-3600)),
@@ -83,6 +85,7 @@ struct DemoRoot: View {
         case "more": NavigationStack { MoreView().navigationTitle("Ещё") }
         case "chat": NavigationStack { ModuleView(module: .chat) }
         case "tasks": NavigationStack { ModuleView(module: .tasks) }
+        case "status": StatusSheet()
         default: NavigationStack { TodayView() }
         }
     }

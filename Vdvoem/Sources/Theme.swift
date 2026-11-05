@@ -32,7 +32,31 @@ struct ThemeDef: Identifiable, Hashable {
         ThemeDef(id: "classic", title: "Классика", bgL: "F4F3F0", bgD: "0D0E12", topL: "F4F3F0", topD: "0D0E12",
                  cardL: "FFFFFF", cardD: "1A1B20", fieldL: "ECEBE7", fieldD: "24262D"),
         ThemeDef(id: "graphite", title: "Графит", bgL: "EFEFF1", bgD: "0A0A0B", topL: "DEDFE3", topD: "1A1B1F",
-                 cardL: "FFFFFF", cardD: "17171A", fieldL: "E4E4E8", fieldD: "222226")
+                 cardL: "FFFFFF", cardD: "17171A", fieldL: "E4E4E8", fieldD: "222226"),
+        // Закат: персиковое небо и сиреневая тень
+        ThemeDef(id: "sunset", title: "Закат", bgL: "FDF3EE", bgD: "1A0E10", topL: "FAD3C4", topD: "4A1D25",
+                 cardL: "FFFFFF", cardD: "26151A", fieldL: "F7E4DC", fieldD: "36212A"),
+        // Сирень: лавандовая дымка
+        ThemeDef(id: "lilac", title: "Сирень", bgL: "F6F2FC", bgD: "120C1E", topL: "E0D3F7", topD: "2E1A5C",
+                 cardL: "FFFFFF", cardD: "1B1430", fieldL: "EBE3F7", fieldD: "2A2048"),
+        // Океан: морская бирюза
+        ThemeDef(id: "ocean", title: "Океан", bgL: "EDF7F7", bgD: "06161A", topL: "BDE6E8", topD: "0B4650",
+                 cardL: "FFFFFF", cardD: "0C2229", fieldL: "DCEEEF", fieldD: "143239"),
+        // Космос: глубокий фиолетовый, всегда тёмная
+        ThemeDef(id: "cosmos", title: "Космос", bgL: "EFEDFA", bgD: "0C0A1F", topL: "D4CCF5", topD: "2A1B6B",
+                 cardL: "FFFFFF", cardD: "15122E", fieldL: "E2DEF5", fieldD: "211C42"),
+        // Эспрессо: тёмный шоколад и карамель, всегда тёмная
+        ThemeDef(id: "espresso", title: "Эспрессо", bgL: "F7F1EB", bgD: "120D0A", topL: "E6D3C0", topD: "3B2618",
+                 cardL: "FFFDFB", cardD: "1C1511", fieldL: "EDE2D6", fieldD: "2A201A"),
+        // Роза: нежно-розовый и лазурь
+        ThemeDef(id: "rose", title: "Роза", bgL: "FDF0F5", bgD: "1A0A12", topL: "F9CFE0", topD: "52153A",
+                 cardL: "FFFFFF", cardD: "26121C", fieldL: "F7DFEA", fieldD: "38202D"),
+        // Фисташка: свежая зелень
+        ThemeDef(id: "pistachio", title: "Фисташка", bgL: "F5F8EC", bgD: "0E1408", topL: "DDEBBE", topD: "2E4410",
+                 cardL: "FFFFFF", cardD: "172010", fieldL: "E7EED3", fieldD: "232F18"),
+        // Туман: холодный серо-голубой
+        ThemeDef(id: "fog", title: "Туман", bgL: "F1F4F8", bgD: "0C1016", topL: "D6DEEA", topD: "1C2838",
+                 cardL: "FFFFFF", cardD: "141A22", fieldL: "E2E8F0", fieldD: "202A36")
     ]
 
     static func find(_ id: String) -> ThemeDef { all.first { $0.id == id } ?? all[0] }
@@ -231,27 +255,27 @@ struct WallpaperView: View {
 struct AppIconDef: Identifiable, Hashable {
     let id: String            // имя набора значков; пусто — основной
     let title: String
-    let symbol: String
-    let a: String
-    let b: String
+    let a: String             // фон: сверху-слева
+    let b: String             // фон: снизу-справа
+    var pair: (String, String)? = nil    // цветные круги на светлом фоне (у остальных круги — белое стекло)
 
+    static func == (l: AppIconDef, r: AppIconDef) -> Bool { l.id == r.id }
+    func hash(into h: inout Hasher) { h.combine(id) }
+
+    /// Те же значки, что рисует Vdvoem/tools/make_icons.py. Названия совпадают с темами приложения.
     static let all: [AppIconDef] = [
-        AppIconDef(id: "", title: "Роза", symbol: "heart.fill", a: "FF8FB1", b: "E0457B"),
-        AppIconDef(id: "AppIcon-Night", title: "Ночь", symbol: "moon.fill", a: "2B3A67", b: "0B1026"),
-        AppIconDef(id: "AppIcon-Ocean", title: "Океан", symbol: "drop.fill", a: "5EC8F2", b: "2563EB"),
-        AppIconDef(id: "AppIcon-Sunset", title: "Закат", symbol: "heart.fill", a: "FDBA74", b: "EC4899"),
-        AppIconDef(id: "AppIcon-Lavender", title: "Сирень", symbol: "infinity", a: "C4B5FD", b: "7C3AED"),
-        AppIconDef(id: "AppIcon-Gold", title: "Золото", symbol: "star.fill", a: "FDE68A", b: "D97706"),
-        AppIconDef(id: "AppIcon-Mint", title: "Мята", symbol: "sparkle", a: "86EFAC", b: "059669"),
-        AppIconDef(id: "AppIcon-Peach", title: "Персик", symbol: "heart.fill", a: "FFC8A8", b: "FB7185"),
-        AppIconDef(id: "AppIcon-Candy", title: "Конфета", symbol: "infinity", a: "F9A8D4", b: "60A5FA"),
-        AppIconDef(id: "AppIcon-Aurora", title: "Аврора", symbol: "sparkle", a: "6EE7B7", b: "8B5CF6"),
-        AppIconDef(id: "AppIcon-Cosmos", title: "Космос", symbol: "star.fill", a: "4C1D95", b: "0F172A"),
-        AppIconDef(id: "AppIcon-Mono", title: "Моно", symbol: "heart.fill", a: "9CA3AF", b: "374151"),
-        AppIconDef(id: "AppIcon-Neon", title: "Неон", symbol: "sparkle", a: "22D3EE", b: "A855F7"),
-        AppIconDef(id: "AppIcon-Berry", title: "Ягода", symbol: "drop.fill", a: "F472B6", b: "9D174D"),
-        AppIconDef(id: "AppIcon-Lime", title: "Лайм", symbol: "heart.fill", a: "BEF264", b: "22C55E"),
-        AppIconDef(id: "AppIcon-Ink", title: "Тушь", symbol: "infinity", a: "1F2937", b: "000000")
+        AppIconDef(id: "", title: "Лагуна", a: "8FDDF5", b: "0889BF"),
+        AppIconDef(id: "AppIcon-Night", title: "Полночь", a: "24398A", b: "060A22"),
+        AppIconDef(id: "AppIcon-Indigo", title: "Индиго", a: "7B88FF", b: "2328A0"),
+        AppIconDef(id: "AppIcon-Mint", title: "Малахит", a: "4FD9B3", b: "0A5F49"),
+        AppIconDef(id: "AppIcon-Gold", title: "Янтарь", a: "FFD98A", b: "D4771F"),
+        AppIconDef(id: "AppIcon-Berry", title: "Вишня", a: "FF86A6", b: "A81E4B"),
+        AppIconDef(id: "AppIcon-Sunset", title: "Закат", a: "FFCDA3", b: "7C5CE0"),
+        AppIconDef(id: "AppIcon-Lavender", title: "Сирень", a: "E0D2FF", b: "7240D6"),
+        AppIconDef(id: "AppIcon-Aurora", title: "Аврора", a: "6EE7B7", b: "6D3FE0"),
+        AppIconDef(id: "AppIcon-Mono", title: "Графит", a: "646B7A", b: "15181F"),
+        AppIconDef(id: "AppIcon-Ink", title: "Тушь", a: "26262C", b: "000000"),
+        AppIconDef(id: "AppIcon-Pearl", title: "Жемчуг", a: "FBFAF7", b: "E2DED7", pair: ("E4456F", "0593C6"))
     ]
 }
 
@@ -262,6 +286,7 @@ struct AppearanceView: View {
     @State private var iconError: String?
 
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(spacing: 16) {
                 section("Предпросмотр тем") {
@@ -320,6 +345,11 @@ struct AppearanceView: View {
                 section("Карточки") {
                     choice([("Мягкие", "rectangle.fill"), ("Плоские", "rectangle"), ("Контур", "rectangle.dashed")], $store.data.profile.cardStyle)
                 }
+                section("Стекло") {
+                    HStack(spacing: 10) { ForEach(0..<3, id: \.self) { glassTile($0) } }
+                    Text("Прозрачное — фон просвечивает. Матовое — плотнее, текст читается лучше. Цветное — стекло в цвете вашей пары. Работает в карточках, нижней панели и поле ввода.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 section("Обои чата") {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) { ForEach(WallpaperDef.all) { w in wallTile(w) } }.padding(.vertical, 4)
@@ -350,7 +380,7 @@ struct AppearanceView: View {
                                onEditingChanged: { editing in if !editing { store.commitRadius() } })
                     }
                     Toggle("Вибро-отклик", isOn: $store.data.profile.haptics)
-                    Toggle("Звук при смене темы", isOn: $store.data.profile.sound)
+                    Toggle("Звуки приложения", isOn: $store.data.profile.sound)
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 30)
@@ -366,6 +396,43 @@ struct AppearanceView: View {
         .animation(Store.spring, value: store.p.themeID)
         .animation(Store.spring, value: store.p.cardStyle)
         .animation(Store.spring, value: store.p.design)
+        .scrollBounceBehavior(.basedOnSize)
+        .onAppear {
+            // Только для скриншотов в CI: `-scroll glass` прокручивает экран к нужному блоку.
+            guard let k = Demo.value("-scroll") else { return }
+            let map = ["themes": "Тема", "glass": "Стекло", "icon": "Значок приложения", "pairs": "Цвета пары"]
+            guard let id = map[k] else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { proxy.scrollTo(id, anchor: .top) }
+        }
+        }
+    }
+
+    private func glassTile(_ k: Int) -> some View {
+        let on = store.p.glassMode == k
+        let titles = ["Прозрачное", "Матовое", "Цветное"]
+        let tint: Color = k == 1 ? Pal.card.opacity(0.72) : (k == 2 ? store.meColor.opacity(0.22) : Pal.card.opacity(0.32))
+        let shape = RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous)
+        return Button {
+            guard store.p.glassMode != k else { return }
+            withAnimation(Store.spring) { store.data.profile.glassMode = k }
+            store.tap()
+            store.sfx(.pop)
+        } label: {
+            VStack(spacing: 8) {
+                ZStack {
+                    LinearGradient(colors: [store.meColor.opacity(0.85), store.partnerColor.opacity(0.85)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                    Circle().fill(.white.opacity(0.35)).frame(width: 34).offset(x: -22, y: -14)
+                    Color.clear.frame(width: 64, height: 36).glass(Capsule(style: .continuous), tint: tint)
+                }
+                .frame(height: 74)
+                .clipShape(shape)
+                .overlay(shape.strokeBorder(on ? Color.primary : Color.primary.opacity(0.1), lineWidth: on ? 2 : 1))
+                Text(titles[k]).font(.caption.weight(on ? .semibold : .regular)).foregroundStyle(.primary)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
     }
 
     private func patternDot(_ k: Int) -> some View {
@@ -388,6 +455,7 @@ struct AppearanceView: View {
             c()
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
+        .id(title)
     }
 
     private func choice(_ items: [(String, String)], _ sel: Binding<Int>) -> some View {
@@ -469,18 +537,28 @@ struct AppearanceView: View {
 
     private func iconTile(_ i: AppIconDef) -> some View {
         let on = store.p.iconID == i.id
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
         return Button { setIcon(i) } label: {
             VStack(spacing: 6) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: Theme.r(15), style: .continuous)
-                        .fill(LinearGradient(colors: [Color(hex: i.a), Color(hex: i.b)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Image(systemName: i.symbol).font(.system(size: 24, weight: .semibold)).foregroundStyle(.white)
+                    LinearGradient(colors: [Color(hex: i.a), Color(hex: i.b)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    HStack(spacing: -14) {
+                        if let p = i.pair {
+                            Circle().fill(Color(hex: p.0).opacity(0.95)).frame(width: 29, height: 29)
+                            Circle().fill(Color(hex: p.1).opacity(0.95)).frame(width: 29, height: 29)
+                        } else {
+                            Circle().fill(.white.opacity(0.38)).overlay(Circle().strokeBorder(.white.opacity(0.85), lineWidth: 1)).frame(width: 29, height: 29)
+                            Circle().fill(.white.opacity(0.38)).overlay(Circle().strokeBorder(.white.opacity(0.85), lineWidth: 1)).frame(width: 29, height: 29)
+                        }
+                    }
                 }
-                .frame(width: 56, height: 56)
-                .overlay(RoundedRectangle(cornerRadius: Theme.r(15), style: .continuous)
-                    .stroke(on ? store.meColor : Color.clear, lineWidth: 3).padding(-3))
-                Text(i.title).font(.caption2.weight(on ? .semibold : .regular)).foregroundStyle(.primary)
+                .frame(width: 58, height: 58)
+                .clipShape(shape)
+                .overlay(shape.strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+                .overlay(shape.stroke(on ? store.meColor : Color.clear, lineWidth: 3).padding(-4))
+                Text(i.title).font(.caption2.weight(on ? .semibold : .regular)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.8)
             }
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
     }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Статус на 24 часа
+// MARK: - Статус: держится, пока его не сменят или не уберут
 
 struct StatusItem: Identifiable, Codable, Hashable {
     var id = UUID()
@@ -10,7 +10,15 @@ struct StatusItem: Identifiable, Codable, Hashable {
     var note = ""
     var place = ""
     var started = Date()
-    var expires = Date().addingTimeInterval(24 * 3600)
+    /// Статус не истекает сам: «до» — далёкое будущее. Убрать или сменить его можно в любой момент.
+    var expires = StatusItem.forever
+    // Новые поля необязательные: старые записи и старые версии приложения читаются без ошибок.
+    var emoji: String? = nil
+    var media: String? = nil
+    var file: String? = nil
+
+    static let forever = Date(timeIntervalSince1970: 4_102_444_800)   // 2100 год
+    var hasPhoto: Bool { !(media ?? "").isEmpty && !(file ?? "").isEmpty }
 }
 
 struct StatusKind: Identifiable, Hashable {
@@ -43,8 +51,15 @@ let statusKinds: [StatusKind] = [
     StatusKind(id: "free", title: "Свободен(на)", symbol: "sparkles", hex: "10B981")
 ]
 
+/// Свой статус: текст и эмодзи пишет сам человек.
+let customStatusKind = StatusKind(id: "custom", title: "Свой статус", symbol: "text.bubble.fill", hex: "8B5CF6")
+
+/// Быстрые подсказки для своего статуса.
+let statusEmojis = ["😊", "😔", "😴", "🥰", "😤", "🤒", "🤩", "😎", "🥱", "😭", "🤗", "🙃", "🍕", "☕️", "🎧", "✈️", "🏠", "💪"]
+
 func statusKind(_ id: String) -> StatusKind {
-    statusKinds.first { $0.id == id } ?? StatusKind(id: id, title: id, symbol: "circle.fill", hex: "94A3B8")
+    if id == "custom" { return customStatusKind }
+    return statusKinds.first { $0.id == id } ?? StatusKind(id: id, title: id, symbol: "circle.fill", hex: "94A3B8")
 }
 
 // MARK: - Сон

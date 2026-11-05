@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct Avatar: View {
     @EnvironmentObject var store: Store
@@ -16,10 +17,17 @@ struct Avatar: View {
             .frame(width: size, height: size)
             .overlay(Circle().stroke(ring, lineWidth: 2).padding(-4))
             if let st {
-                Image(systemName: statusKind(st.kind).symbol).font(.system(size: size * 0.24, weight: .semibold))
-                    .foregroundStyle(.white).frame(width: size * 0.42, height: size * 0.42)
-                    .background(ring, in: Circle()).overlay(Circle().stroke(Pal.bg, lineWidth: 2))
-                    .offset(x: 4, y: 4)
+                Group {
+                    if let e = st.emoji, !e.isEmpty {
+                        Text(e).font(.system(size: size * 0.26))
+                    } else {
+                        Image(systemName: statusKind(st.kind).symbol).font(.system(size: size * 0.24, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .frame(width: size * 0.42, height: size * 0.42)
+                .background(ring, in: Circle()).overlay(Circle().stroke(Pal.bg, lineWidth: 2))
+                .offset(x: 4, y: 4)
             }
         }
         .padding(6)
@@ -35,9 +43,10 @@ struct TodayView: View {
     @State private var history = false
 
     var body: some View {
-        ScrollView {
+        VStack(spacing: 0) {
+            header.padding(.horizontal, 16).padding(.bottom, 6)
+            ScrollView {
             VStack(spacing: 16) {
-                header
                 nowCard
                 if let mine = store.statusNow(.me) { statusHero(mine, who: .me) } else { askCard }
                 if let theirs = store.statusNow(.partner) { statusHero(theirs, who: .partner) }
@@ -46,14 +55,16 @@ struct TodayView: View {
                 batteryRow
                 historyBlock
             }
-            .padding(.horizontal, 16).padding(.bottom, 24)
+            .padding(.horizontal, 16).padding(.bottom, 24).padding(.top, 4)
+            .animation(Motion.spring, value: store.data.statuses)
+            }
+            .scrollIndicators(.hidden)
+            .dockScroll()
         }
-        .scrollIndicators(.hidden)
         .background(ThemeBackground())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showStatus) { StatusSheet().environmentObject(store) }
-        .animation(Motion.spring, value: store.data.statuses)
         .onAppear { store.location.refresh() }
     }
 
@@ -64,6 +75,12 @@ struct TodayView: View {
         return t.prefix(1).uppercased() + t.dropFirst()
     }
 
+    /// Есть сообщение от партнёра за последний час.
+    private var hasUnread: Bool {
+        guard let m = store.data.messages.last, m.from == .partner else { return false }
+        return Date().timeIntervalSince(m.date) < 3600
+    }
+
     private var header: some View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
@@ -72,12 +89,23 @@ struct TodayView: View {
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
+            NavigationLink { ModuleView(module: .chat) } label: {
+                Image(systemName: "bubble.left.and.bubble.right.fill").font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(store.meColor).frame(width: 44, height: 44)
+                    .glass(Circle(), tint: store.glassTint, interactive: true)
+                    .overlay(alignment: .topTrailing) {
+                        if hasUnread { Circle().fill(store.partnerColor).frame(width: 11, height: 11)
+                            .overlay(Circle().stroke(Pal.bg, lineWidth: 2)).offset(x: 1, y: -1) }
+                    }
+            }
+            .buttonStyle(PressStyle())
+            .accessibilityLabel("Чат")
             HStack(spacing: 4) {
                 VStack(spacing: 0) { Avatar(who: .me); Text("Я").font(.caption2.weight(.semibold)) }
                 VStack(spacing: 0) { Avatar(who: .partner); Text(store.name(.partner)).font(.caption2.weight(.semibold)).lineLimit(1) }
             }
         }
-        .padding(.top, 8)
+        .padding(.top, 4)
     }
 
     // Главное сейчас: последнее сообщение, дела и ближайшая дата — то, ради чего открывают приложение
@@ -171,7 +199,7 @@ struct TodayView: View {
             PairMark(size: 44)
             VStack(spacing: 4) {
                 Text("Ваш статус").font(.title3.weight(.medium))
-                Text("\(store.name(.partner)) увидит его сразу, на 24 часа")
+                Text("\(store.name(.partner)) увидит его сразу. Он держится, пока вы его не смените")
                     .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
             Button { showStatus = true; store.tap() } label: {
@@ -192,30 +220,39 @@ struct TodayView: View {
         return Button {
             if who == .me { showStatus = true; store.tap() }
         } label: {
-            HStack(spacing: 16) {
-                Image(systemName: k.symbol)
-                    .font(.system(size: 26, weight: .regular)).foregroundStyle(c)
+            VStack(spacing: 0) {
+                if s.hasPhoto, let m = s.media, let f = s.file {
+                    RemoteImage(media: m, file: f, thumb: "720x0")
+                        .frame(maxWidth: .infinity).frame(height: 190).clipped()
+                }
+                HStack(spacing: 16) {
+                    Group {
+                        if let e = s.emoji, !e.isEmpty { Text(e).font(.system(size: 28)) }
+                        else { Image(systemName: k.symbol).font(.system(size: 26, weight: .regular)).foregroundStyle(c) }
+                    }
                     .frame(width: 56, height: 56)
                     .background(c.opacity(0.14), in: Circle())
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Circle().fill(store.color(who)).frame(width: 8, height: 8)
-                        Text(who == .me ? "Я" : store.name(who)).font(.footnote).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Circle().fill(store.color(who)).frame(width: 8, height: 8)
+                            Text(who == .me ? "Я" : store.name(who)).font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Text(s.title).font(.system(size: 22, weight: .medium)).lineLimit(2)
+                        Text(extra.isEmpty ? s.started.agoText : extra + " · " + s.started.agoText)
+                            .font(.footnote).foregroundStyle(.secondary).lineLimit(2)
                     }
-                    Text(s.title).font(.system(size: 22, weight: .medium))
-                    Text(extra.isEmpty ? s.started.agoText : extra + " · " + s.started.agoText)
-                        .font(.footnote).foregroundStyle(.secondary).lineLimit(2)
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
+                .padding(16)
             }
-            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(c.opacity(0.08), in: shape)
+            .clipShape(shape)
             .modifier(CardBG())
             .overlay(shape.strokeBorder(c.opacity(0.28), lineWidth: 0.5))
         }
-        .buttonStyle(.plain)
-        .transition(.opacity)
+        .buttonStyle(PressStyle())
+        .transition(.scale(scale: 0.94).combined(with: .opacity))
     }
 
     // Быстрые разделы
@@ -331,8 +368,10 @@ struct TodayView: View {
                 ForEach(Array(items)) { s in
                     let k = statusKind(s.kind)
                     HStack(spacing: 12) {
-                        Image(systemName: k.symbol).foregroundStyle(Color(hex: k.hex)).frame(width: 36, height: 36)
-                            .background(Color(hex: k.hex).opacity(0.15), in: Circle())
+                        Group {
+                            if let e = s.emoji, !e.isEmpty { Text(e) } else { Image(systemName: k.symbol).foregroundStyle(Color(hex: k.hex)) }
+                        }
+                        .frame(width: 36, height: 36).background(Color(hex: k.hex).opacity(0.15), in: Circle())
                         VStack(alignment: .leading, spacing: 1) {
                             Text("\(store.name(s.who)) — \(s.title)").font(.subheadline.weight(.medium))
                             if !s.note.isEmpty { Text(s.note).font(.caption).foregroundStyle(.secondary) }
@@ -354,70 +393,238 @@ func hoursText(_ h: Double) -> String {
 
 // MARK: - Выбор статуса
 
+/// Свой статус или готовый, с эмодзи, подписью и фото. Держится, пока его не сменят.
 struct StatusSheet: View {
     @EnvironmentObject var store: Store
     @Environment(\.dismiss) private var dismiss
     @State private var picked: StatusKind?
+    @State private var customTitle = ""
+    @State private var customEmoji = ""
     @State private var note = ""
     @State private var place = ""
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var photo: UIImage?
+    @State private var photoRaw: Data?
+    @State private var keepOldPhoto: (media: String, file: String)?
+    @State private var sending = false
+    @State private var error: String?
+
+    private var isCustom: Bool { picked?.id == "custom" }
+    private var canSend: Bool {
+        guard let picked else { return false }
+        return picked.id != "custom" || !customTitle.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    customCard
+                    if !store.recentCustomStatuses.isEmpty { recent }
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
-                        ForEach(statusKinds) { k in
-                            let on = picked?.id == k.id
-                            Button {
-                                withAnimation(Motion.curve(0.15)) { picked = k }
-                                store.tap()
-                            } label: {
-                                VStack(spacing: 6) {
-                                    Image(systemName: k.symbol).font(.system(size: 22, weight: .semibold))
-                                        .foregroundStyle(Color(hex: k.hex)).frame(height: 28)
-                                    Text(k.title).font(.caption2.weight(.medium)).foregroundStyle(.primary)
-                                        .lineLimit(1).minimumScaleFactor(0.7)
-                                }
-                                .frame(maxWidth: .infinity).padding(.vertical, 12)
-                                .background(on ? Color(hex: k.hex).opacity(0.22) : Pal.card,
-                                            in: RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous)
-                                    .stroke(on ? Color(hex: k.hex) : Color.clear, lineWidth: 2))
-                                }
-                            .buttonStyle(.plain)
-                        }
+                        ForEach(statusKinds) { k in presetTile(k) }
                     }
+                    photoCard
                     VStack(spacing: 10) {
                         TextField("Где вы? (по желанию)", text: $place)
                             .padding(16).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                         TextField("Пара слов к статусу", text: $note)
                             .padding(16).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                     }
-                    Button {
-                        if let k = picked { store.setStatus(k, note: note, place: place); dismiss() }
-                    } label: {
-                        Text("Показать на 24 часа").bigButton().opacity(picked == nil ? 0.4 : 1)
+                    if let error { Text(error).font(.footnote).foregroundStyle(.red) }
+                    Button { Task { await send() } } label: {
+                        HStack(spacing: 8) {
+                            if sending { ProgressView().tint(store.meColor.onAccent) }
+                            Text(sending ? "Отправляю…" : "Поставить статус")
+                        }
+                        .bigButton().opacity(canSend ? 1 : 0.4)
                     }
-                    .disabled(picked == nil)
+                    .buttonStyle(PressStyle())
+                    .disabled(!canSend || sending)
+                    Text("Статус виден партнёру, пока вы его не смените или не уберёте.")
+                        .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     if store.statusNow(.me) != nil {
                         Button("Убрать статус", role: .destructive) { store.clearStatus(); dismiss() }
                     }
                 }
                 .padding(16)
+                .animation(Motion.spring, value: picked?.id)
             }
+            .scrollDismissesKeyboard(.interactively)
             .background(ThemeBackground())
             .navigationTitle("Мой статус")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { dismiss() } } }
+            .onChange(of: pickedPhoto) { _, item in
+                Task {
+                    guard let item, let d = try? await item.loadTransferable(type: Data.self) else { return }
+                    photoRaw = d
+                    keepOldPhoto = nil
+                    withAnimation(Motion.spring) { photo = UIImage(data: d) }
+                }
+            }
         }
         .presentationDetents([.large])
         .onAppear {
             if let s = store.statusNow(.me) {
-                picked = statusKinds.first { $0.id == s.kind }
+                picked = statusKind(s.kind)
+                if s.kind == "custom" { customTitle = s.title; customEmoji = s.emoji ?? "" }
                 note = s.note
                 place = s.place
+                if s.hasPhoto, let m = s.media, let f = s.file { keepOldPhoto = (m, f) }
             }
         }
+    }
+
+    // MARK: Свой статус
+
+    private var customCard: some View {
+        let on = isCustom
+        let c = Color(hex: customStatusKind.hex)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "pencil.line").foregroundStyle(c)
+                Text("Свой статус").font(.subheadline.weight(.semibold))
+                Spacer()
+            }
+            HStack(spacing: 10) {
+                TextField("🙂", text: $customEmoji)
+                    .font(.system(size: 26)).multilineTextAlignment(.center)
+                    .frame(width: 56, height: 52)
+                    .background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
+                    .onChange(of: customEmoji) { _, v in
+                        // Только один символ-эмодзи
+                        if v.count > 1 { customEmoji = String(v.suffix(1)) }
+                        if !v.isEmpty { select(customStatusKind) }
+                    }
+                TextField("Например: грущу, пишу диплом…", text: $customTitle)
+                    .padding(.horizontal, 14).frame(height: 52)
+                    .background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
+                    .onChange(of: customTitle) { _, v in if !v.isEmpty { select(customStatusKind) } }
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(statusEmojis, id: \.self) { e in
+                        Button { customEmoji = e; select(customStatusKind) } label: {
+                            Text(e).font(.system(size: 22)).frame(width: 40, height: 40)
+                                .background(customEmoji == e ? c.opacity(0.2) : Pal.field, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(on ? c.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: store.radius, style: .continuous))
+        .card()
+        .overlay(RoundedRectangle(cornerRadius: store.radius, style: .continuous).strokeBorder(on ? c : .clear, lineWidth: 2))
+    }
+
+    /// Свои статусы, которые уже ставили.
+    private var recent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Недавние").font(.footnote.weight(.medium)).foregroundStyle(.secondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(store.recentCustomStatuses) { s in
+                        Button {
+                            customTitle = s.title; customEmoji = s.emoji ?? ""; select(customStatusKind)
+                        } label: {
+                            Text([s.emoji ?? "", s.title].filter { !$0.isEmpty }.joined(separator: " "))
+                                .font(.subheadline).foregroundStyle(.primary).lineLimit(1)
+                                .padding(.horizontal, 14).frame(height: 36)
+                                .background(Pal.field, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Готовые
+
+    private func presetTile(_ k: StatusKind) -> some View {
+        let on = picked?.id == k.id
+        return Button { select(k) } label: {
+            VStack(spacing: 6) {
+                Image(systemName: k.symbol).font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Color(hex: k.hex)).frame(height: 28)
+                Text(k.title).font(.caption2.weight(.medium)).foregroundStyle(.primary)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }
+            .frame(maxWidth: .infinity).padding(.vertical, 12)
+            .background(on ? Color(hex: k.hex).opacity(0.22) : Pal.card,
+                        in: RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous)
+                .stroke(on ? Color(hex: k.hex) : Color.clear, lineWidth: 2))
+        }
+        .buttonStyle(PressStyle())
+    }
+
+    private func select(_ k: StatusKind) {
+        guard picked?.id != k.id else { return }
+        withAnimation(Motion.curve(0.18)) { picked = k }
+        store.tap()
+    }
+
+    // MARK: Фото
+
+    private var photoCard: some View {
+        let has = photo != nil || keepOldPhoto != nil
+        return VStack(spacing: 10) {
+            PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: Theme.r(18), style: .continuous).fill(Pal.card)
+                    if let photo {
+                        Image(uiImage: photo).resizable().scaledToFill()
+                            .frame(maxWidth: .infinity).frame(height: 180).clipped()
+                    } else if let old = keepOldPhoto {
+                        RemoteImage(media: old.media, file: old.file, thumb: "720x0").frame(height: 180)
+                    } else {
+                        HStack(spacing: 10) {
+                            Image(systemName: "photo.badge.plus").font(.system(size: 22)).foregroundStyle(store.meColor)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Добавить фото к статусу").font(.subheadline.weight(.medium)).foregroundStyle(.primary)
+                                Text("Партнёр увидит его на экране «Сегодня»").font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                }
+                .frame(height: has ? 180 : 68)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.r(18), style: .continuous))
+            }
+            .buttonStyle(PressStyle())
+            if has {
+                Button("Убрать фото") {
+                    withAnimation(Motion.spring) { photo = nil; photoRaw = nil; keepOldPhoto = nil; pickedPhoto = nil }
+                }
+                .font(.footnote)
+            }
+        }
+    }
+
+    // MARK: Отправка
+
+    private func send() async {
+        guard let picked, canSend else { return }
+        sending = true
+        error = nil
+        var ph = keepOldPhoto
+        if let raw = photoRaw {
+            do { ph = try await store.uploadStatusPhoto(raw) }
+            catch { self.error = SyncEngine.human(error); sending = false; return }
+        }
+        if picked.id == "custom" {
+            store.setStatus(picked, title: customTitle, emoji: customEmoji, note: note, place: place, photo: ph)
+        } else {
+            store.setStatus(picked, note: note, place: place, photo: ph)
+        }
+        sending = false
+        dismiss()
     }
 }
 

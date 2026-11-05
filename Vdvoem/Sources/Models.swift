@@ -219,7 +219,8 @@ struct Profile: Codable {
     var bgStyle = 0                // 0 — тон верха, 1 — аврора (движется), 2 — однотонный
     var iconStyle = 0              // 0 — мягкие, 1 — цветные, 2 — тонкие
     var bgPattern = 0              // 0 — без узора, 1 — точки, 2 — сердечки, 3 — волны
-    var sound = true               // «стеклянный» звук при выборе темы
+    var sound = true               // звуки приложения
+    var glassMode = 0              // стекло: 0 прозрачное, 1 матовое, 2 цветное
 
     init() {}
 
@@ -254,6 +255,7 @@ struct Profile: Codable {
         iconStyle = v(.iconStyle, 0)
         bgPattern = v(.bgPattern, 0)
         sound = v(.sound, true)
+        glassMode = v(.glassMode, 0)
     }
 }
 

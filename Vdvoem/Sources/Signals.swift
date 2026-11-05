@@ -9,7 +9,8 @@ extension Store {
         let old = Date().addingTimeInterval(-30 * 24 * 3600)
         d.signals.removeAll { $0.date < old }
         data = d
-        success()
+        hapticOK()
+        sfx(.heart)
     }
 
     func signalCount(_ kind: String, who: Who, today: Bool = false) -> Int {
@@ -71,6 +72,7 @@ struct SignalView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .overlay { HeartBurst(trigger: burst).allowsHitTesting(false) }
 
                 HStack(spacing: 12) {
                     count(.me, missMe)
@@ -123,6 +125,42 @@ struct SignalView: View {
             Text("\(store.name(w)) скучает").font(.caption).foregroundStyle(store.color(w)).lineLimit(1)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 12).card()
+    }
+}
+
+// MARK: - Сердечки, разлетающиеся от кнопки
+
+struct HeartBurst: View {
+    let trigger: Int
+    private struct St { var x: CGFloat = 0; var y: CGFloat = 0; var o: Double = 0; var sc: Double = 0.3 }
+    private let tints = ["F43F5E", "FF5C8A", "FB7185", "F472B6", "E11D48"]
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<9, id: \.self) { i in
+                let dx = CGFloat((i * 37) % 200) - 100
+                let rise = -150 - CGFloat((i * 29) % 90)
+                let dur = 1.0 + Double(i % 3) * 0.2
+                Image(systemName: "heart.fill")
+                    .font(.system(size: CGFloat(14 + (i % 3) * 7)))
+                    .foregroundStyle(Color(hex: tints[i % tints.count]))
+                    .keyframeAnimator(initialValue: St(), trigger: trigger) { v, s in
+                        v.offset(x: s.x, y: s.y).opacity(s.o).scaleEffect(s.sc)
+                    } keyframes: { _ in
+                        KeyframeTrack(\.x) { CubicKeyframe(dx, duration: dur) }
+                        KeyframeTrack(\.y) { CubicKeyframe(rise, duration: dur) }
+                        KeyframeTrack(\.o) {
+                            LinearKeyframe(1, duration: 0.12)
+                            LinearKeyframe(1, duration: dur * 0.45)
+                            LinearKeyframe(0, duration: dur * 0.43)
+                        }
+                        KeyframeTrack(\.sc) {
+                            SpringKeyframe(1.15, duration: 0.3, spring: .bouncy)
+                            LinearKeyframe(1, duration: dur - 0.3)
+                        }
+                    }
+            }
+        }
     }
 }
 

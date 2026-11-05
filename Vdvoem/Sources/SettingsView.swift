@@ -143,20 +143,19 @@ struct ReorderView: View {
             Section {
                 ForEach(store.p.order) { m in
                     let off = store.p.disabled.contains(m)
-                    let pos = store.active.firstIndex(of: m)
                     HStack(spacing: 12) {
                         ArtIcon(symbol: m.icon, color: Color(hex: m.hex), size: 18).frame(width: 36, height: 36)
                         Text(m.title)
                         Spacer()
                         if off { Chip(text: "выкл") }
-                        else if let pos, pos < 4 { Chip(text: "панель", color: store.meColor) }
+                        else if store.bar.contains(m) { Chip(text: "панель", color: store.meColor) }
                     }
                     .opacity(off ? 0.45 : 1)
                     .listRowBackground(Pal.card)
                 }
                 .onMove { from, to in store.data.profile.order.move(fromOffsets: from, toOffset: to) }
             } header: {
-                Text("Первые четыре включённые функции попадают в нижнюю панель, остальные — в «Ещё».")
+                Text("Первые четыре включённые функции попадают в нижнюю панель, остальные — в «Ещё». Чат всегда в «Ещё»: в нём панели нет. Порядок панели можно менять и прямо на ней: зажмите её пальцем.")
                     .textCase(nil)
             }
         }

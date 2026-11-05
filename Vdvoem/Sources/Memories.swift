@@ -72,6 +72,7 @@ struct ReactionBar: View {
             ForEach(reactionEmojis, id: \.self) { e in
                 Button {
                     withAnimation(Motion.spring) { store.react(photo.id, emoji: e) }
+                    store.sfx(.pop)
                 } label: {
                     Text(e).font(.system(size: 20))
                         .frame(width: 38, height: 34)

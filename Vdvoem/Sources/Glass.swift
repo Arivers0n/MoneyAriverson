@@ -27,6 +27,7 @@ extension View {
             }
         } else {
             self.background(.ultraThinMaterial, in: shape)
+                .background(shape.fill(tint ?? .clear))
                 .overlay(shape.strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.5))
         }
     }
@@ -45,21 +46,23 @@ extension View {
     }
 }
 
-/// Цветная «плитка-картинка» раздела: пастельный фон, большая эмодзи, мягкий блик.
-struct ArtTile: View {
-    let emoji: String
-    let hex: String
-    var size: CGFloat = 52
-    var body: some View {
-        let c = Color(hex: hex)
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.32, style: .continuous)
-                .fill(LinearGradient(colors: [c.opacity(0.95), c.opacity(0.55)], startPoint: .topLeading, endPoint: .bottomTrailing))
-            RoundedRectangle(cornerRadius: size * 0.32, style: .continuous)
-                .fill(LinearGradient(colors: [.white.opacity(0.55), .clear], startPoint: .top, endPoint: .center))
-            Text(emoji).font(.system(size: size * 0.56)).shadow(color: .black.opacity(0.18), radius: 3, y: 2)
+/// Покачивание значков в режиме правки — как на рабочем столе iOS. Считается от времени, поэтому гладкое и без накопления состояния.
+struct Jiggle: ViewModifier {
+    let on: Bool
+    let seed: Double
+    func body(content: Content) -> some View {
+        if on {
+            TimelineView(.animation) { ctx in
+                let t = ctx.date.timeIntervalSinceReferenceDate
+                content.rotationEffect(.degrees(sin(t * 19 + seed) * 1.7))
+                    .offset(y: CGFloat(sin(t * 23 + seed * 1.7)) * 0.6)
+            }
+        } else {
+            content
         }
-        .frame(width: size, height: size)
-        .shadow(color: c.opacity(0.45), radius: 8, y: 5)
     }
+}
+
+extension View {
+    func jiggle(_ on: Bool, seed: Double = 0) -> some View { modifier(Jiggle(on: on, seed: seed)) }
 }

@@ -11,19 +11,41 @@ extension Store {
         return data.statuses.filter { $0.who == w && $0.expires > now }.max { $0.started < $1.started }
     }
 
-    func setStatus(_ kind: StatusKind, note: String, place: String) {
+    /// Ставит статус. Своя картинка и эмодзи — по желанию; статус держится, пока его не сменят.
+    func setStatus(_ kind: StatusKind, title: String? = nil, emoji: String? = nil, note: String, place: String,
+                   photo: (media: String, file: String)? = nil) {
         var d = data
         let now = Date()
         for i in d.statuses.indices where d.statuses[i].who == .me && d.statuses[i].expires > now {
             d.statuses[i].expires = now
         }
-        d.statuses.append(StatusItem(who: .me, kind: kind.id, title: kind.title,
-                                     note: note.trimmingCharacters(in: .whitespaces),
-                                     place: place.trimmingCharacters(in: .whitespaces)))
-        let old = now.addingTimeInterval(-7 * 24 * 3600)
+        var item = StatusItem(who: .me, kind: kind.id, title: (title ?? kind.title).trimmingCharacters(in: .whitespaces),
+                              note: note.trimmingCharacters(in: .whitespaces),
+                              place: place.trimmingCharacters(in: .whitespaces))
+        let e = (emoji ?? "").trimmingCharacters(in: .whitespaces)
+        item.emoji = e.isEmpty ? nil : e
+        if let photo { item.media = photo.media; item.file = photo.file }
+        d.statuses.append(item)
+        let old = now.addingTimeInterval(-60 * 24 * 3600)
         d.statuses.removeAll { $0.who == .me && $0.expires < old }
         data = d
         success()
+    }
+
+    /// Свои статусы, которые уже ставили: чтобы не печатать заново.
+    var recentCustomStatuses: [StatusItem] {
+        var seen = Set<String>()
+        return data.statuses.filter { $0.who == .me && $0.kind == "custom" }
+            .sorted { $0.started > $1.started }
+            .filter { seen.insert($0.title + ($0.emoji ?? "")).inserted }
+            .prefix(6).map { $0 }
+    }
+
+    /// Загрузка фото для статуса (то же хранилище, что у ленты, но в ленту оно не попадает).
+    func uploadStatusPhoto(_ raw: Data) async throws -> (media: String, file: String) {
+        guard let (jpeg, _) = PhotoPrep.jpeg(from: raw) else { throw SyncError.server("Не удалось прочитать фото") }
+        let r = try await sync.upload(jpeg: jpeg)
+        return (r.id, r.file)
     }
 
     func clearStatus() {

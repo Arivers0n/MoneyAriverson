@@ -132,12 +132,31 @@ final class Store: ObservableObject {
 
     // MARK: Модули
     var active: [Module] { p.order.filter { !p.disabled.contains($0) } }
-    /// Нижняя панель: «Сегодня» всегда первая (приложение открывается на самом важном), дальше — выбранные разделы.
-    var bar: [Module] {
-        guard active.contains(.today) else { return Array(active.prefix(4)) }
-        return [.today] + Array(active.filter { $0 != .today }.prefix(3))
-    }
+    /// Нижняя панель: первые четыре включённых раздела. Чат в панель не попадает — в нём панель скрыта.
+    var bar: [Module] { Array(active.filter { $0 != .chat }.prefix(4)) }
     var more: [Module] { active.filter { !bar.contains($0) } }
+
+    /// Новый порядок нижней панели после перетаскивания: остальные разделы сохраняют своё место после неё.
+    func setBar(_ mods: [Module]) {
+        let rest = data.profile.order.filter { !mods.contains($0) }
+        guard mods + rest != data.profile.order else { return }
+        data.profile.order = mods + rest
+        selectionTick()
+    }
+
+    /// Цвет стекла: 0 — прозрачное, 1 — матовое, 2 — окрашенное в цвет пары.
+    var glassTint: Color {
+        switch p.glassMode {
+        case 1: return Pal.card.opacity(0.72)
+        case 2: return meColor.opacity(0.22)
+        default: return Pal.card.opacity(0.32)
+        }
+    }
+
+    func selectionTick() {
+        guard p.haptics else { return }
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
 
     // MARK: Утилиты
     func tap() {
@@ -146,8 +165,21 @@ final class Store: ObservableObject {
     }
 
     func success() {
+        sfx(.done)
         guard p.haptics else { return }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    /// Только вибро-отклик «успех», без звука.
+    func hapticOK() {
+        guard p.haptics else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    /// Короткий звук интерфейса (уважает выключатель в «Оформлении» и беззвучный режим).
+    func sfx(_ k: Sfx.Kind) {
+        guard p.sound else { return }
+        Sfx.shared.play(k)
     }
 
     func bind<T: Identifiable>(_ kp: WritableKeyPath<AppData, [T]>, _ item: T) -> Binding<T> {

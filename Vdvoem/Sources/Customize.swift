@@ -26,6 +26,14 @@ struct ThemeLook {
                                            pair: ("E4456F", "2FB89A"))
         case "classic":   return ThemeLook(icon: 0, font: .standard, radius: 18, pattern: 0)
         case "graphite":  return ThemeLook(icon: 0, font: .standard, radius: 12, pattern: 0)
+        case "sunset":    return ThemeLook(icon: 0, font: .standard, radius: 22, pattern: 0, pair: ("E8553D", "7C5CE0"))
+        case "lilac":     return ThemeLook(icon: 0, font: .standard, radius: 22, pattern: 0, pair: ("7C4DDB", "F29A3C"))
+        case "ocean":     return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0, pair: ("0E8A9E", "F2677A"))
+        case "cosmos":    return ThemeLook(icon: 0, font: .standard, radius: 22, pattern: 0, pair: ("9B7BFF", "FF7AB8"), mode: .dark)
+        case "espresso":  return ThemeLook(icon: 0, font: .standard, radius: 16, pattern: 0, pair: ("D2955A", "5FC2B0"), mode: .dark)
+        case "rose":      return ThemeLook(icon: 0, font: .standard, radius: 24, pattern: 0, pair: ("D6226B", "1C9FC9"))
+        case "pistachio": return ThemeLook(icon: 0, font: .standard, radius: 18, pattern: 0, pair: ("5E8C16", "E8622C"))
+        case "fog":       return ThemeLook(icon: 0, font: .standard, radius: 16, pattern: 0, pair: ("4F6FA8", "D98A5B"))
         default:          return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0,
                                            pair: ("0593C6", "DB3996"))   // «Лагуна» — по умолчанию
         }
@@ -56,7 +64,7 @@ extension Store {
         if let m = look.mode { pr.theme = m } else if prev.mode != nil { pr.theme = .system }
         liveRadius = nil
         withAnimation(Store.spring) { data.profile = pr }
-        success()
+        hapticOK()
         glassSound()
     }
 
@@ -111,6 +119,7 @@ extension Store {
         pr.bgPattern = d.bgPattern
         pr.bgStyle = d.bgStyle
         pr.cardStyle = d.cardStyle
+        pr.glassMode = d.glassMode
         pr.wallpaper = d.wallpaper
         pr.bubbleStyle = d.bubbleStyle
         pr.myHex = d.myHex
@@ -121,47 +130,60 @@ extension Store {
         tap()
     }
 
-    func glassSound() {
-        guard p.sound else { return }
-        GlassSound.shared.play()
-    }
+    func glassSound() { sfx(.glass) }
 }
 
-// MARK: - «Стеклянный» звук (синтезируется на лету, файлы не нужны)
+// MARK: - Звуки интерфейса (синтезируются на лету, файлы не нужны)
 
-/// Очень короткий и мягкий. Категория `.ambient`: уважает беззвучный режим и не прерывает музыку.
-/// AVAudioPlayer создаётся и «прогревается» один раз — задержка при воспроизведении минимальна.
-final class GlassSound {
-    static let shared = GlassSound()
-    private var player: AVAudioPlayer?
+/// Очень короткие и мягкие. Категория `.ambient`: уважает беззвучный режим и не прерывает музыку.
+/// Плееры создаются и «прогреваются» один раз — задержка при воспроизведении минимальна.
+final class Sfx {
+    enum Kind: CaseIterable { case glass, done, send, heart, pop }
+    static let shared = Sfx()
+    private var players: [Kind: AVAudioPlayer] = [:]
 
     private init() {
         try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
-        player = try? AVAudioPlayer(data: Self.makeWAV())
-        player?.volume = 0.35
-        player?.prepareToPlay()
+        for k in Kind.allCases {
+            let p = try? AVAudioPlayer(data: Self.wav(k))
+            p?.volume = k == .glass ? 0.35 : 0.3
+            p?.prepareToPlay()
+            players[k] = p
+        }
     }
 
-    func play() {
-        guard let player else { return }
+    func play(_ k: Kind) {
+        guard let p = players[k] else { return }
         try? AVAudioSession.sharedInstance().setActive(true)
-        player.currentTime = 0
-        player.play()
+        p.currentTime = 0
+        p.play()
     }
 
-    private static func makeWAV() -> Data {
+    /// Набор частичных тонов: (частота, громкость, скорость затухания) и длина.
+    private static func spec(_ k: Kind) -> (len: Double, parts: [(Double, Double, Double)], glide: Double) {
+        switch k {
+        case .glass: return (0.26, [(1760, 0.50, 16), (2637, 0.28, 22), (3520, 0.16, 30), (4699, 0.06, 40)], 0)
+        case .done:  return (0.34, [(1047, 0.45, 11), (1568, 0.30, 13), (2093, 0.14, 18)], 0)         // мягкий «дзынь» вверх
+        case .send:  return (0.18, [(740, 0.50, 20), (1480, 0.18, 28)], 380)                         // короткий «фью» вверх
+        case .heart: return (0.42, [(523, 0.45, 8), (784, 0.35, 9), (1046, 0.18, 12)], 0)
+        case .pop:   return (0.12, [(420, 0.55, 34), (840, 0.20, 40)], -160)                         // «пок»
+        }
+    }
+
+    private static func wav(_ k: Kind) -> Data {
         let rate = 44_100
-        let count = Int(Double(rate) * 0.26)
-        let partials: [(freq: Double, amp: Double, decay: Double)] = [
-            (1760, 0.50, 16), (2637, 0.28, 22), (3520, 0.16, 30), (4699, 0.06, 40)
-        ]
+        let sp = spec(k)
+        let count = Int(Double(rate) * sp.len)
         var samples = [Int16]()
         samples.reserveCapacity(count)
         for i in 0..<count {
             let t = Double(i) / Double(rate)
             var v = 0.0
-            for p in partials { v += p.amp * sin(2 * .pi * p.freq * t) * exp(-p.decay * t) }
-            v *= min(1, t / 0.004) * 0.55          // мягкая атака
+            for p in sp.parts {
+                let f = p.0 + sp.glide * t / sp.len
+                v += p.1 * sin(2 * .pi * f * t) * exp(-p.2 * t)
+            }
+            v *= min(1, t / 0.004) * 0.55
             samples.append(Int16(max(-1, min(1, v)) * Double(Int16.max)))
         }
         var data = Data()
@@ -340,12 +362,14 @@ struct TabGlyph: View {
     }
 }
 
-// MARK: - Сворачивающийся стеклянный док
+// MARK: - Стеклянный док
 
-/// Состояние дока: развёрнутая панель или маленькая круглая кнопка в правом нижнем углу.
+/// Состояние дока: развёрнут, свёрнут в компактную таблетку, скрыт (в чате) или в режиме правки порядка.
 @MainActor
 final class DockState: ObservableObject {
     @Published var collapsed = false
+    @Published var hidden = false
+    @Published var editing = false
     private var last = Date.distantPast
     private static let gen = UIImpactFeedbackGenerator(style: .soft)
 
@@ -354,16 +378,28 @@ final class DockState: ObservableObject {
     func set(_ v: Bool, haptics: Bool) {
         guard v != collapsed else { return }
         last = Date()
-        if haptics { Self.gen.impactOccurred(intensity: 0.8); Self.gen.prepare() }
+        if haptics { Self.gen.impactOccurred(intensity: 0.7); Self.gen.prepare() }
         withAnimation(Self.spring) { collapsed = v }
+    }
+
+    func hide(_ v: Bool) {
+        guard v != hidden else { return }
+        withAnimation(Motion.enter) { hidden = v }
+        if v { editing = false }
+    }
+
+    func edit(_ v: Bool, haptics: Bool) {
+        guard v != editing else { return }
+        if haptics { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
+        withAnimation(Self.spring) { editing = v; if v { collapsed = false } }
     }
 
     /// Скролл вниз сворачивает, вверх разворачивает. Пауза после смены — чтобы док не дрожал.
     func scrolled(from old: CGFloat, to new: CGFloat, haptics: Bool) {
-        guard Date().timeIntervalSince(last) > 0.6 else { return }
+        guard !editing, Date().timeIntervalSince(last) > 0.6 else { return }
         let d = new - old
-        guard abs(d) > 8 else { return }
-        if d > 0, new > 80 { set(true, haptics: haptics) }
+        guard abs(d) > 10 else { return }
+        if d > 0, new > 120 { set(true, haptics: haptics) }
         else if d < 0 { set(false, haptics: haptics) }
     }
 }
@@ -374,7 +410,7 @@ struct DockScroll: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
             content.onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y + $0.contentInsets.top }) { old, new in
-                dock.scrolled(from: old, to: new, haptics: store.p.haptics)
+                dock.scrolled(from: old, to: new, haptics: false)
             }
         } else {
             content
@@ -382,12 +418,25 @@ struct DockScroll: ViewModifier {
     }
 }
 
-extension View {
-    func dockScroll() -> some View { modifier(DockScroll()) }
+/// Экран, на котором нижней панели нет (чат): панель мягко уезжает вниз, а место под неё освобождается.
+struct HidesDock: ViewModifier {
+    @EnvironmentObject var dock: DockState
+    func body(content: Content) -> some View {
+        content
+            .onAppear { dock.hide(true) }
+            .onDisappear { dock.hide(false) }
+    }
 }
 
-/// Док: одна стеклянная форма, которая пружинисто сжимается в круг и обратно.
-/// Иконки плавно гаснут и уменьшаются, кружок с мозаикой проявляется.
+extension View {
+    func dockScroll() -> some View { modifier(DockScroll()) }
+    func hidesDock() -> some View { modifier(HidesDock()) }
+}
+
+/// Док в духе iOS 26: одна стеклянная капсула, внутри которой «линза» выбранной вкладки плавно переезжает на новое место.
+///  • тап — переход; можно вести пальцем по панели, линза едет следом;
+///  • зажать — значки начинают покачиваться, их можно переставлять (как на рабочем столе);
+///  • прокрутка вниз сворачивает панель в компактную таблетку, вверх — разворачивает.
 struct GlassDock: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var dock: DockState
@@ -395,60 +444,201 @@ struct GlassDock: View {
     let tabs: [AppTab]
     @Binding var selected: String
 
+    @State private var live: [AppTab] = []
+    @State private var dragID: String?
+    @State private var dragStart = 0
+    @State private var dragX: CGFloat = 0
+
     private let height: CGFloat = 62
+    private let pad: CGFloat = 6
+
+    private var more: AppTab? { tabs.first { $0.id == "more" } }
+    private var movable: [AppTab] { tabs.filter { $0.id != "more" } }
+    /// Что рисуем: во время правки — живой порядок, иначе — как есть.
+    private var shown: [AppTab] { dock.editing ? live + (more.map { [$0] } ?? []) : tabs }
 
     var body: some View {
-        GeometryReader { geo in
-            let full = max(0, geo.size.width - 32)
-            let collapsed = dock.collapsed
-            let shape = RoundedRectangle(cornerRadius: height / 2, style: .continuous)
-            ZStack {
-                HStack(spacing: 0) { ForEach(tabs) { item($0) } }
-                    .padding(.horizontal, 6)
+        VStack(spacing: 10) {
+            if dock.editing { donePill.transition(.move(edge: .bottom).combined(with: .opacity)) }
+            GeometryReader { geo in
+                let full = max(0, geo.size.width - 32)
+                let collapsed = dock.collapsed && !dock.editing
+                let shape = RoundedRectangle(cornerRadius: height / 2, style: .continuous)
+                let itemW = max(1, (full - pad * 2) / CGFloat(max(shown.count, 1)))
+                ZStack(alignment: .leading) {
+                    ZStack(alignment: .leading) {
+                        if let i = shown.firstIndex(where: { $0.id == selected }), !dock.editing {
+                            lensView(for: shown[i]).frame(width: itemW - 4, height: height - 10)
+                                .offset(x: pad + itemW * CGFloat(i) + 2)
+                        }
+                        HStack(spacing: 0) {
+                            ForEach(Array(shown.enumerated()), id: \.element.id) { i, t in item(t, index: i, itemW: itemW) }
+                        }
+                        .padding(.horizontal, pad)
+                    }
+                    .frame(width: full, height: height)
                     .opacity(collapsed ? 0 : 1)
-                    .scaleEffect(collapsed ? 0.4 : 1, anchor: .trailing)
                     .allowsHitTesting(!collapsed)
-                Image(systemName: "square.grid.2x2.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(store.meColor)
-                    .opacity(collapsed ? 1 : 0)
-                    .scaleEffect(collapsed ? 1 : 0.4)
+                    compact
+                        .opacity(collapsed ? 1 : 0)
+                        .allowsHitTesting(collapsed)
+                }
+                .frame(width: collapsed ? compactWidth : full, height: height, alignment: .leading)
+                .clipShape(shape)
+                .modifier(DockGlass(shape: shape, tint: store.glassTint))
+                .shadow(color: .black.opacity(0.14), radius: 18, y: 8)
+                .contentShape(shape)
+                .simultaneousGesture(scrub(full: full, itemW: itemW), including: dock.editing || collapsed ? .none : .all)
+                .simultaneousGesture(LongPressGesture(minimumDuration: 0.55).onEnded { _ in
+                    if !collapsed, !dock.editing { startEditing() }
+                })
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: collapsed ? .bottomLeading : .bottom)
+                .padding(.horizontal, 16)
+                .animation(Motion.spring, value: collapsed)
+                .animation(Motion.spring, value: selected)
             }
-            .frame(width: collapsed ? height : full, height: height)
-            .background(.thinMaterial, in: shape)
-            .glass(shape, interactive: true)
-            .shadow(color: .black.opacity(0.12), radius: 16, y: 6)
-            .contentShape(shape)
-            .onTapGesture { if collapsed { dock.set(false, haptics: store.p.haptics) } }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: collapsed ? .bottomTrailing : .bottom)
-            .padding(.horizontal, 16)
-            .animation(DockState.spring, value: collapsed)
+            .frame(height: height + 8)
         }
-        .frame(height: height + 8)
         .accessibilityElement(children: .contain)
+        .animation(Motion.spring, value: dock.editing)
     }
 
-    private func item(_ t: AppTab) -> some View {
-        let on = t.id == selected
-        let st = store.p.iconStyle
-        return Button {
-            if selected != t.id { store.tap() }
-            selected = t.id
-        } label: {
-            VStack(spacing: 0) {
-                TabGlyph(symbol: t.symbol, color: st == 2 ? Color(hex: t.hex) : store.meColor, color2: store.partnerColor,
-                         style: st, selected: on, dark: scheme == .dark)
-                    .scaleEffect(on ? 0.92 : 0.84)
-                Text(t.title).font(.system(size: 10, weight: on ? .semibold : .medium))
-                    .foregroundStyle(on ? store.meColor : Color.secondary).lineLimit(1).minimumScaleFactor(0.8)
+    // MARK: Линза выбранной вкладки
+
+    @ViewBuilder private func lensView(for t: AppTab) -> some View {
+        let c = store.meColor
+        let capsule = Capsule(style: .continuous)
+        Group {
+            if #available(iOS 26.0, *) {
+                Color.clear.glassEffect(.regular.tint(c.opacity(0.22)).interactive(), in: capsule)
+            } else {
+                capsule.fill(c.opacity(0.16))
+                    .overlay(capsule.strokeBorder(c.opacity(0.18), lineWidth: 0.5))
             }
-            .frame(maxWidth: .infinity, minHeight: height)
+        }
+        .allowsHitTesting(false)
+    }
+
+    // MARK: Свёрнутая таблетка
+
+    private var compactWidth: CGFloat { 132 }
+
+    private var compact: some View {
+        let t = tabs.first { $0.id == selected } ?? tabs[0]
+        let st = store.p.iconStyle
+        return Button { dock.set(false, haptics: store.p.haptics) } label: {
+            HStack(spacing: 8) {
+                TabGlyph(symbol: t.symbol, color: st == 2 ? Color(hex: t.hex) : store.meColor, color2: store.partnerColor,
+                         style: st, selected: true, dark: scheme == .dark)
+                    .scaleEffect(0.85).frame(width: 34)
+                Text(t.title).font(.system(size: 13, weight: .semibold)).foregroundStyle(store.meColor).lineLimit(1)
+                Image(systemName: "chevron.up").font(.system(size: 10, weight: .bold)).foregroundStyle(.secondary)
+            }
+            .frame(width: compactWidth, height: height)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .animation(Store.spring, value: on)
+        .accessibilityLabel("Развернуть панель")
+    }
+
+    // MARK: Кнопка «Готово» в режиме правки
+
+    private var donePill: some View {
+        Button {
+            dock.edit(false, haptics: store.p.haptics)
+            store.setBar(live.compactMap { t in Module(rawValue: t.id) })
+        } label: {
+            HStack(spacing: 8) {
+                Text("Перетащите значки, чтобы поменять местами").font(.footnote).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+                Text("Готово").font(.footnote.weight(.semibold)).foregroundStyle(store.meColor)
+            }
+            .padding(.horizontal, 16).frame(height: 38)
+            .modifier(DockGlass(shape: Capsule(style: .continuous), tint: store.glassTint))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func startEditing() {
+        live = movable
+        dock.edit(true, haptics: store.p.haptics)
+    }
+
+    // MARK: Жесты
+
+    /// Обычный режим: ведём пальцем по панели — линза едет следом за пальцем.
+    private func scrub(full: CGFloat, itemW: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { v in
+                guard !dock.editing else { return }
+                let i = Int(((v.location.x - pad) / itemW).rounded(.down))
+                guard tabs.indices.contains(i), tabs[i].id != selected else { return }
+                selected = tabs[i].id
+                store.selectionTick()
+            }
+    }
+
+    private func reorder(_ t: AppTab, from index: Int, itemW: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { v in
+                guard dock.editing, t.id != "more" else { return }
+                if dragID == nil { dragID = t.id; dragStart = live.firstIndex { $0.id == t.id } ?? index }
+                guard dragID == t.id, let cur = live.firstIndex(where: { $0.id == t.id }) else { return }
+                dragX = v.translation.width
+                let target = min(max(Int((Double(dragStart) + Double(dragX / itemW)).rounded()), 0), live.count - 1)
+                if target != cur {
+                    withAnimation(Motion.spring) { live.move(fromOffsets: IndexSet(integer: cur), toOffset: target > cur ? target + 1 : target) }
+                    store.selectionTick()
+                }
+            }
+            .onEnded { _ in
+                withAnimation(Motion.spring) { dragID = nil; dragX = 0 }
+            }
+    }
+
+    // MARK: Один значок
+
+    private func item(_ t: AppTab, index: Int, itemW: CGFloat) -> some View {
+        let on = t.id == selected && !dock.editing
+        let st = store.p.iconStyle
+        let dragging = dragID == t.id
+        let curIdx = live.firstIndex { $0.id == t.id } ?? index
+        return VStack(spacing: 0) {
+            TabGlyph(symbol: t.symbol, color: st == 2 ? Color(hex: t.hex) : store.meColor, color2: store.partnerColor,
+                     style: st, selected: on || dock.editing, dark: scheme == .dark)
+                .scaleEffect(on ? 0.94 : 0.86)
+            Text(t.title).font(.system(size: 10, weight: on ? .semibold : .medium))
+                .foregroundStyle(on ? store.meColor : Color.secondary).lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, minHeight: height)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard !dock.editing else { return }
+            if selected != t.id { store.tap() }
+            selected = t.id
+        }
+        .jiggle(dock.editing && t.id != "more" && !dragging, seed: Double(index) * 1.3)
+        .scaleEffect(dragging ? 1.12 : 1)
+        .offset(x: dragging ? dragX - CGFloat(curIdx - dragStart) * itemW : 0)
+        .zIndex(dragging ? 1 : 0)
+        .opacity(dock.editing && t.id == "more" ? 0.4 : 1)
+        .gesture(reorder(t, from: index, itemW: itemW), including: dock.editing ? .all : .subviews)
         .accessibilityLabel(t.title)
-        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityAddTraits(on ? [.isSelected, .isButton] : .isButton)
+    }
+}
+
+/// Стекло дока: на iOS 26 — настоящее Liquid Glass без подложки, ниже — матовый материал.
+struct DockGlass<S: InsettableShape>: ViewModifier {
+    let shape: S
+    let tint: Color
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.tint(tint).interactive(), in: shape)
+        } else {
+            content.background(.thinMaterial, in: shape)
+                .background(shape.fill(tint))
+                .overlay(shape.strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.5))
+        }
     }
 }
 

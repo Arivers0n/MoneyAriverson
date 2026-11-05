@@ -57,14 +57,26 @@ struct ChatView: View {
                     } label: { Circle().fill(store.color(sender)).frame(width: 28, height: 28) }
                 }
                 TextField("Сообщение", text: $text, axis: .vertical).lineLimit(1...4)
-                    .padding(.horizontal, 14).padding(.vertical, 10)
-                    .background(Pal.card, in: Capsule())
-                Button(action: send) { Image(systemName: "arrow.up.circle.fill").font(.system(size: 32)) }
-                    .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .padding(.horizontal, 16).padding(.vertical, 11)
+                    .glass(RoundedRectangle(cornerRadius: 22, style: .continuous), tint: store.glassTint)
+                let empty = text.trimmingCharacters(in: .whitespaces).isEmpty
+                Button(action: send) {
+                    Image(systemName: "arrow.up").font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(store.meColor.onAccent)
+                        .frame(width: 42, height: 42)
+                        .background(store.meColor, in: Circle())
+                        .scaleEffect(empty ? 0.86 : 1)
+                        .opacity(empty ? 0.4 : 1)
+                }
+                .buttonStyle(.plain)
+                .disabled(empty)
+                .animation(Motion.spring, value: empty)
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
         }
         .background(WallpaperView(id: store.p.wallpaper))
+        .hidesDock()
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private func send() {
@@ -73,6 +85,7 @@ struct ChatView: View {
         store.data.messages.append(ChatMessage(text: t, from: sync.status == .notPaired ? sender : .me))
         text = ""
         store.tap()
+        store.sfx(.send)
     }
 }
 

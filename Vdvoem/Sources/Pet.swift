@@ -94,8 +94,10 @@ struct PetView: View {
                     .offset(y: jump ? -26 : 0)
                     .animation(.interpolatingSpring(stiffness: 170, damping: 9), value: jump)
                     .onTapGesture { cuddle() }
-                ForEach(hearts, id: \.self) { _ in
-                    Text("💗").font(.title).transition(.move(edge: .top).combined(with: .opacity)).offset(x: CGFloat.random(in: -60...60), y: -110)
+                ForEach(hearts, id: \.self) { id in
+                    // Положение берётся из id, а не из random(): сердечко не прыгает при каждой перерисовке.
+                    let dx = CGFloat(abs(id.hashValue) % 120) - 60
+                    Text("💗").font(.title).transition(.move(edge: .top).combined(with: .opacity)).offset(x: dx, y: -110)
                 }
             }
             .frame(height: 290)
@@ -157,7 +159,8 @@ struct PetView: View {
         bounce()
         let id = UUID()
         withAnimation(Motion.curve(0.6)) { hearts.append(id) }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { hearts.removeAll { $0 == id } }
+        store.sfx(.heart)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { withAnimation(Motion.curve(0.4)) { hearts.removeAll { $0 == id } } }
     }
 }
 

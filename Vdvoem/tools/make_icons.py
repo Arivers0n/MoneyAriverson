@@ -1,137 +1,125 @@
 #!/usr/bin/env python3
-"""Рисует значки приложения (1024 px) в Vdvoem/Assets.xcassets. Запуск: python3 Vdvoem/tools/make_icons.py"""
-import json, math, os
-from PIL import Image, ImageDraw, ImageFilter, ImageChops
-ImageChopsSubtract = ImageChops.subtract
+"""Рисует значки приложения (1024 px) в Vdvoem/Assets.xcassets.
+Знак — два пересекающихся стеклянных круга («вдвоём»), как PairMark в самом приложении.
+Запуск: python3 Vdvoem/tools/make_icons.py"""
+import json, os, shutil
+import numpy as np
+from PIL import Image, ImageFilter
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Assets.xcassets")
 S = 1024
-ICONS = [  # id, цвет A, цвет B, фигура
-    ("AppIcon", "FF8FB1", "E0457B", "heart"), ("AppIcon-Night", "2B3A67", "0B1026", "moon"),
-    ("AppIcon-Ocean", "5EC8F2", "2563EB", "drop"), ("AppIcon-Sunset", "FDBA74", "EC4899", "heart"),
-    ("AppIcon-Lavender", "C4B5FD", "7C3AED", "inf"), ("AppIcon-Gold", "FDE68A", "D97706", "star"),
-    ("AppIcon-Mint", "86EFAC", "059669", "spark"), ("AppIcon-Peach", "FFC8A8", "FB7185", "heart"),
-    ("AppIcon-Candy", "F9A8D4", "60A5FA", "inf"), ("AppIcon-Aurora", "6EE7B7", "8B5CF6", "spark"),
-    ("AppIcon-Cosmos", "4C1D95", "0F172A", "star"), ("AppIcon-Mono", "9CA3AF", "374151", "heart"),
-    ("AppIcon-Neon", "22D3EE", "A855F7", "spark"), ("AppIcon-Berry", "F472B6", "9D174D", "drop"),
-    ("AppIcon-Lime", "BEF264", "22C55E", "heart"), ("AppIcon-Ink", "1F2937", "000000", "inf"),
+K = 2                      # суперсэмплинг для гладких краёв
+N = S * K
+
+# id, фон сверху-слева, фон снизу-справа, свечение, (светлый значок? цвета кругов)
+ICONS = [
+    ("AppIcon",          "8FDDF5", "0889BF", "FF9CCB", None),   # Лагуна
+    ("AppIcon-Night",    "24398A", "060A22", "F2683F", None),   # Полночь
+    ("AppIcon-Indigo",   "7B88FF", "2328A0", "FF8DC0", None),   # Индиго
+    ("AppIcon-Mint",     "4FD9B3", "0A5F49", "FFB199", None),   # Малахит
+    ("AppIcon-Gold",     "FFD98A", "D4771F", "2BB8A8", None),   # Янтарь
+    ("AppIcon-Berry",    "FF86A6", "A81E4B", "8FE3C9", None),   # Вишня
+    ("AppIcon-Sunset",   "FFCDA3", "7C5CE0", "FF6B57", None),   # Закат
+    ("AppIcon-Lavender", "E0D2FF", "7240D6", "FFC670", None),   # Сирень
+    ("AppIcon-Aurora",   "6EE7B7", "6D3FE0", "3BA7FF", None),   # Аврора
+    ("AppIcon-Mono",     "646B7A", "15181F", "E3B341", None),   # Графит
+    ("AppIcon-Ink",      "26262C", "000000", "5A5A66", None),   # Тушь
+    ("AppIcon-Pearl",    "FBFAF7", "E2DED7", "FFFFFF", ("E4456F", "0593C6")),  # Жемчуг: цветные круги на светлом
 ]
+REMOVED = ["AppIcon-Ocean", "AppIcon-Peach", "AppIcon-Candy", "AppIcon-Cosmos", "AppIcon-Neon", "AppIcon-Lime"]
 
-def rgb(h): return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+def rgb(h): return np.array([int(h[i:i+2], 16) for i in (0, 2, 4)], dtype=np.float32) / 255.0
 
-def gradient(a, b):
-    ca, cb = rgb(a), rgb(b)
-    im = Image.new("RGB", (S, S))
-    px = im.load()
-    for y in range(S):
-        for x in range(S):
-            t = (x + y) / (2 * S - 2)
-            px[x, y] = tuple(int(ca[i] + (cb[i] - ca[i]) * t) for i in range(3))
-    return im
+yy, xx = np.mgrid[0:N, 0:N].astype(np.float32)
+xn, yn = xx / N, yy / N
 
-def shape_mask(kind):
-    m = Image.new("L", (S * 2, S * 2), 0)
-    d = ImageDraw.Draw(m)
-    c = S  # центр в удвоенной сетке
-    if kind == "heart":
-        pts = []
-        for i in range(400):
-            t = i / 400 * 2 * math.pi
-            x = 16 * math.sin(t) ** 3
-            y = 13 * math.cos(t) - 5 * math.cos(2*t) - 2 * math.cos(3*t) - math.cos(4*t)
-            pts.append((c + x * 46, c - y * 46 - 30))
-        d.polygon(pts, fill=255)
-    elif kind == "moon":
-        d.ellipse((c-330, c-330, c+330, c+330), fill=255)
-        d.ellipse((c-130, c-420, c+470, c+180), fill=0)
-    elif kind == "drop":
-        d.ellipse((c-280, c-120, c+280, c+440), fill=255)
-        d.polygon([(c, c-460), (c-262, c+60), (c+262, c+60)], fill=255)
-    elif kind == "star":
-        pts = []
-        for i in range(10):
-            r = 430 if i % 2 == 0 else 190
-            a = -math.pi/2 + i * math.pi/5
-            pts.append((c + r*math.cos(a), c + r*math.sin(a) + 20))
-        d.polygon(pts, fill=255)
-    elif kind == "spark":
-        pts = []
-        for i in range(8):
-            r = 440 if i % 2 == 0 else 110
-            a = -math.pi/2 + i * math.pi/4
-            pts.append((c + r*math.cos(a), c + r*math.sin(a)))
-        d.polygon(pts, fill=255)
-    elif kind == "inf":
-        for cx in (c-170, c+170):
-            d.ellipse((cx-200, c-200, cx+200, c+200), outline=255, width=86)
-    if kind != "heart":
-        return m.crop((S // 2, S // 2, S // 2 + S, S // 2 + S))
-    return m.resize((S, S), Image.LANCZOS)
+def smooth(a, b, x):
+    t = np.clip((x - a) / (b - a), 0, 1)
+    return t * t * (3 - 2 * t)
 
-def blob(im, color, box, blur):
-    layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    ImageDraw.Draw(layer).ellipse(box, fill=color)
-    return Image.alpha_composite(im, layer.filter(ImageFilter.GaussianBlur(blur)))
+def disc(cx, cy, r, feather=1.5):
+    d = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2)
+    return np.clip((r - d) / feather + 0.5, 0, 1)
 
-def sparkle(d, cx, cy, r, alpha=230):
-    pts = []
-    for i in range(8):
-        rr = r if i % 2 == 0 else r * 0.22
-        a = -math.pi / 2 + i * math.pi / 4
-        pts.append((cx + rr * math.cos(a), cy + rr * math.sin(a)))
-    d.polygon(pts, fill=(255, 255, 255, alpha))
+def blur(a, r):
+    im = Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8))
+    return np.asarray(im.filter(ImageFilter.GaussianBlur(r * K)), dtype=np.float32) / 255.0
 
-def make(name, a, b, kind):
-    ca, cb = rgb(a), rgb(b)
-    im = gradient(a, b).convert("RGBA")
-    # цветные световые пятна для глубины
-    im = blob(im, ca + (200,), (-250, -300, 650, 500), 110)
-    im = blob(im, tuple(min(255, int(v * 1.25)) for v in cb) + (170,), (420, 520, 1250, 1300), 120)
-    im = blob(im, (255, 255, 255, 70), (150, -150, 900, 350), 90)
+def over(base, color, alpha):
+    a = alpha[..., None]
+    return base * (1 - a) + np.asarray(color, dtype=np.float32) * a
 
-    mask = shape_mask(kind)
-    # тень фигуры
-    sh = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    sh.putalpha(mask.filter(ImageFilter.GaussianBlur(34)).point(lambda v: int(v * 0.40)))
-    moved = Image.new("RGBA", (S, S), (0, 0, 0, 0)); moved.paste(sh, (0, 26))
-    im = Image.alpha_composite(im, moved)
+def make(name, a, b, glow, pair):
+    ca, cb, cg = rgb(a), rgb(b), rgb(glow)
+    t = (xn * 0.45 + yn * 0.85) / 1.3
+    t = smooth(0.0, 1.0, t)[..., None]
+    im = ca * (1 - t) + cb * t
+    # мягкое цветное свечение в правом нижнем углу и блик сверху слева
+    g = np.exp(-(((xn - 0.92) / 0.55) ** 2 + ((yn - 0.98) / 0.50) ** 2))
+    im = over(im, cg, g * (0.26 if pair is None else 0.0))
+    top = np.exp(-(((xn - 0.18) / 0.5) ** 2 + ((yn - 0.02) / 0.35) ** 2))
+    im = over(im, [1, 1, 1], top * (0.22 if pair is None else 0.55))
 
-    # объёмная фигура: градиент белый -> светлый оттенок + внутренний блик
-    fig = Image.new("RGBA", (S, S))
-    px = fig.load()
-    tint = tuple(int(255 - (255 - v) * 0.30) for v in ca)
-    for y in range(S):
-        t = y / (S - 1)
-        col = tuple(int(255 * (1 - t) + tint[k] * t) for k in range(3))
-        for x in range(S):
-            px[x, y] = col + (255,)
-    fig.putalpha(mask)
-    im = Image.alpha_composite(im, fig)
-    # внутренняя тень снизу и блик сверху
-    inner = mask.filter(ImageFilter.GaussianBlur(14))
-    rim = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    rim.putalpha(Image.eval(ImageChopsSubtract(mask, inner), lambda v: min(255, v * 2)))
-    rimc = Image.new("RGBA", (S, S), tuple(max(0, int(v * 0.65)) for v in cb) + (255,))
-    rimc.putalpha(rim.getchannel("A").point(lambda v: int(v * 0.35)))
-    im = Image.alpha_composite(im, rimc)
-    gloss = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    ImageDraw.Draw(gloss).ellipse((S*0.22, S*0.12, S*0.78, S*0.46), fill=(255, 255, 255, 120))
-    gm = Image.new("L", (S, S), 0); gm.paste(mask, (0, 0))
-    gloss.putalpha(Image.fromarray(__import__("numpy").minimum(__import__("numpy").array(gloss.getchannel("A")), __import__("numpy").array(gm))))
-    im = Image.alpha_composite(im, gloss.filter(ImageFilter.GaussianBlur(30)))
-    # искры
-    sp = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    d = ImageDraw.Draw(sp)
-    sparkle(d, 800, 230, 62); sparkle(d, 230, 760, 42, 200); sparkle(d, 850, 700, 26, 170); sparkle(d, 190, 270, 22, 160)
-    im = Image.alpha_composite(im, sp.filter(ImageFilter.GaussianBlur(0.8)))
-    d2 = os.path.join(ROOT, name + ".appiconset")
-    os.makedirs(d2, exist_ok=True)
-    im.convert("RGB").save(os.path.join(d2, "icon.png"))
+    R, off = 0.245 * N, 0.135 * N
+    cx1, cx2, cy = N / 2 - off, N / 2 + off, N / 2 + 0.01 * N
+    d1, d2 = disc(cx1, cy, R), disc(cx2, cy, R)
+    lens = d1 * d2
+
+    # тень под знаком
+    sh = blur(np.maximum(d1, d2), 26)
+    shifted = np.roll(sh, int(0.018 * N), axis=0)
+    shadow_a = 0.30 if pair is None else 0.16
+    im = over(im, [0, 0, 0], shifted * shadow_a)
+
+    if pair is None:
+        # Матовое стекло: круги белые с градиентом прозрачности сверху вниз
+        vert = 1 - smooth(cy - R, cy + R, yy)
+        for d, edge in ((d1, 0), (d2, 0)):
+            al = d * (0.40 + 0.24 * vert)
+            im = over(im, [1, 1, 1], al)
+        # пересечение — самое светлое
+        im = over(im, [1, 1, 1], lens * (0.42 + 0.20 * vert))
+        # контур кругов
+        for cx in (cx1, cx2):
+            ring = np.clip(disc(cx, cy, R + 3 * K) - disc(cx, cy, R - 3 * K), 0, 1)
+            im = over(im, [1, 1, 1], ring * 0.82)
+        # блик на дуге сверху у каждого круга
+        for cx in (cx1, cx2):
+            arc = disc(cx, cy, R * 0.93) * (1 - disc(cx - 0.05 * R, cy + 0.10 * R, R * 0.93))
+            arc *= smooth(cy + 0.15 * R, cy - 0.85 * R, yy)
+            im = over(im, [1, 1, 1], blur(arc, 5) * 0.55)
+    else:
+        c1, c2 = rgb(pair[0]), rgb(pair[1])
+        im = over(im, c1, d1 * 0.93)
+        im = over(im, c2, d2 * 0.93)
+        # пересечение — «смешанный» цвет (умножение), чуть темнее и насыщеннее
+        mix = c1 * c2 * 1.25
+        mix = np.clip(mix + 0.08, 0, 1)
+        im = over(im, mix, lens * 0.95)
+        for cx in (cx1, cx2):
+            arc = disc(cx, cy, R * 0.93) * (1 - disc(cx - 0.05 * R, cy + 0.10 * R, R * 0.93))
+            arc *= smooth(cy + 0.15 * R, cy - 0.85 * R, yy)
+            im = over(im, [1, 1, 1], blur(arc, 5) * 0.35)
+
+    # искра у верхнего правого круга
+    def spark(cx, cy_, r, al):
+        dx, dy = np.abs(xx - cx), np.abs(yy - cy_)
+        s = np.clip(1 - (dx / (r * 0.16) + dy / r) , 0, 1) + np.clip(1 - (dx / r + dy / (r * 0.16)), 0, 1)
+        return np.clip(s, 0, 1) * al
+    sp = spark(0.83 * N, 0.20 * N, 0.075 * N, 0.95 if pair is None else 0.0)
+    im = over(im, [1, 1, 1], blur(sp, 0.8))
+
+    out = Image.fromarray((np.clip(im, 0, 1) * 255).astype(np.uint8)).resize((S, S), Image.LANCZOS)
+    d = os.path.join(ROOT, name + ".appiconset")
+    os.makedirs(d, exist_ok=True)
+    out.save(os.path.join(d, "icon.png"))
     json.dump({"images": [{"filename": "icon.png", "idiom": "universal", "platform": "ios", "size": "1024x1024"}],
-               "info": {"author": "xcode", "version": 1}}, open(os.path.join(d2, "Contents.json"), "w"), indent=2)
+               "info": {"author": "xcode", "version": 1}}, open(os.path.join(d, "Contents.json"), "w"), indent=2)
 
 os.makedirs(ROOT, exist_ok=True)
 json.dump({"info": {"author": "xcode", "version": 1}}, open(os.path.join(ROOT, "Contents.json"), "w"))
-for n, a, b, k in ICONS:
-    make(n, a, b, k)
+for r in REMOVED:
+    shutil.rmtree(os.path.join(ROOT, r + ".appiconset"), ignore_errors=True)
+for n, a, b, g, p in ICONS:
+    make(n, a, b, g, p)
     print("ok", n)

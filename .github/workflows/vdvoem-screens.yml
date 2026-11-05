@@ -83,12 +83,14 @@ jobs:
             done
           }
           shot root-lagoon           -demo root
-          shot root-midnight         -demo root -theme midnight
-          shot more-icons0           -demo more
+          shot root-cosmos           -demo root -theme cosmos
+          shot root-sunset           -demo root -theme sunset
+          shot today-both-espresso   -demo today-both -theme espresso
+          shot status-sheet          -demo status
           shot more-icons1           -demo more -icons 1
-          shot more-icons2           -demo more -icons 2
-          shot root-icons1-malachite -demo root -theme malachite -icons 1
-          shot appearance-lagoon     -demo appearance
+          shot appearance-themes     -demo appearance -scroll themes
+          shot appearance-glass      -demo appearance -scroll glass
+          shot appearance-appicons   -demo appearance -scroll icon
           ls -la shots
 
       - uses: actions/upload-artifact@v4

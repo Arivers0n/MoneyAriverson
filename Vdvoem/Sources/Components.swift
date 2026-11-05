@@ -57,7 +57,15 @@ let colorPairs: [ColorPair] = [
     ColorPair(id: "Вишня", me: "E4456F", partner: "2FB89A"),
     ColorPair(id: "Мята и коралл", me: "3FC9A5", partner: "FF7A6B"),
     ColorPair(id: "Фиалка и янтарь", me: "8C7BF2", partner: "F5A524"),
-    ColorPair(id: "Графит и золото", me: "8E95A5", partner: "E3B341")
+    ColorPair(id: "Графит и золото", me: "8E95A5", partner: "E3B341"),
+    ColorPair(id: "Закат", me: "E8553D", partner: "7C5CE0"),
+    ColorPair(id: "Сирень", me: "7C4DDB", partner: "F29A3C"),
+    ColorPair(id: "Океан", me: "0E8A9E", partner: "F2677A"),
+    ColorPair(id: "Космос", me: "9B7BFF", partner: "FF7AB8"),
+    ColorPair(id: "Эспрессо", me: "D2955A", partner: "5FC2B0"),
+    ColorPair(id: "Роза", me: "D6226B", partner: "1C9FC9"),
+    ColorPair(id: "Фисташка", me: "5E8C16", partner: "E8622C"),
+    ColorPair(id: "Туман", me: "4F6FA8", partner: "D98A5B")
 ]
 
 // MARK: - Модификаторы
@@ -75,7 +83,7 @@ struct CardBG: ViewModifier {
                 .overlay(shape.stroke(Color.primary.opacity(0.12), lineWidth: 1))
         default:
             // Жидкое стекло: фон темы просвечивает и преломляется; лёгкий оттенок карточки держит читаемость.
-            content.glass(shape, tint: Pal.card.opacity(0.35))
+            content.glass(shape, tint: store.glassTint)
                 .shadow(color: .black.opacity(0.05), radius: 12, y: 6)
         }
     }
