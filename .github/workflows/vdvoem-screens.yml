@@ -1,0 +1,103 @@
+name: Скриншоты Вдвоём (симулятор)
+
+# Собирает приложение для симулятора iOS, снимает экраны в демо-режиме
+# и кладёт PNG в ветку vdvoem-screens (и в артефакт сборки).
+on:
+  workflow_dispatch:
+  push:
+    branches: [vdvoem]
+    paths: ['Vdvoem/**', '.github/workflows/vdvoem-screens.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vdvoem-screens
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Выбрать самый новый Xcode
+        run: |
+          XC=$(ls -d /Applications/Xcode*.app | grep -v -i beta | sort -V | tail -1)
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+
+      - name: Установить XcodeGen и собрать проект
+        working-directory: Vdvoem
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Собрать для симулятора
+        working-directory: Vdvoem
+        run: |
+          set +e
+          xcodebuild -project Vdvoem.xcodeproj -scheme Vdvoem -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build > build.log 2>&1
+          code=$?
+          grep -E "error:|BUILD (SUCCEEDED|FAILED)" build.log | sort -u | head -60
+          exit $code
+
+      - name: Запустить симулятор
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          c=[x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone') and 'Pro' in x['name'] and 'Max' not in x['name']]
+          c=c or [x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')]
+          print(c[-1]['udid'])")
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
+
+      - name: Установить приложение
+        run: xcrun simctl install "$UDID" Vdvoem/build/Build/Products/Debug-iphonesimulator/Vdvoem.app
+
+      - name: Снять экраны
+        run: |
+          mkdir -p shots
+          shot() { # имя, аргументы запуска...
+            name=$1; shift
+            xcrun simctl terminate "$UDID" ru.vdvoem.app >/dev/null 2>&1 || true
+            xcrun simctl launch "$UDID" ru.vdvoem.app "$@"
+            sleep 5
+            xcrun simctl io "$UDID" screenshot "shots/$name.png"
+          }
+          shot today-lagoon          -demo today
+          shot today-both-lagoon     -demo today-both
+          shot today-lagoon-dark     -demo today -scheme dark
+          for t in midnight indigo malachite amber cherry classic graphite; do
+            shot today-$t -demo today-both -theme $t
+          done
+          shot more-lagoon           -demo more
+          shot chat-lagoon           -demo chat
+          shot tasks-lagoon          -demo tasks
+          shot appearance-lagoon     -demo appearance
+          shot root-lagoon           -demo root
+          shot root-midnight         -demo root -theme midnight
+          ls -la shots
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vdvoem-screens
+          path: shots
+
+      - name: Выложить в ветку vdvoem-screens
+        run: |
+          cd shots
+          git init -q
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git checkout -q -b vdvoem-screens
+          git add .
+          git commit -q -m "Скриншоты ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" vdvoem-screens

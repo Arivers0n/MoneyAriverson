@@ -123,7 +123,7 @@ struct CompatView: View {
             Text("10 вопросов. Сначала отвечает \(store.name(.me)), потом \(store.name(.partner)) — на одном телефоне, не подглядывая.")
                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
             if let r = store.data.compat {
-                Text("Прошлый результат: \(r.percent)% · \(r.date.formatted(.dateTime.day().month()))").font(.subheadline)
+                Text("Прошлый результат: \(r.percent)% · \(r.date.formatted(Date.FormatStyle().locale(ruLocale).day().month()))").font(.subheadline)
             }
             Button { phase = 1; q = 0; mine = []; theirs = [] } label: { Text("Начать").bigButton() }
         }
@@ -196,7 +196,7 @@ struct CapsuleView: View {
                         Image(systemName: ready ? "envelope.open" : "lock.fill").font(.title2).foregroundStyle(store.color(c.from))
                         VStack(alignment: .leading, spacing: 3) {
                             Text(c.title).font(.body.weight(.semibold))
-                            Text(ready ? "Можно открыть" : "Откроется \(c.opens.formatted(.dateTime.day().month(.wide).year()))")
+                            Text(ready ? "Можно открыть" : "Откроется \(c.opens.formatted(Date.FormatStyle().locale(ruLocale).day().month(.wide).year()))")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
@@ -413,7 +413,7 @@ struct DaysView: View {
                 HStack {
                     Text("\(m) дней").font(.body.weight(.semibold))
                     Spacer()
-                    Text(left > 0 ? "через \(left) дн. · \(date.formatted(.dateTime.day().month().year()))" : "было \(date.formatted(.dateTime.day().month().year()))")
+                    Text(left > 0 ? "через \(left) дн. · \(date.formatted(Date.FormatStyle().locale(ruLocale).day().month().year()))" : "было \(date.formatted(Date.FormatStyle().locale(ruLocale).day().month().year()))")
                         .font(.caption).foregroundStyle(.secondary)
                     Image(systemName: left > 0 ? "hourglass" : "checkmark.seal.fill").foregroundStyle(left > 0 ? Color.secondary : store.partnerColor)
                 }

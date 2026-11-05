@@ -71,7 +71,7 @@ struct TaskRow: View {
                     if let o = t.owner { Chip(text: store.name(o), color: store.color(o)) }
                     else { Chip(text: "Свободная") }
                     if let d = t.due {
-                        Label(d.formatted(.dateTime.day().month(.abbreviated)), systemImage: "calendar")
+                        Label(d.formatted(Date.FormatStyle().locale(ruLocale).day().month(.abbreviated)), systemImage: "calendar")
                             .font(.caption).foregroundStyle(d < Date() && !t.done ? Color.red : Color.secondary)
                     }
                     if t.priority > 0 {

@@ -392,7 +392,7 @@ struct AppearanceView: View {
                         Image(systemName: it.1).font(.title3)
                         Text(it.0).font(.caption.weight(.medium))
                     }
-                    .foregroundStyle(on ? .white : .primary)
+                    .foregroundStyle(on ? store.meColor.onAccent : .primary)
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
                     .background(on ? AnyShapeStyle(store.meColor) : AnyShapeStyle(Pal.field), in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                 }
@@ -515,16 +515,16 @@ struct LivePreview: View {
                 .background(Color(hex: "C2480A"), in: RoundedRectangle(cornerRadius: store.radius, style: .continuous))
                 HStack {
                     Text("Что на ужин?").font(.subheadline).padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(store.partnerColor, in: RoundedRectangle(cornerRadius: bubble, style: .continuous)).foregroundStyle(.white)
+                        .background(store.partnerColor, in: RoundedRectangle(cornerRadius: bubble, style: .continuous)).foregroundStyle(store.partnerColor.onAccent)
                     Spacer()
                 }
                 HStack {
                     Spacer()
                     Text("Паста, скоро буду").font(.subheadline).padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(store.meColor, in: RoundedRectangle(cornerRadius: bubble, style: .continuous)).foregroundStyle(.white)
+                        .background(store.meColor, in: RoundedRectangle(cornerRadius: bubble, style: .continuous)).foregroundStyle(store.meColor.onAccent)
                 }
                 HStack(spacing: 8) {
-                    Label("Чат", systemImage: "bubble.left.fill").font(.caption.weight(.medium)).foregroundStyle(.white)
+                    Label("Чат", systemImage: "bubble.left.fill").font(.caption.weight(.medium)).foregroundStyle(store.meColor.onAccent)
                         .padding(.horizontal, 12).frame(height: 36).background(store.meColor, in: Capsule())
                     ForEach(["heart", "photo", "map"], id: \.self) { Image(systemName: $0).foregroundStyle(.secondary).frame(maxWidth: .infinity) }
                 }

@@ -27,6 +27,21 @@ extension Color {
     }
 }
 
+/// Русская локаль для дат: `Date.formatted` берёт язык телефона, а не язык приложения.
+let ruLocale = Locale(identifier: "ru_RU")
+
+extension Color {
+    /// Белый или тёмный текст, смотря что читается лучше на этом цвете (для крупного и среднего текста).
+    var onAccent: Color {
+        let u = UIColor(self)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        u.getRed(&r, green: &g, blue: &b, alpha: &a)
+        func lin(_ c: CGFloat) -> Double { let v = Double(c); return v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+        let l = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+        return 1.05 / (l + 0.05) >= 3.4 ? .white : Color(hex: "14171F")
+    }
+}
+
 struct ColorPair: Identifiable {
     let id: String
     let me: String
@@ -71,7 +86,7 @@ struct BigButton: ViewModifier {
     func body(content: Content) -> some View {
         content
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundStyle(store.meColor.onAccent)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .glass(RoundedRectangle(cornerRadius: min(store.radius, 26), style: .continuous), tint: store.meColor, interactive: true)

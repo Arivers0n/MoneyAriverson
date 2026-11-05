@@ -30,7 +30,7 @@ struct CalendarView: View {
                 HStack {
                     Button { shift(-1) } label: { Image(systemName: "chevron.left").padding(8) }
                     Spacer()
-                    Text(month.formatted(.dateTime.month(.wide).year()).capitalized).font(.headline)
+                    Text(month.formatted(Date.FormatStyle().locale(ruLocale).month(.wide).year()).capitalized).font(.headline)
                     Spacer()
                     Button { shift(1) } label: { Image(systemName: "chevron.right").padding(8) }
                 }
@@ -48,7 +48,7 @@ struct CalendarView: View {
             }
             .padding(14).card()
 
-            SectionTitle(selected.formatted(.dateTime.weekday(.wide).day().month(.wide)).capitalized)
+            SectionTitle(selected.formatted(Date.FormatStyle().locale(ruLocale).weekday(.wide).day().month(.wide)).capitalized)
             let evs = store.events(on: selected)
             let dueTasks = store.data.tasks.filter { t in
                 guard let d = t.due, !t.done else { return false }
@@ -63,7 +63,7 @@ struct CalendarView: View {
                     Text(e.emoji).font(.title2)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(e.title).font(.body.weight(.medium))
-                        Text(e.yearly ? "каждый год" : e.date.formatted(.dateTime.hour().minute()))
+                        Text(e.yearly ? "каждый год" : e.date.formatted(Date.FormatStyle().locale(ruLocale).hour().minute()))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()

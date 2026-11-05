@@ -9,7 +9,9 @@ struct VdvoemApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if store.data.profile.onboarded {
+                if Demo.screen != nil {
+                    DemoRoot()
+                } else if store.data.profile.onboarded {
                     if store.data.profile.lockApp {
                         LockGate(title: "Вдвоём") { RootView() }
                     } else {

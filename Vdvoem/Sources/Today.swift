@@ -58,15 +58,20 @@ struct TodayView: View {
 
     // Шапка с аватарами
 
+    private var dateTitle: String {
+        let t = Date().formatted(Date.FormatStyle().locale(ruLocale).weekday(.wide).day().month(.wide))
+        return t.prefix(1).uppercased() + t.dropFirst()
+    }
+
     private var header: some View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Сегодня").font(.system(size: 32, weight: .medium))
-                Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)))
+                Text(dateTitle)
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
-            HStack(spacing: -6) {
+            HStack(spacing: 4) {
                 VStack(spacing: 0) { Avatar(who: .me); Text("Я").font(.caption2.weight(.semibold)) }
                 VStack(spacing: 0) { Avatar(who: .partner); Text(store.name(.partner)).font(.caption2.weight(.semibold)).lineLimit(1) }
             }
@@ -174,19 +179,20 @@ struct TodayView: View {
                 if let d = store.distanceKm() {
                     Text(d.kmText).font(.system(size: 28, weight: .medium).monospacedDigit())
                 } else {
-                    Text(store.p.shareLocation ? "Ждём партнёра" : "Скрыто").font(.headline)
-                    if !store.p.shareLocation { Text("Включите в настройках").font(.caption2).foregroundStyle(.secondary) }
+                    Text(store.p.shareLocation ? "Ждём партнёра" : "Скрыто").font(.title3.weight(.medium))
+                    Text(store.p.shareLocation ? " " : "Включите в настройках").font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
+            .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading).card()
             VStack(alignment: .leading, spacing: 4) {
                 Label("Вместе", systemImage: "heart").font(.caption.weight(.medium)).foregroundStyle(.secondary)
                 let days = max(0, Calendar.current.dateComponents([.day], from: store.p.start, to: Date()).day ?? 0)
                 Text("\(days)").font(.system(size: 28, weight: .medium).monospacedDigit())
                 Text("дней").font(.caption).foregroundStyle(.secondary)
             }
-            .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
+            .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading).card()
         }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     // Батарея
@@ -196,17 +202,21 @@ struct TodayView: View {
             ForEach(Who.allCases, id: \.self) { w in
                 let b = store.data.batteries.first { $0.who == w }
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Label(store.name(w), systemImage: b?.charging == true ? "battery.100.bolt" : "battery.75")
-                            .font(.caption.weight(.medium)).foregroundStyle(store.color(w)).lineLimit(1)
+                    HStack(spacing: 8) {
+                        Circle().fill(store.color(w)).frame(width: 8, height: 8)
+                        Text(store.name(w)).font(.caption.weight(.medium)).foregroundStyle(.secondary).lineLimit(1)
+                        Image(systemName: b?.charging == true ? "bolt.fill" : "battery.50")
+                            .font(.caption).foregroundStyle(.tertiary)
                         Spacer()
                         Text(b.map { "\(Int($0.level * 100))%" } ?? "—").font(.subheadline.weight(.medium).monospacedDigit())
                     }
                     GeometryReader { g in
                         ZStack(alignment: .leading) {
-                            Capsule().fill(Color.primary.opacity(0.1))
-                            Capsule().fill(batteryColor(b?.level ?? 0))
-                                .frame(width: max(8, g.size.width * CGFloat(b?.level ?? 0)))
+                            Capsule().fill(Color.primary.opacity(0.08))
+                            if let b {
+                                Capsule().fill(batteryColor(b.level))
+                                    .frame(width: max(8, g.size.width * CGFloat(b.level)))
+                            }
                         }
                     }
                     .frame(height: 8)

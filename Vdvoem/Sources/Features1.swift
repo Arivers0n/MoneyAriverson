@@ -33,8 +33,8 @@ struct ChatView: View {
                                 VStack(alignment: m.from == .me ? .trailing : .leading, spacing: 2) {
                                     Text(m.text).padding(.horizontal, 14).padding(.vertical, 10)
                                         .background(store.color(m.from), in: RoundedRectangle(cornerRadius: bubbleRadius(), style: .continuous))
-                                        .foregroundStyle(.white)
-                                    Text(m.date.formatted(.dateTime.hour().minute())).font(.caption2).foregroundStyle(.secondary)
+                                        .foregroundStyle(store.color(m.from).onAccent)
+                                    Text(m.date.formatted(Date.FormatStyle().locale(ruLocale).hour().minute())).font(.caption2).foregroundStyle(.secondary)
                                 }
                                 if m.from == .partner { Spacer(minLength: 50) }
                             }
@@ -97,7 +97,7 @@ struct PlansView: View {
                             VStack(alignment: .leading) {
                                 Text(p.title).font(.body.weight(.semibold))
                                 if let d = p.target {
-                                    Text(d.formatted(.dateTime.day().month(.wide).year())).font(.caption).foregroundStyle(.secondary)
+                                    Text(d.formatted(Date.FormatStyle().locale(ruLocale).day().month(.wide).year())).font(.caption).foregroundStyle(.secondary)
                                 }
                             }
                             Spacer()
@@ -266,7 +266,7 @@ struct FilesView: View {
                     Image(systemName: "doc").font(.title2).foregroundStyle(store.meColor)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(f.name).font(.body.weight(.medium)).lineLimit(1)
-                        Text(f.date.formatted(.dateTime.day().month().year())).font(.caption).foregroundStyle(.secondary)
+                        Text(f.date.formatted(Date.FormatStyle().locale(ruLocale).day().month().year())).font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
                     ShareLink(item: dir.appendingPathComponent(f.stored)) { Image(systemName: "square.and.arrow.up") }
