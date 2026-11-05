@@ -53,7 +53,7 @@ struct SettingsView: View {
                 }
                 .padding(16).card()
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
 
             group("Функции") {
                 ForEach(Module.allCases) { m in
@@ -81,7 +81,7 @@ struct SettingsView: View {
                 }
                 .padding(16).card()
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Пара").font(.footnote.weight(.medium)).foregroundStyle(.secondary)

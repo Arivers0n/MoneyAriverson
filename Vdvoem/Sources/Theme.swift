@@ -100,8 +100,12 @@ struct ThemeBackground: View {
                             .frame(height: g.size.height * 0.5)
                     }
                     if Theme.bgStyle == 1 {
-                        TimelineView(.animation(minimumInterval: 1 / 20)) { tl in
-                            blobs(t: tl.date.timeIntervalSinceReferenceDate)
+                        if Motion.reduced {
+                            blobs(t: 0)
+                        } else {
+                            TimelineView(.animation(minimumInterval: 1 / 20)) { tl in
+                                blobs(t: tl.date.timeIntervalSinceReferenceDate)
+                            }
                         }
                     }
                 }
@@ -432,7 +436,7 @@ struct AppearanceView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 
     private func patternDot(_ k: Int) -> some View {
@@ -446,7 +450,7 @@ struct AppearanceView: View {
             .overlay(Circle().strokeBorder(Color.primary, lineWidth: on ? 2 : 0).padding(-4))
             .accessibilityLabel(PatternOverlay.title(k))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 
     private func section<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {
@@ -471,7 +475,7 @@ struct AppearanceView: View {
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
                     .background(on ? AnyShapeStyle(store.meColor) : AnyShapeStyle(Pal.field), in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
             }
         }
     }
@@ -492,7 +496,7 @@ struct AppearanceView: View {
             .background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous).stroke(on ? Color.primary : .clear, lineWidth: 2))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 
     private func themeTile(_ t: ThemeDef) -> some View {
@@ -514,7 +518,7 @@ struct AppearanceView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 
     private func wallTile(_ w: WallpaperDef) -> some View {
@@ -532,7 +536,7 @@ struct AppearanceView: View {
                 Text(w.title).font(.caption2.weight(on ? .semibold : .regular)).foregroundStyle(.primary)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 
     private func iconTile(_ i: AppIconDef) -> some View {
@@ -560,7 +564,7 @@ struct AppearanceView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 
     private func setIcon(_ i: AppIconDef) {

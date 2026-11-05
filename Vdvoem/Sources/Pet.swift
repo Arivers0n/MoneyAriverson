@@ -145,7 +145,7 @@ struct PetView: View {
             .frame(maxWidth: .infinity).padding(.vertical, 12)
             .glass(RoundedRectangle(cornerRadius: Theme.r(18), style: .continuous), interactive: true)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 
     private func bounce() {
@@ -171,7 +171,7 @@ struct PetBody: View {
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
-            let t = tl.date.timeIntervalSinceReferenceDate
+            let t = Motion.reduced ? 0 : tl.date.timeIntervalSinceReferenceDate
             let breathe = 1 + CGFloat(sin(t * 2)) * 0.025
             let blink = (Int(t * 10) % 40) == 0
             ZStack {

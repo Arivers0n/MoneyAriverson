@@ -44,7 +44,7 @@ struct MemoriesView: View {
                     .clipShape(RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
                     .padding(.horizontal, 10)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
 
             if !p.caption.isEmpty {
                 Text(p.caption).font(.body).padding(.horizontal, 14)
@@ -79,7 +79,7 @@ struct ReactionBar: View {
                         .background(mine == e ? store.meColor.opacity(0.25) : Pal.field.opacity(0.6), in: Capsule())
                         .scaleEffect(mine == e ? 1.12 : 1)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
             }
             Spacer(minLength: 0)
             if let t = theirs {

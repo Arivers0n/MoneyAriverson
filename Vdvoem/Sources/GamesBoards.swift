@@ -52,7 +52,7 @@ struct DotsBoard: View {
                                 .frame(width: horiz ? s - 6 : 30, height: horiz ? 30 : s - 6)
                                 .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressStyle())
                         .disabled(v != 0 || !enabled)
                         .position(x: cx, y: cy)
                     }
@@ -123,7 +123,7 @@ struct CheckersBoard: View {
                                 }
                                 .aspectRatio(1, contentMode: .fit)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(PressStyle())
                         }
                     }
                 }
@@ -164,7 +164,7 @@ struct BattleshipBoard: View {
                     Button { withAnimation { layout = Battleship.randomLayout() }; store.tap() } label: {
                         Label("Перемешать", systemImage: "shuffle").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14)
                             .glass(RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous), interactive: true)
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressStyle())
                     Button { store.readyFleet(m.id, layout: layout) } label: { Text("Готов").bigButton() }
                 }
                 Text("Флот: 1×4, 2×3, 3×2, 4×1 клетки").font(.footnote).foregroundStyle(.secondary)
@@ -203,7 +203,7 @@ struct BattleshipBoard: View {
                             }
                             .frame(width: cell, height: cell)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressStyle())
                     }
                 }
             }
@@ -317,7 +317,7 @@ struct DurakBoard: View {
                             PlayingCard(id: c, highlight: play.contains(c), width: 58)
                                 .opacity(m.turn == .me && !play.contains(c) ? 0.55 : 1)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressStyle())
                     }
                 }
                 .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 6)
@@ -364,7 +364,7 @@ struct MemoryBoard: View {
                         .rotation3DEffect(.degrees(v == 0 ? 0 : 360), axis: (x: 0, y: 1, z: 0))
                         .animation(Motion.curve(0.4), value: v)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     .disabled(!enabled || v != 0)
                 }
             }
@@ -412,7 +412,7 @@ struct RPSBoard: View {
                             .frame(maxWidth: .infinity).padding(.vertical, 14)
                             .glass(RoundedRectangle(cornerRadius: Theme.r(22), style: .continuous), interactive: true)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressStyle())
                         .disabled(mine != 0 && !done)
                         .opacity(mine != 0 && !done ? 0.4 : 1)
                     }
@@ -501,7 +501,7 @@ struct HangmanBoard: View {
                                     .foregroundStyle(used ? .white : .primary)
                                     .background(used ? (bad ? Color.red.opacity(0.7) : Color(hex: "34C38F")) : Pal.card, in: RoundedRectangle(cornerRadius: Theme.r(10), style: .continuous))
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(PressStyle())
                             .disabled(used || m.turn != .me)
                         }
                     }

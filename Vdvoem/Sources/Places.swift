@@ -15,7 +15,7 @@ struct PlacesView: View {
                 Map(position: $camera) {
                     ForEach(store.data.pins) { pin in
                         Annotation(pin.title, coordinate: CLLocationCoordinate2D(latitude: pin.lat, longitude: pin.lon)) {
-                            Button { selected = pin; store.tap() } label: { pinView(pin) }.buttonStyle(.plain)
+                            Button { selected = pin; store.tap() } label: { pinView(pin) }.buttonStyle(PressStyle())
                         }
                     }
                     ForEach(store.data.places) { pt in

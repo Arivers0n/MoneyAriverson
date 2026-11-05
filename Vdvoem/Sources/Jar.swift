@@ -245,7 +245,7 @@ struct JarView: View {
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
                         .background(Color(hex: m.hex).opacity(0.18), in: RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                 }
             }
             TextField("Пара слов (по желанию)", text: $note)

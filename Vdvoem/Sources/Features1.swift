@@ -68,7 +68,7 @@ struct ChatView: View {
                         .scaleEffect(empty ? 0.86 : 1)
                         .opacity(empty ? 0.4 : 1)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
                 .disabled(empty)
                 .animation(Motion.spring, value: empty)
             }
@@ -120,7 +120,7 @@ struct PlansView: View {
                     }
                     .padding(14).card()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
             }
         }
         .navigationTitle("Планы")
@@ -167,7 +167,7 @@ struct PlanDetail: View {
                     Button { s.done.toggle(); store.tap() } label: {
                         Image(systemName: s.done ? "checkmark.circle.fill" : "circle").font(.title3)
                             .foregroundStyle(s.done ? store.meColor : Color.secondary)
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressStyle())
                     Text(s.title).strikethrough(s.done)
                     Spacer()
                 }
@@ -218,7 +218,7 @@ struct NotesView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading).padding(14).card()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
             }
         }
         .navigationTitle("Заметки")

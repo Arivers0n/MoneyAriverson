@@ -1,14 +1,24 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Движение: одна кривая на всё приложение
 
 enum Motion {
+    /// Включено «Уменьшение движения» в настройках iPhone: переходы становятся короткими и без пружин.
+    static var reduced: Bool { UIAccessibility.isReduceMotionEnabled }
+
     /// cubic-bezier(0.22, 1, 0.36, 1): быстро стартует, мягко садится.
-    static func curve(_ d: Double) -> Animation { .timingCurve(0.22, 1, 0.36, 1, duration: d) }
-    static let enter = curve(0.34)
-    /// Уходящий экран остаётся непрозрачным, пока входящий не закончил появление.
-    static let exit = Animation.linear(duration: 0.01).delay(0.34)
-    static let spring = Animation.spring(response: 0.38, dampingFraction: 0.88)
+    static func curve(_ d: Double) -> Animation {
+        reduced ? .easeOut(duration: min(d, 0.18)) : .timingCurve(0.22, 1, 0.36, 1, duration: d)
+    }
+    /// Появление и уход экранов: быстрее 300 мс, иначе частые переходы утомляют.
+    static var enter: Animation { curve(0.26) }
+    /// Нажатие: мгновенный отклик.
+    static var press: Animation { .easeOut(duration: 0.1) }
+    /// Обычная пружина: почти без отскока, всегда можно перехватить на лету.
+    static var spring: Animation { reduced ? curve(0.2) : .spring(response: 0.38, dampingFraction: 0.92) }
+    /// Для движений после жеста (перетаскивание, сброс на место): чуть пружинит, как физический предмет.
+    static var bouncy: Animation { reduced ? curve(0.2) : .spring(response: 0.32, dampingFraction: 0.8) }
 }
 
 // MARK: - Жидкое стекло iOS 26 (на старых iOS — материал)
@@ -51,7 +61,7 @@ struct Jiggle: ViewModifier {
     let on: Bool
     let seed: Double
     func body(content: Content) -> some View {
-        if on {
+        if on && !Motion.reduced {
             TimelineView(.animation) { ctx in
                 let t = ctx.date.timeIntervalSinceReferenceDate
                 content.rotationEffect(.degrees(sin(t * 19 + seed) * 1.7))

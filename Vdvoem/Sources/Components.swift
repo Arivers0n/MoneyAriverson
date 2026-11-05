@@ -331,8 +331,9 @@ struct AccentGlass<S: Shape>: ViewModifier {
 struct PressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .opacity(configuration.isPressed ? 0.92 : 1)
-            .animation(Motion.curve(0.15), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            // Быстро вниз при касании, чуть мягче обратно при отпускании
+            .animation(configuration.isPressed ? Motion.press : Motion.curve(0.22), value: configuration.isPressed)
     }
 }

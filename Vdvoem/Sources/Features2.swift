@@ -141,7 +141,7 @@ struct CompatView: View {
                     Text(item.a[i]).font(.body.weight(.medium)).frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16).card()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
             }
         }
     }
@@ -208,7 +208,7 @@ struct CapsuleView: View {
                     }
                     .padding(14).card()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
             }
         }
         .pairToolbar(scope: false, add: { adding = true })
@@ -280,7 +280,7 @@ struct VoteView: View {
                             }
                             .padding(12).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(12), style: .continuous))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressStyle())
                     }
                 }
                 .padding(14).card()
@@ -353,7 +353,7 @@ struct RadarView: View {
                     } label: {
                         Image(systemName: g.bought ? "checkmark.circle.fill" : "circle").font(.title3)
                             .foregroundStyle(g.bought ? store.meColor : Color.secondary)
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressStyle())
                     VStack(alignment: .leading, spacing: 2) {
                         Text(g.title).strikethrough(g.bought)
                         if !g.occasion.isEmpty { Text(g.occasion).font(.caption).foregroundStyle(.secondary) }
@@ -446,7 +446,7 @@ struct MoodView: View {
                                     .padding(.vertical, 8)
                                     .background(current(w) == i ? store.color(w).opacity(0.3) : Color.clear, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(PressStyle())
                         }
                     }
                 }

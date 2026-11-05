@@ -126,7 +126,7 @@ struct CardsView: View {
             }
             ForEach(store.data.cards) { c in
                 Button { opened = c; store.tap() } label: { CardTile(card: c) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     .contextMenu {
                         Button("Удалить", role: .destructive) {
                             withAnimation { store.data.cards.removeAll { $0.id == c.id } }
@@ -264,7 +264,7 @@ struct AddCardSheet: View {
                                             .foregroundStyle(hex == b.hex ? .white : .primary)
                                             .background(hex == b.hex ? Color(hex: b.hex) : Pal.card, in: Capsule())
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(PressStyle())
                                 }
                             }
                         }

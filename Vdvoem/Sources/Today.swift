@@ -274,7 +274,7 @@ struct TodayView: View {
             }
             .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 
     private var sleepDetail: String {
@@ -509,7 +509,7 @@ struct StatusSheet: View {
                             Text(e).font(.system(size: 22)).frame(width: 40, height: 40)
                                 .background(customEmoji == e ? c.opacity(0.2) : Pal.field, in: Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressStyle())
                     }
                 }
             }
@@ -536,7 +536,7 @@ struct StatusSheet: View {
                                 .padding(.horizontal, 14).frame(height: 36)
                                 .background(Pal.field, in: Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressStyle())
                     }
                 }
             }
@@ -709,7 +709,7 @@ struct SleepView: View {
                                     .foregroundStyle(quality == q ? .white : .primary)
                                     .background(quality == q ? Color(hex: sleepHexes[q]) : Color(hex: sleepHexes[q]).opacity(0.14), in: Capsule())
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(PressStyle())
                         }
                     }
                     Button {
@@ -826,7 +826,7 @@ struct TrackerView: View {
                 }
                 .scaleEffect(bump == c.id ? 0.97 : 1)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
             HStack(spacing: 8) {
                 ForEach(Who.allCases, id: \.self) { w in
                     HStack(spacing: 8) {

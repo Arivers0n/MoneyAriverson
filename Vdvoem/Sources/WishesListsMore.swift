@@ -128,7 +128,7 @@ struct ListsView: View {
                     }
                     .padding(14).card()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
             }
         }
         .navigationTitle("Списки")
@@ -178,14 +178,14 @@ struct ListDetail: View {
                         Image(systemName: e.done ? "checkmark.circle.fill" : "circle").font(.title3)
                             .foregroundStyle(e.done ? store.meColor : Color.secondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     Text(e.title).strikethrough(e.done).foregroundStyle(e.done ? .secondary : .primary)
                     Spacer()
                     Button {
                         let id = e.id
                         list.items.removeAll { $0.id == id }
                     } label: { Image(systemName: "xmark").font(.caption).foregroundStyle(.tertiary) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                 }
                 .padding(14).card()
             }
@@ -249,7 +249,7 @@ struct MoreView: View {
                 }
                 .padding(16).card()
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
             .padding(.top, 6)
         }
         .navigationTitle("Ещё")

@@ -153,7 +153,7 @@ private struct ColorsStep: View {
                 }
                 .padding(14).card()
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
         }
         VStack(spacing: 4) {
             ColorPicker(store.name(.me), selection: Binding(
@@ -235,7 +235,7 @@ private struct FeaturesStep: View {
                 }
                 .padding(14).card()
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
         }
     }
 }

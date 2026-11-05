@@ -66,7 +66,7 @@ struct TaskRow: View {
                     .symbolEffect(.bounce, value: t.done)
                     .foregroundStyle(t.done ? store.color(t.owner ?? .me) : Color.secondary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressStyle())
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(t.title).font(.body.weight(.medium))

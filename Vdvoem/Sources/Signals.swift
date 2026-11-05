@@ -71,7 +71,7 @@ struct SignalView: View {
                             .contentTransition(.numericText()).offset(y: -4)
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
                 .overlay { HeartBurst(trigger: burst).allowsHitTesting(false) }
 
                 HStack(spacing: 12) {
@@ -92,7 +92,7 @@ struct SignalView: View {
                             .background(Color(hex: k.hex).opacity(0.16), in: RoundedRectangle(cornerRadius: store.radius, style: .continuous))
                             .overlay(RoundedRectangle(cornerRadius: store.radius, style: .continuous).stroke(Color(hex: k.hex).opacity(0.35), lineWidth: 1))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressStyle())
                     }
                 }
 

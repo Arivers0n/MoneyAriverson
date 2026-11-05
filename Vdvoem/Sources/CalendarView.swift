@@ -112,7 +112,7 @@ struct CalendarView: View {
             .frame(maxWidth: .infinity).frame(height: 42)
             .background(isSel ? Color.primary : Color.clear, in: RoundedRectangle(cornerRadius: min(store.radius, 16), style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 }
 

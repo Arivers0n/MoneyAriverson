@@ -586,12 +586,12 @@ struct GlassDock: View {
                 dragX = v.translation.width
                 let target = min(max(Int((Double(dragStart) + Double(dragX / itemW)).rounded()), 0), live.count - 1)
                 if target != cur {
-                    withAnimation(Motion.spring) { live.move(fromOffsets: IndexSet(integer: cur), toOffset: target > cur ? target + 1 : target) }
+                    withAnimation(Motion.bouncy) { live.move(fromOffsets: IndexSet(integer: cur), toOffset: target > cur ? target + 1 : target) }
                     store.selectionTick()
                 }
             }
             .onEnded { _ in
-                withAnimation(Motion.spring) { dragID = nil; dragX = 0 }
+                withAnimation(Motion.bouncy) { dragID = nil; dragX = 0 }
             }
     }
 

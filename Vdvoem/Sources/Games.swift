@@ -68,7 +68,7 @@ struct GamesView: View {
                         let m = store.newMatch(k)
                         openID = m.id
                     } label: { kindTile(k, locked: locked) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     .disabled(locked)
                 }
             }
@@ -77,7 +77,7 @@ struct GamesView: View {
                 SectionTitle("Идут сейчас")
                 VStack(spacing: 0) {
                     ForEach(playing) { m in
-                        Button { openID = m.id } label: { matchRow(m) }.buttonStyle(.plain)
+                        Button { openID = m.id } label: { matchRow(m) }.buttonStyle(PressStyle())
                         if m.id != playing.last?.id { Divider().padding(.leading, 72) }
                     }
                 }
@@ -87,7 +87,7 @@ struct GamesView: View {
                 SectionTitle("Сыграны")
                 VStack(spacing: 0) {
                     ForEach(finished.prefix(10)) { m in
-                        Button { openID = m.id } label: { matchRow(m) }.buttonStyle(.plain)
+                        Button { openID = m.id } label: { matchRow(m) }.buttonStyle(PressStyle())
                         if m.id != finished.prefix(10).last?.id { Divider().padding(.leading, 72) }
                     }
                 }
@@ -289,7 +289,7 @@ struct MatchView: View {
                     }
                     .aspectRatio(1, contentMode: .fit)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
             }
         }
         .frame(maxWidth: 420)
@@ -314,7 +314,7 @@ struct MatchView: View {
                     .padding(4)
                     .background(Pal.card.opacity(valid.contains(c) && canTap(m) ? 1 : 0.7), in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
             }
         }
         .frame(maxWidth: 460)
@@ -341,7 +341,7 @@ struct MatchView: View {
                             }
                             .aspectRatio(1, contentMode: .fit)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressStyle())
                     }
                 }
             }
