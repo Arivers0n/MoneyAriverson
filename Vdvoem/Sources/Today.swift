@@ -38,6 +38,7 @@ struct TodayView: View {
         ScrollView {
             VStack(spacing: 16) {
                 header
+                nowCard
                 if let mine = store.statusNow(.me) { statusHero(mine, who: .me) } else { askCard }
                 if let theirs = store.statusNow(.partner) { statusHero(theirs, who: .partner) }
                 tiles
@@ -77,6 +78,90 @@ struct TodayView: View {
             }
         }
         .padding(.top, 8)
+    }
+
+    // Главное сейчас: последнее сообщение, дела и ближайшая дата — то, ради чего открывают приложение
+
+    private struct NowRow: Identifiable {
+        let id: String
+        let symbol: String
+        let hex: String
+        let title: String
+        let detail: String
+        let module: Module
+    }
+
+    /// Ближайшее наступление даты (для ежегодных — в этом или следующем году).
+    private func nextDate(_ e: EventItem) -> Date? {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        if !e.yearly { return cal.startOfDay(for: e.date) >= today ? cal.startOfDay(for: e.date) : nil }
+        var c = cal.dateComponents([.month, .day], from: e.date)
+        for add in 0...1 {
+            c.year = cal.component(.year, from: today) + add
+            if let d = cal.date(from: c), d >= today { return d }
+        }
+        return nil
+    }
+
+    private func inDays(_ n: Int) -> String {
+        switch n {
+        case 0: return "сегодня"
+        case 1: return "завтра"
+        default: return "через \(n) дн."
+        }
+    }
+
+    private var nowRows: [NowRow] {
+        var rows: [NowRow] = []
+        if let m = store.data.messages.last(where: { $0.from == .partner }) {
+            rows.append(NowRow(id: "msg", symbol: "bubble.left.fill", hex: "6EA8FF",
+                               title: "\(store.name(.partner)): \(m.text)", detail: m.date.agoText, module: .chat))
+        }
+        let open = store.data.tasks.filter { !$0.done && $0.owner != .partner }
+        if !open.isEmpty {
+            let urgent = open.filter { $0.priority > 0 }.count
+            rows.append(NowRow(id: "tasks", symbol: "checklist", hex: "3DBE8B",
+                               title: "Дел впереди: \(open.count)",
+                               detail: urgent > 0 ? "из них важных: \(urgent)" : "ничего срочного", module: .tasks))
+        }
+        let cal = Calendar.current
+        let next = store.data.events.compactMap { e -> (EventItem, Date)? in nextDate(e).map { (e, $0) } }
+            .min { $0.1 < $1.1 }
+        if let (e, d) = next {
+            let n = cal.dateComponents([.day], from: cal.startOfDay(for: Date()), to: d).day ?? 0
+            rows.append(NowRow(id: "event", symbol: "calendar", hex: "FF9E5E",
+                               title: e.title, detail: inDays(n), module: .calendar))
+        }
+        return rows
+    }
+
+    @ViewBuilder private var nowCard: some View {
+        let rows = nowRows
+        if !rows.isEmpty {
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { i, r in
+                    NavigationLink { ModuleView(module: r.module) } label: {
+                        HStack(spacing: 12) {
+                            let c = Color(hex: r.hex).boosted(minS: 0.5, minB: 0.75)
+                            Image(systemName: r.symbol).font(.system(size: 15, weight: .medium)).foregroundStyle(c)
+                                .frame(width: 34, height: 34).background(c.opacity(0.14), in: Circle())
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(r.title).font(.subheadline.weight(.medium)).lineLimit(1)
+                                Text(r.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                        }
+                        .padding(.horizontal, 16).padding(.vertical, 12)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressStyle())
+                    if i < rows.count - 1 { Divider().padding(.leading, 62) }
+                }
+            }
+            .card()
+        }
     }
 
     // Что случилось?

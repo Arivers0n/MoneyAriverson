@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Движение: одна кривая на всё приложение
 
@@ -61,5 +62,47 @@ struct ArtTile: View {
         }
         .frame(width: size, height: size)
         .shadow(color: c.opacity(0.45), radius: 8, y: 5)
+    }
+}
+
+
+// MARK: - Место под плавающий док
+
+/// Увеличивает нижнюю безопасную зону всего окна на высоту дока. Так прокрутка, поле ввода чата
+/// и нижние кнопки на любом экране (в том числе открытом из «Ещё») заканчиваются выше дока,
+/// а содержимое при этом по-прежнему проезжает под стеклом.
+struct DockInset: UIViewControllerRepresentable {
+    let bottom: CGFloat
+    func makeUIViewController(context: Context) -> InsetController { InsetController() }
+    func updateUIViewController(_ vc: InsetController, context: Context) { vc.bottom = bottom }
+
+    final class InsetController: UIViewController {
+        var bottom: CGFloat = 0 { didSet { if oldValue != bottom { apply() } } }
+        private weak var target: UIViewController?
+
+        override func didMove(toParent parent: UIViewController?) {
+            super.didMove(toParent: parent)
+            if parent == nil { target?.additionalSafeAreaInsets.bottom = 0 } else { apply() }
+        }
+        override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); apply() }
+        override func viewDidDisappear(_ animated: Bool) { super.viewDidDisappear(animated); target?.additionalSafeAreaInsets.bottom = 0 }
+
+        private func apply() {
+            var top: UIViewController = self
+            while let p = top.parent { top = p }
+            target = top
+            UIView.animate(withDuration: 0.25) {
+                top.additionalSafeAreaInsets.bottom = self.bottom
+                top.view.layoutIfNeeded()
+            }
+        }
+    }
+}
+
+/// Нижний отступ экрана устройства (под индикатором «домой»), без учёта нашей вставки.
+enum Screen2 {
+    static var homeInset: CGFloat {
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        return scene?.windows.first(where: { $0.isKeyWindow })?.safeAreaInsets.bottom ?? 0
     }
 }

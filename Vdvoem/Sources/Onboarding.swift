@@ -186,7 +186,7 @@ struct LookControls: View {
                 HStack {
                     Text("Скругление").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                     Spacer()
-                    Text("\(Int(store.radius))px").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                    Text("\(Int(store.radius)) пт").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                 }
                 Slider(value: Binding(get: { Double(store.radius) }, set: { store.setRadius($0) }), in: 0...30, step: 1,
                        onEditingChanged: { editing in if !editing { store.commitRadius() } })

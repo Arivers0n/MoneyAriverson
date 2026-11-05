@@ -132,8 +132,12 @@ final class Store: ObservableObject {
 
     // MARK: Модули
     var active: [Module] { p.order.filter { !p.disabled.contains($0) } }
-    var bar: [Module] { Array(active.prefix(4)) }
-    var more: [Module] { Array(active.dropFirst(4)) }
+    /// Нижняя панель: «Сегодня» всегда первая (приложение открывается на самом важном), дальше — выбранные разделы.
+    var bar: [Module] {
+        guard active.contains(.today) else { return Array(active.prefix(4)) }
+        return [.today] + Array(active.filter { $0 != .today }.prefix(3))
+    }
+    var more: [Module] { active.filter { !bar.contains($0) } }
 
     // MARK: Утилиты
     func tap() {

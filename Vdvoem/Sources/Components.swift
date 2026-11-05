@@ -318,3 +318,13 @@ struct AccentGlass<S: Shape>: ViewModifier {
         }
     }
 }
+
+/// Нажатие карточки: лёгкое «вдавливание» на 150 мс, одна кривая на всё приложение.
+struct PressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .animation(Motion.curve(0.15), value: configuration.isPressed)
+    }
+}

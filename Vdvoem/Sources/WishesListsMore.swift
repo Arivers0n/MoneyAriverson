@@ -230,10 +230,10 @@ struct MoreView: View {
                     NavigationLink { ModuleView(module: m) } label: {
                         tile(m.title, m.subtitle, symbol: m.icon, hex: m.hex, locked: m.locked, dot: m == .question && !answeredToday)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                 }
                 NavigationLink { SettingsView() } label: { tile("Настройки", "Вид, пара, защита", symbol: "gearshape", hex: "AEB8C8", locked: false, dot: false) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
             }
             .padding(.top, 4)
 

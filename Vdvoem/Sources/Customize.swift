@@ -426,7 +426,9 @@ struct GlassDock: View {
                     .scaleEffect(collapsed ? 1 : 0.4)
             }
             .frame(width: collapsed ? height : full, height: height)
+            .background(.thinMaterial, in: shape)
             .glass(shape, interactive: true)
+            .shadow(color: .black.opacity(0.12), radius: 16, y: 6)
             .contentShape(shape)
             .onTapGesture { if collapsed { dock.set(false, haptics: store.p.haptics) } }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: collapsed ? .bottomTrailing : .bottom)

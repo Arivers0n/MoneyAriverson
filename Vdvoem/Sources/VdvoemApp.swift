@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import LocalAuthentication
 
 @main
@@ -49,6 +50,8 @@ struct RootView: View {
 
     /// Вкладка, с которой только что ушли: остаётся полностью видимой, пока новая проявляется.
     @State private var leaving: String?
+    /// Пока открыта клавиатура, док прячется, а вставка под него убирается.
+    @State private var typing = false
 
     var body: some View {
         // Все вкладки создаются сразу (прокрутка и ввод сохраняются, на первом заходе ничего не «выскакивает»).
@@ -60,8 +63,6 @@ struct RootView: View {
                     if t.id == "more" { MoreView() }
                     else if let m = Module(rawValue: t.id) { ModuleView(module: m) }
                 }
-                // Место под док (и под круглую кнопку): контент и нижние кнопки не перекрываются.
-                .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: 74) }
                 .opacity(on || t.id == leaving ? 1 : 0)
                 .allowsHitTesting(on)
                 .accessibilityHidden(!on)
@@ -69,9 +70,16 @@ struct RootView: View {
             }
         }
         .animation(Motion.enter, value: current)
+        .background(DockInset(bottom: typing ? 0 : 78))
         .overlay(alignment: .bottom) {
+            // Док стоит у самого низа экрана (над индикатором «домой»), а не выше нашей вставки.
             GlassDock(tabs: tabs, selected: Binding(get: { current }, set: { selected = $0 }))
-                .padding(.bottom, 2)
+                .padding(.bottom, Screen2.homeInset + 2)
+                .ignoresSafeArea(.container, edges: .bottom)
+                .opacity(typing ? 0 : 1)
+                .offset(y: typing ? 24 : 0)
+                .allowsHitTesting(!typing)
+                .animation(Motion.enter, value: typing)
         }
         .overlay { SignalOverlay() }
         .environmentObject(dock)
@@ -86,7 +94,8 @@ struct RootView: View {
         }
         // «Ещё» сворачивает док в круг, любая другая вкладка разворачивает.
         .onChange(of: current) { _, new in dock.set(new == "more", haptics: store.p.haptics) }
-        .ignoresSafeArea(.keyboard)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in typing = true }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in typing = false }
     }
 }
 
