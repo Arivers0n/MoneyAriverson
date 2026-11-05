@@ -47,14 +47,14 @@ struct RootView: View {
     }
     private var current: String { tabs.contains { $0.id == selected } ? selected : (tabs.first?.id ?? "more") }
 
-    @State private var visited: Set<String> = []
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Вкладка, с которой только что ушли: остаётся полностью видимой, пока новая проявляется.
+    @State private var leaving: String?
 
     var body: some View {
-        // Вкладки живут вместе (состояние и прокрутка сохраняются), а переключаются плавным
-        // растворением: новая выходит поверх, старая исчезает только когда новая уже видна.
+        // Все вкладки создаются сразу (прокрутка и ввод сохраняются, на первом заходе ничего не «выскакивает»).
+        // Новая вкладка плавно проявляется поверх старой, старая гаснет только после этого.
         ZStack {
-            ForEach(tabs.filter { visited.contains($0.id) || $0.id == current }) { t in
+            ForEach(tabs) { t in
                 let on = t.id == current
                 NavigationStack {
                     if t.id == "more" { MoreView() }
@@ -62,22 +62,28 @@ struct RootView: View {
                 }
                 // Место под док (и под круглую кнопку): контент и нижние кнопки не перекрываются.
                 .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: 74) }
-                .opacity(on ? 1 : 0)
-                .scaleEffect(on || reduceMotion ? 1 : 0.985)
+                .opacity(on || t.id == leaving ? 1 : 0)
                 .allowsHitTesting(on)
                 .accessibilityHidden(!on)
-                .zIndex(on ? 1 : 0)
-                .animation(on ? Motion.enter : Motion.exit, value: on)
+                .zIndex(on ? 2 : (t.id == leaving ? 1 : 0))
             }
         }
+        .animation(Motion.enter, value: current)
         .overlay(alignment: .bottom) {
             GlassDock(tabs: tabs, selected: Binding(get: { current }, set: { selected = $0 }))
                 .padding(.bottom, 2)
         }
         .overlay { SignalOverlay() }
         .environmentObject(dock)
-        .onAppear { if selected.isEmpty { selected = tabs.first?.id ?? "more" }; visited.insert(current) }
-        .onChange(of: current) { _, new in visited.insert(new) }
+        .onAppear { if selected.isEmpty { selected = tabs.first?.id ?? "more" } }
+        .onChange(of: current) { old, _ in
+            leaving = old
+            Task {
+                try? await Task.sleep(nanoseconds: 380_000_000)
+                var t = Transaction(); t.disablesAnimations = true
+                withTransaction(t) { leaving = nil }
+            }
+        }
         // «Ещё» сворачивает док в круг, любая другая вкладка разворачивает.
         .onChange(of: current) { _, new in dock.set(new == "more", haptics: store.p.haptics) }
         .ignoresSafeArea(.keyboard)

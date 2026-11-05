@@ -74,10 +74,9 @@ struct CardBG: ViewModifier {
             content.background(Pal.card.opacity(0.45), in: shape)
                 .overlay(shape.stroke(Color.primary.opacity(0.12), lineWidth: 1))
         default:
-            content.background(Pal.card.opacity(0.78), in: shape)
-                .background(.ultraThinMaterial, in: shape)
-                .overlay(shape.strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5))
-                .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+            // Жидкое стекло: фон темы просвечивает и преломляется; лёгкий оттенок карточки держит читаемость.
+            content.glass(shape, tint: Pal.card.opacity(0.35))
+                .shadow(color: .black.opacity(0.05), radius: 12, y: 6)
         }
     }
 }

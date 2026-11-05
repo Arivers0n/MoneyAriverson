@@ -442,7 +442,7 @@ struct GlassDock: View {
         let st = store.p.iconStyle
         return Button {
             if selected != t.id { store.tap() }
-            withAnimation(Store.spring) { selected = t.id }
+            selected = t.id
         } label: {
             VStack(spacing: 0) {
                 TabGlyph(symbol: t.symbol, color: st == 2 ? Color(hex: t.hex) : store.meColor, color2: store.partnerColor,
