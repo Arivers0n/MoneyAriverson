@@ -241,8 +241,21 @@ private struct FeaturesStep: View {
 }
 
 private struct PairStep: View {
+    @EnvironmentObject var sync: SyncEngine
+    @State private var signIn = false
     var body: some View {
         Title(big: "Подключите вторую половинку", small: "Один создаёт код, второй вводит его. После этого всё — задачи, чат, статусы и игры — появляется у обоих сразу.")
+        if !sync.isSignedIn {
+            Button { signIn = true } label: {
+                HStack {
+                    Image(systemName: "person.crop.circle")
+                    Text("Уже есть аккаунт? Войти").font(.subheadline.weight(.semibold))
+                }
+                .frame(maxWidth: .infinity).padding(.vertical, 12).card()
+            }
+            .buttonStyle(PressStyle())
+            .sheet(isPresented: $signIn) { SignInSheet() }
+        }
         PairPanel()
         Text("Этот шаг можно пропустить и подключиться позже в настройках.")
             .font(.footnote).foregroundStyle(.secondary)

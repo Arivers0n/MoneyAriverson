@@ -23,6 +23,9 @@ targets:
       path: Sources/Info.plist
       properties:
         CFBundleDisplayName: Вдвоём
+        CFBundleURLTypes:
+          - CFBundleURLName: ru.vdvoem.app
+            CFBundleURLSchemes: [vdvoem]
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

@@ -1,5 +1,6 @@
 import SwiftUI
 import Security
+import AuthenticationServices
 
 // MARK: - Настройки сервера
 
@@ -202,6 +203,9 @@ final class SyncEngine: ObservableObject {
     @Published private(set) var status: SyncStatus = .notPaired
     @Published private(set) var busy = false
     @Published var message: String?
+    /// Как устройство вошло: "anon" (безымянный аккаунт), "email" или "yandex".
+    @Published private(set) var accountKind: String = UserDefaults.standard.string(forKey: "vd.acc.kind") ?? "anon"
+    @Published private(set) var accountEmail: String = UserDefaults.standard.string(forKey: "vd.acc.email") ?? ""
 
     private weak var store: Store?
     private let adapters = makeAdapters()
@@ -354,11 +358,11 @@ final class SyncEngine: ObservableObject {
         return "Что-то пошло не так. Повторите позже."
     }
 
-    private func raw(_ path: String, _ body: Data, bearer: String?) async throws -> (Data, Int) {
+    private func raw(_ path: String, _ body: Data, bearer: String?, method: String = "POST") async throws -> (Data, Int) {
         guard let url = URL(string: VDConfig.base + path) else { throw SyncError.server("Неверный адрес сервера") }
         var r = URLRequest(url: url)
-        r.httpMethod = "POST"
-        r.httpBody = body
+        r.httpMethod = method
+        if method != "GET" { r.httpBody = body }
         r.timeoutInterval = 25
         r.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let b = bearer { r.setValue(b, forHTTPHeaderField: "Authorization") }
@@ -429,6 +433,160 @@ final class SyncEngine: ObservableObject {
         let o = try JSONSerialization.jsonObject(with: d) as? [String: Any]
         guard let id = o?["id"] as? String, let file = o?["file"] as? String else { throw SyncError.server("Сервер не принял фото") }
         return (id, file)
+    }
+
+
+    // MARK: Аккаунт: почта и Яндекс
+
+    var isSignedIn: Bool { accountKind != "anon" }
+    var accountTitle: String { accountKind == "yandex" ? "Яндекс" : "Почта" }
+
+    private func setAccount(kind: String, email: String) {
+        accountKind = kind
+        accountEmail = email
+        UserDefaults.standard.set(kind, forKey: "vd.acc.kind")
+        UserDefaults.standard.set(email, forKey: "vd.acc.email")
+    }
+
+    private func checkEmail(_ email: String, _ pass: String) -> String? {
+        if !email.contains("@") || !email.contains(".") { return "Проверьте адрес почты" }
+        if pass.count < 8 { return "Пароль — не короче 8 символов" }
+        return nil
+    }
+
+    /// Создать аккаунт: безымянный аккаунт телефона получает почту и пароль, пара и данные остаются на месте.
+    func registerEmail(_ rawEmail: String, _ pass: String) async -> String? {
+        let email = rawEmail.trimmingCharacters(in: .whitespaces).lowercased()
+        if let e = checkEmail(email, pass) { return e }
+        if isSignedIn { return "Вы уже вошли. Сначала выйдите из аккаунта." }
+        busy = true
+        defer { busy = false }
+        do {
+            if token.isEmpty { try await login() }
+            let oldPass = Keychain.get("pass") ?? ""
+            let (d, code) = try await raw("/api/collections/vd_users/records/" + myId,
+                                          obj(["email": email, "password": pass, "passwordConfirm": pass, "oldPassword": oldPass]),
+                                          bearer: token, method: "PATCH")
+            if code == 400 { return "Эта почта уже занята или указана неверно. Если аккаунт ваш — откройте вкладку «Вход»." }
+            guard (200..<300).contains(code) else { return Self.errText(d, code) }
+            Keychain.set("email", email)
+            Keychain.set("pass", pass)
+            token = ""
+            try await login()
+            setAccount(kind: "email", email: email)
+            return nil
+        } catch { return Self.human(error) }
+    }
+
+    /// Войти в существующий аккаунт по почте и паролю.
+    func loginEmail(_ rawEmail: String, _ pass: String) async -> String? {
+        let email = rawEmail.trimmingCharacters(in: .whitespaces).lowercased()
+        if email.isEmpty || pass.isEmpty { return "Введите почту и пароль" }
+        busy = true
+        defer { busy = false }
+        do {
+            let (d, code) = try await raw("/api/collections/vd_users/auth-with-password",
+                                          obj(["identity": email, "password": pass]), bearer: nil)
+            if code == 400 { return "Неверная почта или пароль" }
+            guard (200..<300).contains(code) else { return Self.errText(d, code) }
+            let o = try JSONSerialization.jsonObject(with: d) as? [String: Any]
+            let t = o?["token"] as? String ?? ""
+            let id = (o?["record"] as? [String: Any])?["id"] as? String ?? ""
+            guard !t.isEmpty, !id.isEmpty else { return "Не удалось войти" }
+            try await switchAccount(token: t, id: id, email: email, pass: pass, kind: "email")
+            return nil
+        } catch { return Self.human(error) }
+    }
+
+    /// Войти через Яндекс (окно входа), при первом входе создаётся аккаунт.
+    func loginYandex() async -> String? {
+        busy = true
+        defer { busy = false }
+        do {
+            guard let mURL = URL(string: VDConfig.base + "/api/collections/vd_users/auth-methods") else { return "Неверный адрес сервера" }
+            let (md, mresp) = try await URLSession.shared.data(from: mURL)
+            guard (mresp as? HTTPURLResponse)?.statusCode == 200,
+                  let mo = try JSONSerialization.jsonObject(with: md) as? [String: Any] else { return "Сервер не ответил" }
+            let providers = ((mo["oauth2"] as? [String: Any])?["providers"] as? [[String: Any]])
+                ?? (mo["authProviders"] as? [[String: Any]]) ?? []
+            guard let p = providers.first(where: { ($0["name"] as? String) == "yandex" }),
+                  let authURL = p["authURL"] as? String, let state = p["state"] as? String,
+                  let verifier = p["codeVerifier"] as? String else {
+                return "Вход через Яндекс на сервере пока не включён. Войдите по почте."
+            }
+            let redirect = VDConfig.base + "/api/vd/oauth-callback"
+            let enc = redirect.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? redirect
+            guard let url = URL(string: authURL + enc) else { return "Неверный адрес входа" }
+            let cb = try await OAuthWeb.run(url: url)
+            let items = URLComponents(url: cb, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            func q(_ n: String) -> String { items.first { $0.name == n }?.value ?? "" }
+            if !q("error").isEmpty { return q("error") == "access_denied" ? "Вход отменён" : "Ошибка входа: \(q("error"))" }
+            guard q("state") == state, !q("code").isEmpty else { return "Вход отменён или устарел — попробуйте ещё раз" }
+            let (d, code) = try await raw("/api/collections/vd_users/auth-with-oauth2",
+                                          obj(["provider": "yandex", "code": q("code"), "codeVerifier": verifier, "redirectURL": redirect]),
+                                          bearer: nil)
+            guard (200..<300).contains(code) else { return Self.errText(d, code) }
+            let o = try JSONSerialization.jsonObject(with: d) as? [String: Any]
+            let t = o?["token"] as? String ?? ""
+            let rec = o?["record"] as? [String: Any]
+            let id = rec?["id"] as? String ?? ""
+            guard !t.isEmpty, !id.isEmpty else { return "Не удалось войти" }
+            // Пароль устройства: по нему приложение само перезаходит, когда токен устареет.
+            let pass = UUID().uuidString + UUID().uuidString
+            let (sd, sc) = try await raw("/api/vd/account/setpass", obj(["password": pass]), bearer: t)
+            guard (200..<300).contains(sc), let so = try JSONSerialization.jsonObject(with: sd) as? [String: Any],
+                  let email = so["email"] as? String, !email.isEmpty else { return Self.errText(sd, sc) }
+            if let n = so["name"] as? String, !n.isEmpty, let s = store, s.p.myName.trimmingCharacters(in: .whitespaces).isEmpty {
+                s.data.profile.myName = String(n.prefix(40))
+            }
+            try await switchAccount(token: t, id: id, email: email, pass: pass, kind: "yandex")
+            return nil
+        } catch { return Self.human(error) }
+    }
+
+    /// Переключиться на другой аккаунт: пара берётся с сервера; пара безымянного аккаунта переезжает, если у нового её нет.
+    private func switchAccount(token t: String, id: String, email: String, pass: String, kind: String) async throws {
+        let oldEmail = Keychain.get("email") ?? ""
+        let oldPass = Keychain.get("pass") ?? ""
+        let wasAnon = accountKind == "anon"
+        let before = pair?.id
+        Keychain.set("email", email)
+        Keychain.set("pass", pass)
+        token = t
+        myId = id
+        if wasAnon, oldEmail.hasSuffix("@vdvoem.app"), !oldPass.isEmpty {
+            _ = try? await send("/api/vd/account/adopt", obj(["email": oldEmail, "password": oldPass]))
+        }
+        setAccount(kind: kind, email: email)
+        let d = try await send("/api/vd/pair/me", obj([:]))
+        let r = try JSONDecoder().decode(PairResponse.self, from: d)
+        if r.pair?.id != before {
+            stop()
+            outbox = [:]
+            cache = [:]
+            since = 0
+            saveOutbox()
+        }
+        try setPair(d)
+        if pair != nil, cache.isEmpty, let s = store { cache = snapshotAll(s.data) }
+    }
+
+    /// Выйти из аккаунта: на телефоне остаются данные, но пара отключается; потом можно войти снова.
+    func signOut() {
+        stop()
+        Keychain.remove("email")
+        Keychain.remove("pass")
+        token = ""
+        myId = ""
+        if let p = pair { UserDefaults.standard.removeObject(forKey: "vd.seeded." + p.id) }
+        pair = nil
+        outbox = [:]
+        cache = [:]
+        since = 0
+        saveState()
+        saveOutbox()
+        status = .notPaired
+        setAccount(kind: "anon", email: "")
     }
 
     // MARK: Пара
@@ -739,6 +897,41 @@ struct PairPanel: View {
         case .waitingPartner, .connecting: return .orange
         case .offline: return .red
         case .notPaired: return .gray
+        }
+    }
+}
+
+
+// MARK: - Окно входа через Яндекс
+
+@MainActor
+final class OAuthWeb: NSObject, ASWebAuthenticationPresentationContextProviding {
+    private static var current: OAuthWeb?
+    private var session: ASWebAuthenticationSession?
+
+    static func run(url: URL) async throws -> URL {
+        let w = OAuthWeb()
+        current = w
+        defer { current = nil }
+        return try await withCheckedThrowingContinuation { cont in
+            let s = ASWebAuthenticationSession(url: url, callbackURLScheme: "vdvoem") { cb, err in
+                if let cb { cont.resume(returning: cb) }
+                else if let e = err as? ASWebAuthenticationSessionError, e.code == .canceledLogin {
+                    cont.resume(throwing: SyncError.server("Вход отменён"))
+                } else {
+                    cont.resume(throwing: SyncError.server(err?.localizedDescription ?? "Не удалось войти"))
+                }
+            }
+            s.presentationContextProvider = w
+            s.prefersEphemeralWebBrowserSession = false
+            w.session = s
+            if !s.start() { cont.resume(throwing: SyncError.server("Не удалось открыть окно входа")) }
+        }
+    }
+
+    nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        MainActor.assumeIsolated {
+            UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first ?? ASPresentationAnchor()
         }
     }
 }

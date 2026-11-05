@@ -154,3 +154,63 @@ routerAdd("POST", "/api/vd/media", (e) => {
 routerAdd("GET", "/api/vd/ping", (e) => {
     return e.json(200, { ok: true, app: "vdvoem", version: 2 })
 })
+
+
+// ---------- Аккаунт: вход через Яндекс и почту ----------
+
+// Яндекс возвращает пользователя сюда, а мы передаём код обратно в приложение.
+// Redirect URI в кабинете Яндекса: https://ВАШ-ДОМЕН/api/vd/oauth-callback
+routerAdd("GET", "/api/vd/oauth-callback", (e) => {
+    const q = e.request.url.rawQuery || ""
+    return e.redirect(302, "vdvoem://oauth?" + q)
+})
+
+// Пароль устройства для аккаунта, созданного через Яндекс: по нему приложение тихо перезаходит, когда токен устарел.
+routerAdd("POST", "/api/vd/account/setpass", (e) => {
+    const body = e.requestInfo().body || {}
+    const pw = String(body.password || "")
+    if (pw.length < 8) throw new BadRequestError("Слишком короткий пароль")
+    if (!e.auth.getString("email")) e.auth.setEmail(e.auth.id + "@oauth.vdvoem.app")
+    e.auth.setPassword(pw)
+    e.app.save(e.auth)
+    return e.json(200, { email: e.auth.getString("email"), name: e.auth.getString("name") })
+}, $apis.requireAuth("vd_users"))
+
+// Перенос пары с «безымянного» аккаунта телефона на настоящий (при входе). Старый аккаунт удаляется, если опустел.
+routerAdd("POST", "/api/vd/account/adopt", (e) => {
+    const b = e.requestInfo().body || {}
+    const email = String(b.email || "").toLowerCase()
+    const pw = String(b.password || "")
+    if (!email.endsWith("@vdvoem.app")) return e.json(200, { adopted: false })
+    let old
+    try { old = e.app.findAuthRecordByEmail("vd_users", email) } catch (_) { return e.json(200, { adopted: false }) }
+    if (old.id === e.auth.id || !old.validatePassword(pw)) return e.json(200, { adopted: false })
+    let adopted = false
+    const op = vdPairOf(e.app, old.id)
+    if (op && !vdPairOf(e.app, e.auth.id)) {
+        op.set("members", op.getStringSlice("members").map((x) => (x === old.id ? e.auth.id : x)))
+        if (op.getString("creator") === old.id) op.set("creator", e.auth.id)
+        e.app.save(op)
+        const docs = e.app.findRecordsByFilter("vd_docs", "pair = {:p} && author = {:a}", "", 0, 0, { p: op.id, a: old.id })
+        for (const d of docs) { d.set("author", e.auth.id); e.app.save(d) }
+        adopted = true
+    }
+    if (!vdPairOf(e.app, old.id)) { try { e.app.delete(old) } catch (_) {} }
+    return e.json(200, { adopted: adopted })
+}, $apis.requireAuth("vd_users"))
+
+// Вход через Яндекс в коллекции vd_users. Ключи — те же, что у «Копилки» (/etc/kopilka.env): KP_YANDEX_ID / KP_YANDEX_SECRET.
+onBootstrap((e) => {
+    e.next()
+    const id = $os.getenv("KP_YANDEX_ID")
+    const secret = $os.getenv("KP_YANDEX_SECRET")
+    if (!id || !secret) return
+    try {
+        const c = e.app.findCollectionByNameOrId("vd_users")
+        unmarshal({ oauth2: { enabled: true, mappedFields: { name: "name", avatarURL: "" }, providers: [{ name: "yandex", clientId: id, clientSecret: secret }] } }, c)
+        e.app.save(c)
+        console.log("Vdvoem: вход через Яндекс включён")
+    } catch (err) {
+        console.log("Vdvoem: не удалось включить вход через Яндекс:", err)
+    }
+})

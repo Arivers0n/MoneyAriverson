@@ -84,6 +84,11 @@ struct SettingsView: View {
             .buttonStyle(PressStyle())
 
             VStack(alignment: .leading, spacing: 8) {
+                Text("Аккаунт").font(.footnote.weight(.medium)).foregroundStyle(.secondary)
+                AccountPanel()
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
                 Text("Пара").font(.footnote.weight(.medium)).foregroundStyle(.secondary)
                 PairPanel()
             }
