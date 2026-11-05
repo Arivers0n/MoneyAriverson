@@ -73,6 +73,13 @@ struct RootView: View {
                     }
                 }
                 .animation(Motion.enter, value: current)
+                .mask(alignment: .bottom) {
+                    VStack(spacing: 0) {
+                        Rectangle()
+                        LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
+                            .frame(height: typing ? 0 : 16)
+                    }
+                }
                 // Место под док: содержимое любого экрана заканчивается выше панели и ничем не перекрывается.
                 Color.clear.frame(height: typing ? 0 : 78)
             }

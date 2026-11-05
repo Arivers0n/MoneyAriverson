@@ -135,7 +135,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .tasks: return "Дела на двоих"
         case .calendar: return "Даты и события"
         case .wishes: return "Что хочется получить"
-        case .lists: return "Покупки и домашние дела"
+        case .lists: return "Покупки и дела"
         case .chat: return "Сообщения друг другу"
         case .plans: return "Мечты и цели"
         case .files: return "Закрытые файлы"

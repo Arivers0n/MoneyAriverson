@@ -253,15 +253,16 @@ struct ArtIcon: View {
     // 1. Цветные: плотная плитка с мягким градиентом цвета раздела и белым глифом (как в «Настройках» iOS)
     private func filled(_ box: CGFloat) -> some View {
         let shape = RoundedRectangle(cornerRadius: box * 0.31, style: .continuous)
-        let base = color.boosted(minS: 0.5, minB: 0.86)
-        let top = base.hsb(dS: -0.08, dB: 0.05)
-        let bottom = base.hsb(dS: 0.06, dB: -0.08)
+        // Плитка чуть глубже исходного цвета, чтобы белый глиф читался; на очень светлых цветах глиф тёмный.
+        let base = color.boosted(minS: 0.55, minB: 0.8).hsb(dS: 0.04, dB: -0.06)
+        let top = base.hsb(dS: -0.05, dB: 0.05)
+        let bottom = base.hsb(dS: 0.08, dB: -0.14)
         return ZStack {
             shape.fill(LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom))
             shape.strokeBorder(.white.opacity(0.22), lineWidth: 0.75)
             Image(systemName: symbol).symbolVariant(.fill)
                 .font(.system(size: size, weight: .semibold))
-                .foregroundStyle(base.onAccent)
+                .foregroundStyle(bottom.onAccent)
         }
         .shadow(color: bottom.opacity(0.22), radius: box * 0.07, y: box * 0.04)
         .padding(box * 0.03)
@@ -307,13 +308,14 @@ struct TabGlyph: View {
             case 1:
                 // Цветные: у выбранной вкладки — мини-плитка с белым глифом
                 if selected {
-                    let base = color.boosted(minS: 0.5, minB: 0.86)
+                    let base = color.boosted(minS: 0.55, minB: 0.8).hsb(dS: 0.04, dB: -0.06)
+                    let bottom = base.hsb(dS: 0.08, dB: -0.14)
                     let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
                     ZStack {
-                        shape.fill(LinearGradient(colors: [base.hsb(dS: -0.08, dB: 0.05), base.hsb(dS: 0.06, dB: -0.08)],
+                        shape.fill(LinearGradient(colors: [base.hsb(dS: -0.05, dB: 0.05), bottom],
                                                   startPoint: .top, endPoint: .bottom))
                         Image(systemName: symbol).symbolVariant(.fill).font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(base.onAccent)
+                            .foregroundStyle(bottom.onAccent)
                     }
                     .frame(width: 32, height: 28)
                 } else {
