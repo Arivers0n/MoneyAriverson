@@ -16,7 +16,7 @@ enum Motion {
 extension View {
     /// Стеклянная подложка в форме `shape`. На iOS 26 — настоящее Liquid Glass, на iOS 17–25 — матовый материал.
     @ViewBuilder
-    func glass<S: Shape>(_ shape: S, tint: Color? = nil, interactive: Bool = false) -> some View {
+    func glass<S: InsettableShape>(_ shape: S, tint: Color? = nil, interactive: Bool = false) -> some View {
         if #available(iOS 26.0, *) {
             if let tint {
                 if interactive { self.glassEffect(.regular.tint(tint).interactive(), in: shape) }
