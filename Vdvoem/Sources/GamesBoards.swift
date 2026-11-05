@@ -31,7 +31,7 @@ struct DotsBoard: View {
                             .fill(v == 0 ? Color.clear : ownerColor(store, v).opacity(0.38))
                             .frame(width: s - 6, height: s - 6)
                             .overlay(Text(v == 0 ? "" : String(store.name(GameLogic.owner(v) ?? .me).prefix(1)).uppercased())
-                                .font(.system(size: s * 0.38, weight: .heavy, design: .rounded)).foregroundStyle(ownerColor(store, v)))
+                                .font(.system(size: s * 0.38, weight: .medium)).foregroundStyle(ownerColor(store, v)))
                             .offset(x: pad + CGFloat(c) * s + 3, y: pad + CGFloat(r) * s + 3)
                             .animation(.spring(response: 0.35, dampingFraction: 0.7), value: v)
                     }
@@ -199,7 +199,7 @@ struct BattleshipBoard: View {
                                 Rectangle().stroke(.white.opacity(0.25), lineWidth: 0.5)
                                 if ship { RoundedRectangle(cornerRadius: Theme.r(3)).fill(Color(hex: "E7ECF3")).padding(1.5) }
                                 if shot == 1 { Circle().fill(.white.opacity(0.85)).frame(width: cell * 0.2) }
-                                if shot == 2 { Image(systemName: "xmark").font(.system(size: cell * 0.6, weight: .heavy)).foregroundStyle(Color(hex: "FF4D4D")) }
+                                if shot == 2 { Image(systemName: "xmark").font(.system(size: cell * 0.6, weight: .medium)).foregroundStyle(Color(hex: "FF4D4D")) }
                             }
                             .frame(width: cell, height: cell)
                         }
@@ -232,7 +232,7 @@ struct PlayingCard: View {
                 Image(systemName: "heart.fill").font(.system(size: width * 0.35)).foregroundStyle(.white.opacity(0.6))
             } else {
                 VStack(spacing: 0) {
-                    Text(Durak.ranks[id % 9]).font(.system(size: width * 0.38, weight: .heavy, design: .rounded))
+                    Text(Durak.ranks[id % 9]).font(.system(size: width * 0.38, weight: .medium))
                     Text(Durak.suits[id / 9]).font(.system(size: width * 0.42))
                 }
                 .foregroundStyle(Durak.isRed(id) ? Color(hex: "E5322D") : Color.black)
@@ -357,7 +357,7 @@ struct MemoryBoard: View {
                             RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous)
                                 .fill(v == 0 ? AnyShapeStyle(LinearGradient(colors: [store.meColor, store.partnerColor], startPoint: .topLeading, endPoint: .bottomTrailing))
                                       : (v == 3 ? AnyShapeStyle(Color.white) : AnyShapeStyle(ownerColor(store, v).opacity(0.3))))
-                            if v == 0 { Image(systemName: "questionmark").font(.title2.weight(.heavy)).foregroundStyle(.white.opacity(0.7)) }
+                            if v == 0 { Image(systemName: "questionmark").font(.title2.weight(.medium)).foregroundStyle(.white.opacity(0.7)) }
                             else { Text(face).font(.system(size: 38)) }
                         }
                         .aspectRatio(0.85, contentMode: .fit)
@@ -391,7 +391,7 @@ struct RPSBoard: View {
         VStack(spacing: 18) {
             HStack(spacing: 30) {
                 scoreView(.me, e[0])
-                Text(":").font(.largeTitle.weight(.heavy)).foregroundStyle(.secondary)
+                Text(":").font(.largeTitle.weight(.medium)).foregroundStyle(.secondary)
                 scoreView(.partner, e[1])
             }
             HStack(spacing: 20) {
@@ -407,7 +407,7 @@ struct RPSBoard: View {
                         Button { store.move(m.id, it.0, by: .me) } label: {
                             VStack(spacing: 4) {
                                 Text(it.1).font(.system(size: 44))
-                                Text(it.2).font(.caption.weight(.bold)).foregroundStyle(.primary)
+                                Text(it.2).font(.caption.weight(.semibold)).foregroundStyle(.primary)
                             }
                             .frame(maxWidth: .infinity).padding(.vertical, 14)
                             .glass(RoundedRectangle(cornerRadius: Theme.r(22), style: .continuous), interactive: true)
@@ -425,7 +425,7 @@ struct RPSBoard: View {
 
     private func scoreView(_ w: Who, _ n: Int) -> some View {
         VStack(spacing: 2) {
-            Text("\(n)").font(.system(size: 44, weight: .heavy, design: .rounded)).contentTransition(.numericText())
+            Text("\(n)").font(.system(size: 44, weight: .medium)).contentTransition(.numericText())
             Text(store.name(w)).font(.caption.weight(.semibold)).foregroundStyle(store.color(w)).lineLimit(1)
         }
     }
@@ -484,7 +484,7 @@ struct HangmanBoard: View {
                     ForEach(Array(w.enumerated()), id: \.offset) { _, ch in
                         let shown = g.contains(ch) || m.state != .playing || iSet
                         Text(shown ? String(ch) : " ")
-                            .font(.system(size: 26, weight: .heavy, design: .rounded))
+                            .font(.system(size: 26, weight: .medium))
                             .foregroundStyle(g.contains(ch) ? Color.primary : Color.red.opacity(0.8))
                             .frame(width: 26, height: 36)
                             .overlay(Rectangle().frame(height: 3).foregroundStyle(Color.primary.opacity(0.5)), alignment: .bottom)

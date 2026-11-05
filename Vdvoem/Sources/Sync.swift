@@ -704,8 +704,8 @@ struct PairPanel: View {
     private func paired(_ p: VDPair) -> some View {
         VStack(spacing: 14) {
             VStack(spacing: 8) {
-                Text("КОД ПАРЫ").font(.caption.weight(.semibold)).foregroundStyle(.secondary).tracking(1)
-                Text(p.code).font(.system(size: 40, weight: .bold, design: .monospaced)).tracking(6)
+                Text("Код пары").font(.footnote.weight(.medium)).foregroundStyle(.secondary)
+                Text(p.code).font(.system(size: 40, weight: .semibold, design: .monospaced)).tracking(6)
                 if p.members.count < 2 {
                     ShareLink(item: "Присоединяйся ко мне в «Вдвоём». Мой код: \(p.code)") {
                         Label("Отправить код", systemImage: "square.and.arrow.up")

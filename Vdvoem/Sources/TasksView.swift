@@ -75,7 +75,7 @@ struct TaskRow: View {
                             .font(.caption).foregroundStyle(d < Date() && !t.done ? Color.red : Color.secondary)
                     }
                     if t.priority > 0 {
-                        Text(String(repeating: "!", count: t.priority)).font(.caption.bold()).foregroundStyle(.orange)
+                        Text(t.priority == 1 ? "Важная" : "Срочная").font(.caption.weight(.medium)).foregroundStyle(.orange)
                     }
                 }
                 if !t.note.isEmpty { Text(t.note).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
@@ -126,7 +126,7 @@ struct AddTaskSheet: View {
                 Toggle("Срок", isOn: $hasDue)
                 if hasDue { DatePicker("Когда", selection: $due) }
                 Picker("Важность", selection: $priority) {
-                    Text("Обычная").tag(0); Text("!").tag(1); Text("!!").tag(2)
+                    Text("Обычная").tag(0); Text("Важная").tag(1); Text("Срочная").tag(2)
                 }
                 .pickerStyle(.segmented)
             }

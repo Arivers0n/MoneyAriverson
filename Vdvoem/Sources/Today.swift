@@ -1,47 +1,5 @@
 import SwiftUI
 
-// MARK: - Общие украшения
-
-/// Плавно «дышащий» значок: покачивается и слегка вращается.
-struct FloatingGlyph: View {
-    let symbol: String
-    var size: CGFloat = 90
-    var color: Color = .white
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
-            let t = tl.date.timeIntervalSinceReferenceDate
-            Image(systemName: symbol)
-                .font(.system(size: size, weight: .semibold))
-                .foregroundStyle(color)
-                .shadow(color: .black.opacity(0.25), radius: 12, y: 10)
-                .offset(y: CGFloat(sin(t * 1.6)) * 7)
-                .rotationEffect(.degrees(sin(t * 1.1) * 4))
-        }
-    }
-}
-
-/// Стеклянные пузыри вокруг центра (как в ориентирах).
-struct BubbleField: View {
-    let colors: [Color]
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
-            let t = tl.date.timeIntervalSinceReferenceDate
-            ZStack {
-                ForEach(0..<7, id: \.self) { i in
-                    let r = CGFloat(10 + (i * 7) % 22)
-                    let ang = Double(i) * 0.9 + t * (0.18 + Double(i % 3) * 0.05)
-                    let rad: CGFloat = 70 + CGFloat((i * 13) % 40)
-                    Circle()
-                        .fill(RadialGradient(colors: [.white.opacity(0.9), colors[i % colors.count].opacity(0.75)],
-                                             center: .init(x: 0.3, y: 0.3), startRadius: 1, endRadius: r * 1.4))
-                        .frame(width: r * 2, height: r * 2)
-                        .offset(x: CGFloat(cos(ang)) * rad * 1.3, y: CGFloat(sin(ang)) * rad * 0.8)
-                }
-            }
-        }
-    }
-}
-
 struct Avatar: View {
     @EnvironmentObject var store: Store
     let who: Who
@@ -51,14 +9,14 @@ struct Avatar: View {
         let ring = st.map { Color(hex: statusKind($0.kind).hex) } ?? store.color(who)
         ZStack(alignment: .bottomTrailing) {
             ZStack {
-                Circle().fill(LinearGradient(colors: [store.color(who), store.color(who).opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                Circle().fill(store.color(who))
                 Text(String(store.name(who).prefix(1)).uppercased())
-                    .font(.system(size: size * 0.42, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+                    .font(.system(size: size * 0.42, weight: .medium)).foregroundStyle(.white)
             }
             .frame(width: size, height: size)
-            .overlay(Circle().stroke(ring, lineWidth: 3).padding(-4))
+            .overlay(Circle().stroke(ring, lineWidth: 2).padding(-4))
             if let st {
-                Image(systemName: statusKind(st.kind).symbol).font(.system(size: size * 0.24, weight: .bold))
+                Image(systemName: statusKind(st.kind).symbol).font(.system(size: size * 0.24, weight: .semibold))
                     .foregroundStyle(.white).frame(width: size * 0.42, height: size * 0.42)
                     .background(ring, in: Circle()).overlay(Circle().stroke(Pal.bg, lineWidth: 2))
                     .offset(x: 4, y: 4)
@@ -103,7 +61,7 @@ struct TodayView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Сегодня").font(.system(size: 34, weight: .heavy, design: .rounded))
+                Text("Сегодня").font(.system(size: 32, weight: .medium))
                 Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)))
                     .font(.subheadline).foregroundStyle(.secondary)
             }
@@ -119,73 +77,57 @@ struct TodayView: View {
     // Что случилось?
 
     private var askCard: some View {
-        VStack(spacing: 8) {
-            Text("Что случилось?")
-                .font(.system(size: 26, weight: .heavy, design: .rounded))
-                .foregroundStyle(LinearGradient(colors: [store.meColor, store.partnerColor], startPoint: .leading, endPoint: .trailing))
-            Text("Поделитесь, чем занимаетесь, — \(store.name(.partner)) увидит сразу")
-                .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            ZStack {
-                BubbleField(colors: [store.meColor, store.partnerColor, Color(hex: "FFB02E"), Color(hex: "46C2A5")])
-                FloatingGlyph(symbol: "face.smiling.inverse", size: 84, color: store.meColor)
+        VStack(spacing: 16) {
+            PairMark(size: 44)
+            VStack(spacing: 4) {
+                Text("Ваш статус").font(.title3.weight(.medium))
+                Text("\(store.name(.partner)) увидит его сразу, на 24 часа")
+                    .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
-            .frame(height: 190)
             Button { showStatus = true; store.tap() } label: {
-                Label("Статус", systemImage: "plus").font(.headline).foregroundStyle(.white)
-                    .frame(maxWidth: .infinity).padding(.vertical, 15)
-                    .background(LinearGradient(colors: [store.meColor, store.meColor.opacity(0.75)], startPoint: .top, endPoint: .bottom), in: Capsule())
-                    .shadow(color: store.meColor.opacity(0.4), radius: 10, y: 6)
+                Label("Добавить статус", systemImage: "plus").bigButton()
             }
-            .padding(.horizontal, 28)
+            .padding(.horizontal, 24)
         }
-        .padding(.vertical, 20).frame(maxWidth: .infinity).card()
+        .padding(.vertical, 24).frame(maxWidth: .infinity).card()
     }
 
     // Большая карточка статуса
 
     private func statusHero(_ s: StatusItem, who: Who) -> some View {
         let k = statusKind(s.kind)
-        let c = Color(hex: k.hex)
+        let c = Color(hex: k.hex).hsb(dS: 0.05, dB: -0.2)
         let big = who == .me
+        let shape = RoundedRectangle(cornerRadius: Theme.r(24), style: .continuous)
         return Button {
             if who == .me { showStatus = true; store.tap() }
         } label: {
-            ZStack(alignment: .bottomLeading) {
-                LinearGradient(colors: [c, c.opacity(0.55), Color.black.opacity(0.55)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                Circle().fill(.white.opacity(0.10)).frame(width: 220).offset(x: 140, y: -90)
-                Circle().fill(.white.opacity(0.08)).frame(width: 140).offset(x: -90, y: -50)
-                VStack {
-                    HStack {
-                        Label("Статус · 24 часа", systemImage: "clock").font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10).padding(.vertical, 5).background(.white.opacity(0.18), in: Capsule())
-                        Spacer()
-                        HStack(spacing: 6) {
-                            Circle().fill(store.color(who)).frame(width: 10, height: 10)
-                            Text(who == .me ? "Я" : store.name(who)).font(.caption.weight(.bold))
-                        }
-                        .padding(.horizontal, 10).padding(.vertical, 5).background(.white.opacity(0.18), in: Capsule())
-                    }
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("Статус на 24 часа").font(.footnote).opacity(0.8)
                     Spacer()
-                    FloatingGlyph(symbol: k.symbol, size: big ? 92 : 64)
-                    Spacer()
-                    HStack(alignment: .bottom) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(s.title).font(.system(size: big ? 30 : 24, weight: .heavy, design: .rounded))
-                            let extra = [s.place, s.note].filter { !$0.isEmpty }.joined(separator: " · ")
-                            Text(extra.isEmpty ? s.started.agoText : extra + " · " + s.started.agoText)
-                                .font(.footnote).opacity(0.85).lineLimit(2)
-                        }
-                        Spacer()
+                    HStack(spacing: 8) {
+                        Circle().fill(store.color(who)).frame(width: 12, height: 12)
+                            .overlay(Circle().stroke(.white, lineWidth: 1.5))
+                        Text(who == .me ? "Я" : store.name(who)).font(.footnote.weight(.medium))
                     }
                 }
-                .foregroundStyle(.white).padding(16)
+                Spacer(minLength: 16)
+                Image(systemName: k.symbol).font(.system(size: big ? 56 : 40, weight: .regular))
+                Spacer(minLength: 16)
+                Text(s.title).font(.system(size: big ? 28 : 24, weight: .medium))
+                let extra = [s.place, s.note].filter { !$0.isEmpty }.joined(separator: " · ")
+                Text(extra.isEmpty ? s.started.agoText : extra + " · " + s.started.agoText)
+                    .font(.footnote).opacity(0.8).lineLimit(2).padding(.top, 4)
             }
-            .frame(height: big ? 290 : 200)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.r(30), style: .continuous))
-            .shadow(color: c.opacity(0.4), radius: 16, y: 10)
+            .foregroundStyle(.white).padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: big ? 240 : 188)
+            .background(c, in: shape)
+            .overlay(shape.stroke(.white.opacity(0.12), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .transition(.scale(scale: 0.94).combined(with: .opacity))
+        .transition(.opacity)
     }
 
     // Быстрые разделы
@@ -202,10 +144,10 @@ struct TodayView: View {
         NavigationLink { dest() } label: {
             VStack(alignment: .leading, spacing: 10) {
                 ArtIcon(symbol: icon, color: Color(hex: hex), size: 24)
-                Text(title).font(.subheadline.weight(.bold)).foregroundStyle(.primary)
-                Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2).frame(height: 30, alignment: .topLeading)
+                Text(title).font(.subheadline.weight(.medium)).foregroundStyle(.primary)
+                Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2).frame(height: 32, alignment: .topLeading)
             }
-            .padding(12).frame(maxWidth: .infinity, alignment: .leading).card()
+            .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
         }
         .buttonStyle(.plain)
     }
@@ -228,22 +170,22 @@ struct TodayView: View {
     private var infoRow: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Label("Между нами", systemImage: "location.fill").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Label("Между нами", systemImage: "location").font(.caption.weight(.medium)).foregroundStyle(.secondary)
                 if let d = store.distanceKm() {
-                    Text(d.kmText).font(.system(size: 26, weight: .heavy, design: .rounded))
+                    Text(d.kmText).font(.system(size: 28, weight: .medium).monospacedDigit())
                 } else {
                     Text(store.p.shareLocation ? "Ждём партнёра" : "Скрыто").font(.headline)
                     if !store.p.shareLocation { Text("Включите в настройках").font(.caption2).foregroundStyle(.secondary) }
                 }
             }
-            .padding(14).frame(maxWidth: .infinity, alignment: .leading).card()
+            .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
             VStack(alignment: .leading, spacing: 4) {
-                Label("Вместе", systemImage: "heart.fill").font(.caption.weight(.semibold)).foregroundStyle(store.partnerColor)
+                Label("Вместе", systemImage: "heart").font(.caption.weight(.medium)).foregroundStyle(.secondary)
                 let days = max(0, Calendar.current.dateComponents([.day], from: store.p.start, to: Date()).day ?? 0)
-                Text("\(days)").font(.system(size: 26, weight: .heavy, design: .rounded))
-                Text("дней").font(.caption2).foregroundStyle(.secondary)
+                Text("\(days)").font(.system(size: 28, weight: .medium).monospacedDigit())
+                Text("дней").font(.caption).foregroundStyle(.secondary)
             }
-            .padding(14).frame(maxWidth: .infinity, alignment: .leading).card()
+            .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
         }
     }
 
@@ -256,20 +198,20 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Label(store.name(w), systemImage: b?.charging == true ? "battery.100.bolt" : "battery.75")
-                            .font(.caption.weight(.semibold)).foregroundStyle(store.color(w)).lineLimit(1)
+                            .font(.caption.weight(.medium)).foregroundStyle(store.color(w)).lineLimit(1)
                         Spacer()
-                        Text(b.map { "\(Int($0.level * 100))%" } ?? "—").font(.subheadline.weight(.heavy).monospacedDigit())
+                        Text(b.map { "\(Int($0.level * 100))%" } ?? "—").font(.subheadline.weight(.medium).monospacedDigit())
                     }
                     GeometryReader { g in
                         ZStack(alignment: .leading) {
                             Capsule().fill(Color.primary.opacity(0.1))
-                            Capsule().fill(LinearGradient(colors: [batteryColor(b?.level ?? 0), batteryColor(b?.level ?? 0).opacity(0.7)], startPoint: .leading, endPoint: .trailing))
+                            Capsule().fill(batteryColor(b?.level ?? 0))
                                 .frame(width: max(8, g.size.width * CGFloat(b?.level ?? 0)))
                         }
                     }
-                    .frame(height: 10)
+                    .frame(height: 8)
                 }
-                .padding(14).frame(maxWidth: .infinity).card()
+                .padding(16).frame(maxWidth: .infinity).card()
             }
         }
     }
@@ -282,10 +224,10 @@ struct TodayView: View {
 
     private var historyBlock: some View {
         VStack(spacing: 8) {
-            Button { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { history.toggle() } } label: {
+            Button { withAnimation(.easeOut(duration: 0.25)) { history.toggle() } } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.down").rotationEffect(.degrees(history ? 180 : 0))
-                    Text("История").font(.subheadline.weight(.semibold))
+                    Text("История").font(.subheadline.weight(.medium))
                 }
                 .foregroundStyle(.secondary)
             }
@@ -298,13 +240,13 @@ struct TodayView: View {
                         Image(systemName: k.symbol).foregroundStyle(Color(hex: k.hex)).frame(width: 36, height: 36)
                             .background(Color(hex: k.hex).opacity(0.15), in: Circle())
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("\(store.name(s.who)) — \(s.title)").font(.subheadline.weight(.semibold))
+                            Text("\(store.name(s.who)) — \(s.title)").font(.subheadline.weight(.medium))
                             if !s.note.isEmpty { Text(s.note).font(.caption).foregroundStyle(.secondary) }
                         }
                         Spacer()
                         Text(s.started.agoText).font(.caption).foregroundStyle(.secondary)
                     }
-                    .padding(10).card()
+                    .padding(12).card()
                 }
             }
         }
@@ -333,7 +275,7 @@ struct StatusSheet: View {
                         ForEach(statusKinds) { k in
                             let on = picked?.id == k.id
                             Button {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { picked = k }
+                                withAnimation(.easeOut(duration: 0.15)) { picked = k }
                                 store.tap()
                             } label: {
                                 VStack(spacing: 6) {
@@ -347,21 +289,20 @@ struct StatusSheet: View {
                                             in: RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
                                 .overlay(RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous)
                                     .stroke(on ? Color(hex: k.hex) : Color.clear, lineWidth: 2))
-                                .scaleEffect(on ? 1.04 : 1)
-                            }
+                                }
                             .buttonStyle(.plain)
                         }
                     }
                     VStack(spacing: 10) {
                         TextField("Где вы? (по желанию)", text: $place)
-                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
+                            .padding(16).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                         TextField("Пара слов к статусу", text: $note)
-                            .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
+                            .padding(16).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                     }
                     Button {
                         if let k = picked { store.setStatus(k, note: note, place: place); dismiss() }
                     } label: {
-                        Text("Показать партнёру на 24 часа").bigButton().opacity(picked == nil ? 0.4 : 1)
+                        Text("Показать на 24 часа").bigButton().opacity(picked == nil ? 0.4 : 1)
                     }
                     .disabled(picked == nil)
                     if store.statusNow(.me) != nil {
@@ -406,10 +347,10 @@ struct SleepRing: View {
             VStack(spacing: 0) {
                 if let hours {
                     Text(String(format: "%.1f", hours).replacingOccurrences(of: ".", with: ","))
-                        .font(.system(size: size * 0.26, weight: .heavy, design: .rounded))
+                        .font(.system(size: size * 0.26, weight: .medium))
                     Text("часов").font(.system(size: size * 0.09)).foregroundStyle(.secondary)
                 } else {
-                    Text("—").font(.system(size: size * 0.3, weight: .bold)).foregroundStyle(.secondary)
+                    Text("—").font(.system(size: size * 0.3, weight: .semibold)).foregroundStyle(.secondary)
                 }
             }
         }
@@ -429,15 +370,15 @@ struct SleepView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 14) {
+            VStack(spacing: 16) {
                 HStack(spacing: 12) {
                     ForEach(Who.allCases, id: \.self) { w in
                         let e = store.lastSleep(of: w)
                         VStack(spacing: 8) {
-                            Text(store.name(w)).font(.caption.weight(.bold)).foregroundStyle(store.color(w))
+                            Text(store.name(w)).font(.caption.weight(.medium)).foregroundStyle(store.color(w))
                             SleepRing(hours: e?.hours, quality: e?.quality ?? 3, color: store.color(w), size: 118)
                             if let e {
-                                Text(sleepTitles[min(max(e.quality, 1), 5)]).font(.caption.weight(.bold))
+                                Text(sleepTitles[min(max(e.quality, 1), 5)]).font(.caption.weight(.medium))
                                     .padding(.horizontal, 12).padding(.vertical, 4)
                                     .background(Color(hex: sleepHexes[min(max(e.quality, 1), 5)]).opacity(0.2), in: Capsule())
                             } else {
@@ -448,7 +389,7 @@ struct SleepView: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 16) {
                     Text("Записать мой сон").font(.headline)
                     DatePicker("Лёг(ла)", selection: $bed, displayedComponents: [.date, .hourAndMinute])
                     DatePicker("Проснулся(ась)", selection: $wake, displayedComponents: [.date, .hourAndMinute])
@@ -462,7 +403,7 @@ struct SleepView: View {
                             Button {
                                 quality = q; manualQuality = true; store.tap()
                             } label: {
-                                Text(sleepTitles[q]).font(.caption2.weight(.bold)).lineLimit(1).minimumScaleFactor(0.6)
+                                Text(sleepTitles[q]).font(.caption2.weight(.medium)).lineLimit(1).minimumScaleFactor(0.6)
                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                                     .foregroundStyle(quality == q ? .white : .primary)
                                     .background(quality == q ? Color(hex: sleepHexes[q]) : Color(hex: sleepHexes[q]).opacity(0.14), in: Capsule())
@@ -488,7 +429,7 @@ struct SleepView: View {
                                     column(store.sleep(of: .partner, day: day), .partner)
                                 }
                                 .frame(height: 110, alignment: .bottom)
-                                Text(shortDay(day)).font(.system(size: 9)).foregroundStyle(.secondary)
+                                Text(shortDay(day)).font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
                             }
                             .frame(maxWidth: .infinity)
                         }
@@ -501,7 +442,7 @@ struct SleepView: View {
         .scrollIndicators(.hidden)
         .background(ThemeBackground())
         .navigationTitle("Сон")
-        .animation(.easeInOut(duration: 0.2), value: quality)
+        .animation(.easeOut(duration: 0.2), value: quality)
         .onAppear {
             if let e = store.sleep(of: .me, day: Date().dayKey) {
                 bed = e.bedtime; wake = e.wake; quality = e.quality; manualQuality = true
@@ -557,51 +498,51 @@ struct TrackerView: View {
 
     private func counterCard(_ c: TrackerCounter) -> some View {
         let tint = Color(hex: c.hex)
+        let deep = tint.hsb(dS: 0.05, dB: -0.2)
         let total = store.count(c.id, who: nil)
         let st = store.streak(c.id)
-        return VStack(spacing: 14) {
+        let shape = RoundedRectangle(cornerRadius: Theme.r(24), style: .continuous)
+        return VStack(spacing: 16) {
             HStack {
                 Text(c.emoji).font(.title)
-                Text(c.title).font(.title3.weight(.heavy)).foregroundStyle(.white)
+                Text(c.title).font(.title3.weight(.medium)).foregroundStyle(.white)
                 Spacer()
-                Text(st > 0 ? "🔥 \(st)" : "").font(.subheadline.weight(.bold)).foregroundStyle(.white)
-                    .padding(.horizontal, 10).padding(.vertical, 4).background(.white.opacity(st > 0 ? 0.22 : 0), in: Capsule())
+                if st > 0 {
+                    Text("\(st) дн. подряд").font(.footnote.weight(.medium)).foregroundStyle(.white)
+                        .padding(.horizontal, 12).padding(.vertical, 4).background(.white.opacity(0.18), in: Capsule())
+                }
             }
             Button {
                 bump = c.id
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { store.addTrack(c.id) }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { bump = nil }
+                withAnimation(.easeOut(duration: 0.2)) { store.addTrack(c.id) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { bump = nil }
             } label: {
                 ZStack {
-                    Circle().fill(.white.opacity(0.18)).frame(width: 190, height: 190)
-                    Circle().fill(RadialGradient(colors: [.white.opacity(0.95), .white.opacity(0.7)], center: .init(x: 0.35, y: 0.3), startRadius: 2, endRadius: 120))
-                        .frame(width: 150, height: 150)
-                        .shadow(color: .black.opacity(0.2), radius: 12, y: 8)
-                    Text("\(total)").font(.system(size: 64, weight: .heavy, design: .rounded)).foregroundStyle(tint)
+                    Circle().fill(.white).frame(width: 160, height: 160)
+                        .shadow(color: .black.opacity(0.12), radius: 12, y: 6)
+                    Text("\(total)").font(.system(size: 64, weight: .medium).monospacedDigit()).foregroundStyle(deep)
                         .contentTransition(.numericText())
                 }
-                .scaleEffect(bump == c.id ? 1.1 : 1)
+                .scaleEffect(bump == c.id ? 0.97 : 1)
             }
             .buttonStyle(.plain)
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 ForEach(Who.allCases, id: \.self) { w in
-                    HStack(spacing: 6) {
-                        Circle().fill(store.color(w)).frame(width: 10, height: 10).overlay(Circle().stroke(.white, lineWidth: 1.5))
-                        Text("\(store.name(w)): \(store.count(c.id, who: w))").font(.footnote.weight(.semibold)).lineLimit(1)
+                    HStack(spacing: 8) {
+                        Circle().fill(store.color(w)).frame(width: 12, height: 12).overlay(Circle().stroke(.white, lineWidth: 1.5))
+                        Text("\(store.name(w)): \(store.count(c.id, who: w))").font(.footnote.weight(.medium)).lineLimit(1)
                     }
-                    .foregroundStyle(.white).frame(maxWidth: .infinity).padding(.vertical, 9)
+                    .foregroundStyle(.white).frame(maxWidth: .infinity).padding(.vertical, 8)
                     .background(.white.opacity(0.18), in: Capsule())
                 }
                 Button { withAnimation { store.undoTrack(c.id) } } label: {
-                    Image(systemName: "arrow.uturn.backward").font(.footnote.weight(.bold)).foregroundStyle(.white)
-                        .frame(width: 38, height: 34).background(.white.opacity(0.18), in: Capsule())
+                    Image(systemName: "arrow.uturn.backward").font(.footnote.weight(.medium)).foregroundStyle(.white)
+                        .frame(width: 40, height: 36).background(.white.opacity(0.18), in: Capsule())
                 }
             }
         }
         .padding(16)
-        .background(LinearGradient(colors: [tint, tint.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: RoundedRectangle(cornerRadius: Theme.r(30), style: .continuous))
-        .shadow(color: tint.opacity(0.35), radius: 14, y: 8)
+        .background(deep, in: shape)
         .contextMenu {
             Button("Удалить счётчик", role: .destructive) {
                 store.data.counters.removeAll { $0.id == c.id }

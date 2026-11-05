@@ -14,21 +14,20 @@ struct ThemeLook {
 
     static func of(_ id: String) -> ThemeLook {
         switch id {
-        case "classic":  return ThemeLook(icon: 0, font: .standard, radius: 18, pattern: 0)
-        case "mint":     return ThemeLook(icon: 0, font: .rounded, radius: 20, pattern: 0)
-        case "lavender": return ThemeLook(icon: 2, font: .rounded, radius: 24, pattern: 0)
-        case "peach":    return ThemeLook(icon: 2, font: .rounded, radius: 26, pattern: 0)
-        case "ocean":    return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0)
-        case "sunset":   return ThemeLook(icon: 2, font: .rounded, radius: 26, pattern: 0)
-        case "sakura":   return ThemeLook(icon: 2, font: .rounded, radius: 28, pattern: 0)
-        case "graphite": return ThemeLook(icon: 0, font: .standard, radius: 12, pattern: 0)
-        case "cosmos":   return ThemeLook(icon: 1, font: .standard, radius: 22, pattern: 0,
-                                          pair: ("A78BFA", "F472B6"), mode: .dark)
-        case "neon":     return ThemeLook(icon: 1, font: .mono, radius: 10, pattern: 0,
-                                          pair: ("19F0E0", "FF3DCB"), mode: .dark)
-        case "organic":  return ThemeLook(icon: 2, font: .serif, radius: 14, pattern: 0,
-                                          pair: ("8A6A3C", "6B8E4E"))
-        default:         return ThemeLook(icon: 1, font: .rounded, radius: 22, pattern: 0)   // «Свежесть» — стандарт
+        case "midnight":  return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0,
+                                           pair: ("0297DE", "F2683F"), mode: .dark)
+        case "indigo":    return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0,
+                                           pair: ("2A56D6", "EC72B0"))
+        case "malachite": return ThemeLook(icon: 0, font: .standard, radius: 18, pattern: 0,
+                                           pair: ("0F8F6B", "FF7A59"))
+        case "amber":     return ThemeLook(icon: 0, font: .standard, radius: 16, pattern: 0,
+                                           pair: ("E8A02B", "2BB8A8"), mode: .dark)
+        case "cherry":    return ThemeLook(icon: 0, font: .standard, radius: 22, pattern: 0,
+                                           pair: ("E4456F", "2FB89A"))
+        case "classic":   return ThemeLook(icon: 0, font: .standard, radius: 18, pattern: 0)
+        case "graphite":  return ThemeLook(icon: 0, font: .standard, radius: 12, pattern: 0)
+        default:          return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0,
+                                           pair: ("0593C6", "DB3996"))   // «Лагуна» — по умолчанию
         }
     }
 }
@@ -286,7 +285,7 @@ struct ArtIcon: View {
                                               startPoint: .top, endPoint: .bottom), lineWidth: 1.2)
             Image(systemName: symbol)
                 .symbolVariant(.fill)
-                .font(.system(size: size * 0.8, weight: .bold))
+                .font(.system(size: size * 0.8, weight: .semibold))
                 .foregroundStyle(.white)
                 .shadow(color: bottom.opacity(0.7), radius: size * 0.1, y: size * 0.08)
         }
@@ -338,7 +337,7 @@ struct TabGlyph: View {
                                                 color.boosted(minS: 0.55, minB: 0.9).hsb(dS: 0.12, dB: -0.18)],
                                        startPoint: .top, endPoint: .bottom)
                 if selected {
-                    Image(systemName: symbol).symbolVariant(.fill).font(.system(size: size, weight: .bold))
+                    Image(systemName: symbol).symbolVariant(.fill).font(.system(size: size, weight: .semibold))
                         .foregroundStyle(g).shadow(color: color.opacity(0.35), radius: 2, y: 1.5)
                 } else {
                     Image(systemName: symbol).symbolVariant(.fill).font(.system(size: size, weight: .semibold)).foregroundStyle(idle)
@@ -361,7 +360,7 @@ final class DockState: ObservableObject {
     private var last = Date.distantPast
     private static let gen = UIImpactFeedbackGenerator(style: .soft)
 
-    static let spring = Animation.spring(response: 0.4, dampingFraction: 0.78)
+    static let spring = Animation.spring(response: 0.4, dampingFraction: 0.9)
 
     func set(_ v: Bool, haptics: Bool) {
         guard v != collapsed else { return }
@@ -422,16 +421,14 @@ struct GlassDock: View {
                     .allowsHitTesting(!collapsed)
                 Image(systemName: "square.grid.2x2.fill")
                     .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(LinearGradient(colors: [store.meColor.boosted(minS: 0.6, minB: 1), store.partnerColor.boosted(minS: 0.5, minB: 1)],
-                                                    startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .shadow(color: store.meColor.opacity(0.7), radius: 6)
+                    .foregroundStyle(store.meColor)
                     .opacity(collapsed ? 1 : 0)
                     .scaleEffect(collapsed ? 1 : 0.4)
             }
             .frame(width: collapsed ? height : full, height: height)
             .glass(shape, interactive: true)
             .overlay(shape.strokeBorder(Color.primary.opacity(0.10), lineWidth: 0.5))
-            .shadow(color: (collapsed ? store.meColor : Color.black).opacity(collapsed ? 0.35 : 0.12), radius: collapsed ? 14 : 10, y: 4)
+            .shadow(color: .black.opacity(0.10), radius: 10, y: 4)
             .contentShape(shape)
             .onTapGesture { if collapsed { dock.set(false, haptics: store.p.haptics) } }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: collapsed ? .bottomTrailing : .bottom)
@@ -564,7 +561,7 @@ struct ThemePreviewCard: View {
                     RoundedRectangle(cornerRadius: outer, style: .continuous)
                         .fill(LinearGradient(colors: [top, bg], startPoint: .top, endPoint: .bottom))
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Ещё").font(.system(size: 16, weight: .bold, design: look.font.design)).foregroundStyle(ink)
+                        Text("Ещё").font(.system(size: 16, weight: .medium, design: look.font.design)).foregroundStyle(ink)
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 2), spacing: 6) {
                             ForEach(tiles, id: \.0) { t in
                                 ZStack {
@@ -587,11 +584,10 @@ struct ThemePreviewCard: View {
                 }
                 .frame(width: 128, height: 196)
                 .overlay(RoundedRectangle(cornerRadius: outer, style: .continuous)
-                    .strokeBorder(accent, lineWidth: on ? 3 : 0))
-                .scaleEffect(on ? 1.03 : 1)
-                .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                    .strokeBorder(accent, lineWidth: on ? 2 : 0))
+                .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
 
-                Text(def.title).font(.caption.weight(on ? .bold : .regular)).foregroundStyle(.primary)
+                Text(def.title).font(.caption.weight(on ? .semibold : .regular)).foregroundStyle(.primary)
             }
         }
         .buttonStyle(.plain)

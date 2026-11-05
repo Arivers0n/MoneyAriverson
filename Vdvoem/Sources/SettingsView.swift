@@ -84,7 +84,7 @@ struct SettingsView: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("ПАРА").font(.caption.weight(.semibold)).foregroundStyle(.secondary).tracking(1)
+                Text("Пара").font(.footnote.weight(.medium)).foregroundStyle(.secondary)
                 PairPanel()
             }
 

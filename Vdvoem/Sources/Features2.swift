@@ -43,7 +43,7 @@ struct QuestionView: View {
 
     var body: some View {
         Screen {
-            Text(question).font(.title2.bold()).frame(maxWidth: .infinity, alignment: .leading)
+            Text(question).font(.title2.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
                 .padding(18).card()
             field(.me)
             field(.partner)
@@ -54,10 +54,10 @@ struct QuestionView: View {
             .disabled(!both).opacity(both ? 1 : 0.4)
             if reveal && both {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(store.name(.me)).font(.caption.bold()).foregroundStyle(store.meColor)
+                    Text(store.name(.me)).font(.caption.weight(.semibold)).foregroundStyle(store.meColor)
                     Text(answer.me)
                     Divider()
-                    Text(store.name(.partner)).font(.caption.bold()).foregroundStyle(store.partnerColor)
+                    Text(store.name(.partner)).font(.caption.weight(.semibold)).foregroundStyle(store.partnerColor)
                     Text(answer.partner)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading).padding(16).card()
@@ -69,7 +69,7 @@ struct QuestionView: View {
 
     private func field(_ w: Who) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(store.name(w)).font(.caption.bold()).foregroundStyle(store.color(w))
+            Text(store.name(w)).font(.caption.weight(.semibold)).foregroundStyle(store.color(w))
             TextField("Ваш ответ", text: Binding(
                 get: { w == .me ? answer.me : answer.partner },
                 set: { v in
@@ -134,8 +134,8 @@ struct CompatView: View {
         let w: Who = phase == 1 ? .me : .partner
         return VStack(spacing: 12) {
             Text("\(store.name(w)) · вопрос \(q + 1) из \(compatQuestions.count)")
-                .font(.caption.bold()).foregroundStyle(store.color(w))
-            Text(item.q).font(.title2.bold()).frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 6)
+                .font(.caption.weight(.semibold)).foregroundStyle(store.color(w))
+            Text(item.q).font(.title2.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 6)
             ForEach(item.a.indices, id: \.self) { i in
                 Button { pick(i) } label: {
                     Text(item.a[i]).font(.body.weight(.medium)).frame(maxWidth: .infinity, alignment: .leading)
@@ -150,8 +150,8 @@ struct CompatView: View {
         let same = zip(mine, theirs).filter { $0.0 == $0.1 }.count
         let pct = same * 100 / compatQuestions.count
         return VStack(spacing: 14) {
-            Text("\(pct)%").font(.system(size: 72, weight: .bold)).padding(.top, 30)
-            Text(pct >= 70 ? "Вы на одной волне 💞" : (pct >= 40 ? "Отличный баланс — есть о чём поговорить" : "Противоположности притягиваются"))
+            Text("\(pct)%").font(.system(size: 72, weight: .semibold)).padding(.top, 30)
+            Text(pct >= 70 ? "Вы на одной волне" : (pct >= 40 ? "Отличный баланс — есть о чём поговорить" : "Противоположности притягиваются"))
                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
             ForEach(compatQuestions.indices, id: \.self) { i in
                 HStack {
@@ -400,7 +400,7 @@ struct DaysView: View {
         let milestones = [100, 200, 365, 500, 730, 1000, 1500, 2000, 3000, 3650]
         Screen {
             VStack(spacing: 6) {
-                Text("\(store.daysTogether)").font(.system(size: 72, weight: .bold))
+                Text("\(store.daysTogether)").font(.system(size: 72, weight: .semibold))
                 Text("дней вместе").foregroundStyle(.secondary)
                 Text("\(comps.year ?? 0) г. \(comps.month ?? 0) мес. \(comps.day ?? 0) дн.").font(.footnote.monospaced()).foregroundStyle(.secondary)
             }
@@ -499,7 +499,7 @@ struct DatesView: View {
         Screen {
             VStack(spacing: 18) {
                 Text("🎲").font(.system(size: 60))
-                Text(idea).font(.title2.bold()).multilineTextAlignment(.center).frame(minHeight: 70)
+                Text(idea).font(.title2.weight(.semibold)).multilineTextAlignment(.center).frame(minHeight: 70)
                 Button { roll() } label: { Text("Крутить").bigButton() }
                 if idea != "Нажмите «Крутить»" {
                     Button {

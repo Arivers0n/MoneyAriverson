@@ -101,7 +101,7 @@ struct CalendarView: View {
         return Button { selected = d; store.tap() } label: {
             VStack(spacing: 3) {
                 Text("\(cal.component(.day, from: d))")
-                    .font(.body.weight(isToday ? .bold : .regular))
+                    .font(.body.weight(isToday ? .semibold : .regular))
                     .foregroundStyle(isSel ? Pal.bg : (isToday ? store.meColor : Color.primary))
                 HStack(spacing: 3) {
                     if has { Circle().fill(isSel ? Pal.bg : store.partnerColor).frame(width: 5, height: 5) }

@@ -126,7 +126,7 @@ struct GamesView: View {
         HStack(spacing: 10) {
             Circle().fill(store.color(w)).frame(width: 18, height: 18)
             VStack(alignment: .leading) {
-                Text("\(store.wins(w))").font(.title.bold().monospacedDigit()).contentTransition(.numericText())
+                Text("\(store.wins(w))").font(.title.weight(.semibold).monospacedDigit()).contentTransition(.numericText())
                 Text("\(store.name(w)) · побед").font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 0)
@@ -282,7 +282,7 @@ struct MatchView: View {
                             .fill(win.contains(i) ? store.color(m.winner).opacity(0.28) : Pal.card)
                         if p != 0 {
                             Image(systemName: p == 1 ? "xmark" : "circle")
-                                .font(.system(size: 44, weight: .bold))
+                                .font(.system(size: 44, weight: .semibold))
                                 .foregroundStyle(store.color(p == 1 ? .me : .partner))
                                 .transition(.scale(scale: 0.3).combined(with: .opacity))
                         }

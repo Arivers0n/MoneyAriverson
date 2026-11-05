@@ -81,7 +81,7 @@ private struct Title: View {
     let small: String
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(big).font(.system(size: 32, weight: .bold))
+            Text(big).font(.system(size: 32, weight: .semibold))
             Text(small).font(.body).foregroundStyle(.secondary)
         }
         .padding(.top, 8)
@@ -98,7 +98,7 @@ private struct WelcomeStep: View {
                     .blendMode(.plusLighter).opacity(0.9)
             }
             .frame(maxWidth: .infinity).padding(.top, 70).padding(.bottom, 20)
-            Text("Вдвоём").font(.system(size: 44, weight: .bold))
+            Text("Вдвоём").font(.system(size: 44, weight: .semibold))
             Text("Общие дела, даты, желания, игры и заметки — всё для двоих в одном приложении. Настроим под вас за минуту.")
                 .font(.title3).foregroundStyle(.secondary)
         }
@@ -201,7 +201,7 @@ private struct LookStep: View {
     var body: some View {
         Title(big: "Внешний вид", small: "Всё меняется сразу — посмотрите на пример ниже.")
         LookControls().padding(16).card()
-        Text("ПРИМЕР").font(.caption.weight(.semibold)).foregroundStyle(.secondary).tracking(1)
+        Text("Пример").font(.footnote.weight(.medium)).foregroundStyle(.secondary)
         HStack(spacing: 12) {
             Image(systemName: "circle").font(.title2).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 3) {
@@ -265,7 +265,7 @@ private struct FinishStep: View {
             Toggle("Закрыть приложение Face ID", isOn: $store.data.profile.lockApp)
         }
         .padding(16).card()
-        Text("Дальше: добавьте первую задачу, хотелку или событие. Вместе уже \(store.daysTogether) дн. 💞")
+        Text("Дальше: добавьте первую задачу, хотелку или событие. Вместе уже \(store.daysTogether) дн.")
             .font(.subheadline).foregroundStyle(.secondary)
     }
 }

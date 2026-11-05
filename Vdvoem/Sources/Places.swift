@@ -147,7 +147,7 @@ struct PinDetail: View {
                         HStack(spacing: 12) {
                             Text(pin.emoji).font(.system(size: 34))
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(pin.title).font(.title3.weight(.bold))
+                                Text(pin.title).font(.title3.weight(.semibold))
                                 Text("Поставил(а) \(store.name(pin.who)) · \(pin.date.agoText)")
                                     .font(.caption).foregroundStyle(.secondary)
                             }

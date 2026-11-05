@@ -182,7 +182,7 @@ struct JarView: View {
             }
         }
         .frame(height: 380)
-        .shadow(color: Theme.accent.opacity(0.25), radius: 20, y: 12)
+        .shadow(color: .black.opacity(0.10), radius: 16, y: 8)
         .overlay(alignment: .bottom) {
             Text("Наклоняйте телефон или касайтесь шариков").font(.caption2).foregroundStyle(.secondary).offset(y: 22)
         }
@@ -194,7 +194,7 @@ struct JarView: View {
             ForEach(Who.allCases, id: \.self) { w in
                 let balls = store.data.jar.filter { $0.who == w && Date().timeIntervalSince($0.date) < 86400 }
                 VStack(spacing: 10) {
-                    Text(store.name(w)).font(.caption.weight(.bold)).foregroundStyle(store.color(w))
+                    Text(store.name(w)).font(.caption.weight(.semibold)).foregroundStyle(store.color(w))
                     MoodBubble(balls: balls).frame(height: 140)
                     HStack(spacing: 4) {
                         ForEach(jarMoods) { m in
@@ -220,7 +220,7 @@ struct JarView: View {
             HStack(spacing: 12) {
                 Text(m.emoji).font(.title)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(store.name(s.who)) · \(m.title)").font(.subheadline.weight(.bold))
+                    Text("\(store.name(s.who)) · \(m.title)").font(.subheadline.weight(.semibold))
                     Text(s.note.isEmpty ? s.date.agoText : s.note + " · " + s.date.agoText).font(.footnote).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -260,7 +260,7 @@ struct JarView: View {
                 let n = today.filter { $0.mood == m.id }.count
                 VStack(spacing: 2) {
                     Text(m.emoji).font(.title3)
-                    Text("\(n)").font(.subheadline.weight(.heavy).monospacedDigit())
+                    Text("\(n)").font(.subheadline.weight(.medium).monospacedDigit())
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 8)
                 .background(Color(hex: m.hex).opacity(n > 0 ? 0.22 : 0.07), in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))

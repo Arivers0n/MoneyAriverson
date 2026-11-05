@@ -11,30 +11,28 @@ struct ThemeDef: Identifiable, Hashable {
     let fieldL: String, fieldD: String
 
     static let all: [ThemeDef] = [
-        ThemeDef(id: "fresh", title: "Свежесть", bgL: "EEF9E2", bgD: "0C1610", topL: "C8F0A4", topD: "1B3B22",
-                 cardL: "FFFFFF", cardD: "17241B", fieldL: "E2F1D3", fieldD: "223427"),
+        // Лагуна: небесно-голубой и ярко-розовый
+        ThemeDef(id: "lagoon", title: "Лагуна", bgL: "EEF6FA", bgD: "0A141B", topL: "BFE3F2", topD: "0E3A52",
+                 cardL: "FFFFFF", cardD: "111D26", fieldL: "DFEDF4", fieldD: "1A2B38"),
+        // Полночь: тёмно-синий, электрик и оранжевый
+        ThemeDef(id: "midnight", title: "Полночь", bgL: "EDF1FA", bgD: "0A1430", topL: "C9D8F4", topD: "123066",
+                 cardL: "FFFFFF", cardD: "111C3E", fieldL: "DFE6F4", fieldD: "1A284F"),
+        // Индиго: глубокий синий, белый и нежно-розовый
+        ThemeDef(id: "indigo", title: "Индиго", bgL: "F4F5FC", bgD: "0B1030", topL: "D8DEF7", topD: "14236E",
+                 cardL: "FFFFFF", cardD: "121838", fieldL: "E8EBF8", fieldD: "1C2452"),
+        // Малахит: тёмная хвоя, светлая мята и коралл
+        ThemeDef(id: "malachite", title: "Малахит", bgL: "F2F6F2", bgD: "08140F", topL: "CDE6DA", topD: "0F3A2B",
+                 cardL: "FFFFFF", cardD: "0F1D17", fieldL: "E2ECE6", fieldD: "182B22"),
+        // Янтарь: тёплый мёд на тёмном дереве и бирюза
+        ThemeDef(id: "amber", title: "Янтарь", bgL: "FAF3E6", bgD: "14100A", topL: "F3DDB0", topD: "3A2A10",
+                 cardL: "FFFDF8", cardD: "1E1810", fieldL: "F0E6D2", fieldD: "2B2318"),
+        // Вишня: винный, вишнёвый и мята
+        ThemeDef(id: "cherry", title: "Вишня", bgL: "FBF1F3", bgD: "16080E", topL: "F5CCD6", topD: "4A1328",
+                 cardL: "FFFFFF", cardD: "230F17", fieldL: "F4E2E7", fieldD: "351A24"),
         ThemeDef(id: "classic", title: "Классика", bgL: "F4F3F0", bgD: "0D0E12", topL: "F4F3F0", topD: "0D0E12",
                  cardL: "FFFFFF", cardD: "1A1B20", fieldL: "ECEBE7", fieldD: "24262D"),
-        ThemeDef(id: "mint", title: "Мята", bgL: "EEF7E6", bgD: "0E1712", topL: "D6F2B8", topD: "17331F",
-                 cardL: "FFFFFF", cardD: "18251D", fieldL: "E3EFD8", fieldD: "223329"),
-        ThemeDef(id: "lavender", title: "Сирень", bgL: "F1EEFB", bgD: "12101C", topL: "DCD3F7", topD: "271F45",
-                 cardL: "FFFFFF", cardD: "1B1829", fieldL: "E6E1F6", fieldD: "262238"),
-        ThemeDef(id: "peach", title: "Персик", bgL: "FDF1EA", bgD: "1A1210", topL: "FFD6BE", topD: "3D2119",
-                 cardL: "FFFFFF", cardD: "241A17", fieldL: "F6E5DA", fieldD: "33251F"),
-        ThemeDef(id: "ocean", title: "Океан", bgL: "EAF3FA", bgD: "0B1219", topL: "C6E2F7", topD: "113454",
-                 cardL: "FFFFFF", cardD: "15202B", fieldL: "DDEAF4", fieldD: "1E2D3B"),
-        ThemeDef(id: "sunset", title: "Закат", bgL: "FDEFF0", bgD: "1A0F14", topL: "FBC4D2", topD: "4D1E36",
-                 cardL: "FFFFFF", cardD: "25161C", fieldL: "F6E2E5", fieldD: "35222B"),
-        ThemeDef(id: "sakura", title: "Сакура", bgL: "FDF0F5", bgD: "1B1016", topL: "F9CFE2", topD: "3E1A33",
-                 cardL: "FFFFFF", cardD: "241520", fieldL: "F6E1EA", fieldD: "33202D"),
         ThemeDef(id: "graphite", title: "Графит", bgL: "EFEFF1", bgD: "0A0A0B", topL: "DEDFE3", topD: "1A1B1F",
-                 cardL: "FFFFFF", cardD: "17171A", fieldL: "E4E4E8", fieldD: "222226"),
-        ThemeDef(id: "cosmos", title: "Космос", bgL: "ECE8FA", bgD: "0B0820", topL: "CFC4F5", topD: "2A1760",
-                 cardL: "FFFFFF", cardD: "1A1438", fieldL: "E2DCF5", fieldD: "261E4A"),
-        ThemeDef(id: "neon", title: "Неон", bgL: "E8F7F7", bgD: "05070C", topL: "BDF3F0", topD: "08323A",
-                 cardL: "FFFFFF", cardD: "0E141C", fieldL: "D8EEEE", fieldD: "16202B"),
-        ThemeDef(id: "organic", title: "Органика", bgL: "F5EEDF", bgD: "15130E", topL: "E6D7B8", topD: "3A3220",
-                 cardL: "FFFDF7", cardD: "211E16", fieldL: "EBE2CF", fieldD: "2C281D")
+                 cardL: "FFFFFF", cardD: "17171A", fieldL: "E4E4E8", fieldD: "222226")
     ]
 
     static func find(_ id: String) -> ThemeDef { all.first { $0.id == id } ?? all[0] }
@@ -42,16 +40,16 @@ struct ThemeDef: Identifiable, Hashable {
 
 enum Theme {
     /// Текущая тема и стили. Обновляются хранилищем при каждой смене.
-    static var current = ThemeDef.all[0]
+    static var current = ThemeDef.all[0]   // Лагуна
     static var bgStyle = 0
     static var cardStyle = 0
     static var bgPattern = 0
     /// Текущее скругление (px). Обновляется хранилищем, в том числе во время движения слайдера.
-    static var radius: CGFloat = 22
+    static var radius: CGFloat = 20
     /// Любое «жёсткое» скругление в коде умножается на этот масштаб: слайдер двигает все углы разом.
     static func r(_ base: CGFloat) -> CGFloat { max(0, base * radius / 22) }
-    static var accent = Color(hex: "4C9AF0")
-    static var accent2 = Color(hex: "D870A8")
+    static var accent = Color(hex: "0593C6")
+    static var accent2 = Color(hex: "DB3996")
 }
 
 enum Pal {
@@ -61,7 +59,7 @@ enum Pal {
     static var field: Color { Color(light: Color(hex: Theme.current.fieldL), dark: Color(hex: Theme.current.fieldD)) }
 }
 
-/// Фон экрана: цветной верх, мягкие световые пятна, по желанию — медленная «аврора».
+/// Фон экрана: тон верха в оттенке темы; по желанию — медленная «аврора».
 struct ThemeBackground: View {
     @EnvironmentObject private var store: Store     // перерисовка при смене темы без пересоздания экрана
     @Environment(\.colorScheme) private var scheme
@@ -72,12 +70,15 @@ struct ThemeBackground: View {
             ZStack {
                 Pal.bg
                 if Theme.bgStyle != 2 {
+                    // Тон верха: один оттенок темы, плавно уходящий в фон
+                    GeometryReader { g in
+                        LinearGradient(colors: [Pal.top, Pal.top.opacity(0)], startPoint: .top, endPoint: .bottom)
+                            .frame(height: g.size.height * 0.5)
+                    }
                     if Theme.bgStyle == 1 {
                         TimelineView(.animation(minimumInterval: 1 / 20)) { tl in
                             blobs(t: tl.date.timeIntervalSinceReferenceDate)
                         }
-                    } else {
-                        blobs(t: 0)
                     }
                 }
             }
@@ -90,19 +91,16 @@ struct ThemeBackground: View {
         .ignoresSafeArea()
     }
 
+    /// «Аврора» — по выбору: два мягких пятна одной пары цветов, без яркости и без фона-радуги.
     private func blobs(t: Double) -> some View {
         GeometryReader { g in
             let w = g.size.width, h = g.size.height
-            let a = scheme == .dark ? 0.30 : 0.45
+            let a = scheme == .dark ? 0.22 : 0.30
             ZStack {
-                LinearGradient(colors: [Pal.top, Pal.top.opacity(0)], startPoint: .top, endPoint: .bottom)
-                    .frame(height: h * 0.55).frame(maxHeight: .infinity, alignment: .top)
-                Circle().fill(Theme.accent.opacity(a * 0.55)).frame(width: w * 0.9)
-                    .blur(radius: 70).offset(x: -w * 0.35 + CGFloat(sin(t / 5)) * 40, y: -h * 0.32 + CGFloat(cos(t / 6)) * 30)
-                Circle().fill(Theme.accent2.opacity(a * 0.5)).frame(width: w * 0.8)
-                    .blur(radius: 80).offset(x: w * 0.4 + CGFloat(cos(t / 7)) * 40, y: h * 0.05 + CGFloat(sin(t / 4)) * 40)
-                Circle().fill(Theme.accent.opacity(a * 0.35)).frame(width: w * 0.7)
-                    .blur(radius: 80).offset(x: -w * 0.2 + CGFloat(sin(t / 8)) * 50, y: h * 0.42)
+                Circle().fill(Theme.accent.opacity(a)).frame(width: w * 0.9)
+                    .blur(radius: 80).offset(x: -w * 0.35 + CGFloat(sin(t / 5)) * 40, y: -h * 0.32 + CGFloat(cos(t / 6)) * 30)
+                Circle().fill(Theme.accent2.opacity(a * 0.8)).frame(width: w * 0.8)
+                    .blur(radius: 90).offset(x: w * 0.4 + CGFloat(cos(t / 7)) * 40, y: h * 0.05 + CGFloat(sin(t / 4)) * 40)
             }
             .frame(width: w, height: h)
         }
@@ -162,7 +160,7 @@ struct WallpaperView: View {
             while y < size.height {
                 var x: CGFloat = 14
                 while x < size.width {
-                    ctx.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 3, height: 3)), with: .color(ink.opacity(0.10)))
+                    ctx.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 3, height: 3)), with: .color(ink.opacity(0.05)))
                     x += 28
                 }
                 y += 28
@@ -173,7 +171,7 @@ struct WallpaperView: View {
             while y < size.height {
                 var x: CGFloat = row % 2 == 0 ? 16 : 40
                 while x < size.width {
-                    ctx.draw(Text("♥").font(.system(size: 15)).foregroundColor(ink.opacity(0.09)), at: CGPoint(x: x, y: y))
+                    ctx.draw(Text("♥").font(.system(size: 15)).foregroundColor(ink.opacity(0.05)), at: CGPoint(x: x, y: y))
                     x += 48
                 }
                 y += 34
@@ -202,7 +200,7 @@ struct WallpaperView: View {
                     path.addLine(to: CGPoint(x: x, y: y + sin(x / 22) * 6))
                     x += 4
                 }
-                ctx.stroke(path, with: .color(ink.opacity(0.07)), lineWidth: 1.2)
+                ctx.stroke(path, with: .color(ink.opacity(0.05)), lineWidth: 1)
                 y += 36
             }
         case .stars:
@@ -211,7 +209,7 @@ struct WallpaperView: View {
             while y < size.height {
                 var x: CGFloat = row % 2 == 0 ? 14 : 44
                 while x < size.width {
-                    ctx.draw(Text("✦").font(.system(size: 11)).foregroundColor(ink.opacity(0.10)), at: CGPoint(x: x, y: y))
+                    ctx.draw(Text("✦").font(.system(size: 11)).foregroundColor(ink.opacity(0.05)), at: CGPoint(x: x, y: y))
                     x += 56
                 }
                 y += 40
@@ -258,7 +256,7 @@ struct AppearanceView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 18) {
+            VStack(spacing: 16) {
                 section("Предпросмотр тем") {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 14) { ForEach(ThemeDef.all) { t in ThemePreviewCard(def: t) } }
@@ -289,9 +287,9 @@ struct AppearanceView: View {
                     .font(.subheadline)
                 }
                 section("Фон") {
-                    choice([("Свечение", "sparkles"), ("Аврора", "wind"), ("Однотонный", "square.fill")], $store.data.profile.bgStyle)
-                    Text("«Аврора» — цветные пятна медленно плавают за карточками.").font(.caption).foregroundStyle(.secondary)
-                    Text("Узор").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(.top, 4)
+                    choice([("Тон", "circle.lefthalf.filled"), ("Аврора", "wind"), ("Однотонный", "square.fill")], $store.data.profile.bgStyle)
+                    Text("«Тон» — мягкий оттенок темы сверху. «Аврора» — два пятна, которые медленно плывут за карточками.").font(.caption).foregroundStyle(.secondary)
+                    Text("Узор").font(.subheadline.weight(.medium)).foregroundStyle(.secondary).padding(.top, 4)
                     HStack(spacing: 0) {
                         ForEach(0..<4, id: \.self) { k in patternDot(k).frame(maxWidth: .infinity) }
                     }
@@ -367,13 +365,11 @@ struct AppearanceView: View {
         let on = store.p.bgPattern == k
         return Button { store.setPattern(k) } label: {
             ZStack {
-                Circle().fill(LinearGradient(colors: [store.meColor.opacity(0.55), store.meColor.opacity(0.9)],
-                                             startPoint: .topLeading, endPoint: .bottomTrailing))
-                Image(systemName: PatternOverlay.symbol(k)).font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
+                Circle().fill(store.meColor)
+                Image(systemName: PatternOverlay.symbol(k)).font(.system(size: 14, weight: .medium)).foregroundStyle(.white)
             }
             .frame(width: 38, height: 38)
-            .overlay(Circle().strokeBorder(Color.primary, lineWidth: on ? 2.5 : 0).padding(-5))
-            .scaleEffect(on ? 1.06 : 1)
+            .overlay(Circle().strokeBorder(Color.primary, lineWidth: on ? 2 : 0).padding(-4))
             .accessibilityLabel(PatternOverlay.title(k))
         }
         .buttonStyle(.plain)
@@ -381,7 +377,7 @@ struct AppearanceView: View {
 
     private func section<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title.uppercased()).font(.caption.weight(.bold)).foregroundStyle(.secondary).tracking(1)
+            Text(title).font(.footnote.weight(.medium)).foregroundStyle(.secondary)
             c()
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
@@ -394,7 +390,7 @@ struct AppearanceView: View {
                 Button { sel.wrappedValue = i; store.tap() } label: {
                     VStack(spacing: 6) {
                         Image(systemName: it.1).font(.title3)
-                        Text(it.0).font(.caption.weight(.semibold))
+                        Text(it.0).font(.caption.weight(.medium))
                     }
                     .foregroundStyle(on ? .white : .primary)
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -415,7 +411,7 @@ struct AppearanceView: View {
                     Circle().fill(Color(hex: p.me)).frame(width: 30, height: 30)
                     Circle().fill(Color(hex: p.partner)).frame(width: 30, height: 30)
                 }
-                Text(p.id).font(.system(size: 10, weight: .medium)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.7)
+                Text(p.id).font(.system(size: 11, weight: .medium)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.7)
             }
             .frame(maxWidth: .infinity).padding(.vertical, 10)
             .background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
@@ -438,9 +434,8 @@ struct AppearanceView: View {
                 }
                 .frame(width: 58, height: 58)
                 .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                .overlay(Circle().strokeBorder(Color.primary, lineWidth: on ? 2.5 : 0).padding(-4))
-                .scaleEffect(on ? 1.05 : 1)
-                Text(t.title).font(.caption2.weight(on ? .bold : .regular)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.8)
+                .overlay(Circle().strokeBorder(Color.primary, lineWidth: on ? 2 : 0).padding(-4))
+                Text(t.title).font(.caption2.weight(on ? .semibold : .regular)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
         }
@@ -459,7 +454,7 @@ struct AppearanceView: View {
                     .clipShape(RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous)
                         .stroke(on ? store.meColor : Color.primary.opacity(0.1), lineWidth: on ? 2.5 : 1))
-                Text(w.title).font(.caption2.weight(on ? .bold : .regular)).foregroundStyle(.primary)
+                Text(w.title).font(.caption2.weight(on ? .semibold : .regular)).foregroundStyle(.primary)
             }
         }
         .buttonStyle(.plain)
@@ -472,12 +467,12 @@ struct AppearanceView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: Theme.r(15), style: .continuous)
                         .fill(LinearGradient(colors: [Color(hex: i.a), Color(hex: i.b)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Image(systemName: i.symbol).font(.system(size: 24, weight: .bold)).foregroundStyle(.white)
+                    Image(systemName: i.symbol).font(.system(size: 24, weight: .semibold)).foregroundStyle(.white)
                 }
                 .frame(width: 56, height: 56)
                 .overlay(RoundedRectangle(cornerRadius: Theme.r(15), style: .continuous)
                     .stroke(on ? store.meColor : Color.clear, lineWidth: 3).padding(-3))
-                Text(i.title).font(.caption2.weight(on ? .bold : .regular)).foregroundStyle(.primary)
+                Text(i.title).font(.caption2.weight(on ? .semibold : .regular)).foregroundStyle(.primary)
             }
         }
         .buttonStyle(.plain)
@@ -517,8 +512,7 @@ struct LivePreview: View {
                     Spacer()
                 }
                 .padding(12)
-                .background(LinearGradient(colors: [Color(hex: "E8590C"), Color(hex: "E8590C").opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                            in: RoundedRectangle(cornerRadius: store.radius, style: .continuous))
+                .background(Color(hex: "C2480A"), in: RoundedRectangle(cornerRadius: store.radius, style: .continuous))
                 HStack {
                     Text("Что на ужин?").font(.subheadline).padding(.horizontal, 12).padding(.vertical, 8)
                         .background(store.partnerColor, in: RoundedRectangle(cornerRadius: bubble, style: .continuous)).foregroundStyle(.white)
@@ -526,12 +520,12 @@ struct LivePreview: View {
                 }
                 HStack {
                     Spacer()
-                    Text("Паста! Скоро буду ❤️").font(.subheadline).padding(.horizontal, 12).padding(.vertical, 8)
+                    Text("Паста, скоро буду").font(.subheadline).padding(.horizontal, 12).padding(.vertical, 8)
                         .background(store.meColor, in: RoundedRectangle(cornerRadius: bubble, style: .continuous)).foregroundStyle(.white)
                 }
                 HStack(spacing: 8) {
-                    Label("Чат", systemImage: "bubble.left.fill").font(.caption.weight(.bold)).foregroundStyle(.white)
-                        .padding(.horizontal, 14).frame(height: 34).background(store.meColor, in: Capsule())
+                    Label("Чат", systemImage: "bubble.left.fill").font(.caption.weight(.medium)).foregroundStyle(.white)
+                        .padding(.horizontal, 12).frame(height: 36).background(store.meColor, in: Capsule())
                     ForEach(["heart", "photo", "map"], id: \.self) { Image(systemName: $0).foregroundStyle(.secondary).frame(maxWidth: .infinity) }
                 }
                 .padding(5).background(Pal.card, in: Capsule())
@@ -541,7 +535,7 @@ struct LivePreview: View {
         .frame(height: 290)
         .clipShape(RoundedRectangle(cornerRadius: Theme.r(28), style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Theme.r(28), style: .continuous).stroke(Color.primary.opacity(0.1), lineWidth: 1))
-        .shadow(color: .black.opacity(0.12), radius: 14, y: 8)
+        .shadow(color: .black.opacity(0.06), radius: 12, y: 6)
     }
 }
 

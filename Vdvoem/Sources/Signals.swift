@@ -46,7 +46,7 @@ struct SignalView: View {
         ScrollView {
             VStack(spacing: 18) {
                 VStack(spacing: 6) {
-                    Text("Скучаю по тебе").font(.system(size: 26, weight: .heavy, design: .rounded))
+                    Text("Скучаю по тебе").font(.system(size: 26, weight: .medium))
                     Text("\(store.name(.partner)) увидит сердечко сразу, как только откроет приложение")
                         .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }
@@ -63,10 +63,10 @@ struct SignalView: View {
                         Circle().fill(Color(hex: "FF5C8A").opacity(0.2)).frame(width: 205, height: 205)
                         Image(systemName: "heart.fill")
                             .font(.system(size: 130))
-                            .foregroundStyle(LinearGradient(colors: [Color(hex: "FF9AB8"), Color(hex: "F43F5E")], startPoint: .top, endPoint: .bottom))
-                            .shadow(color: Color(hex: "F43F5E").opacity(0.5), radius: 20, y: 12)
+                            .foregroundStyle(Color(hex: "F43F5E"))
+                            
                             .scaleEffect(pulse ? 1.18 : 1)
-                        Text("\(missMe + missThem)").font(.system(size: 34, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+                        Text("\(missMe + missThem)").font(.system(size: 34, weight: .medium)).foregroundStyle(.white)
                             .contentTransition(.numericText()).offset(y: -4)
                     }
                 }
@@ -83,7 +83,7 @@ struct SignalView: View {
                         Button { store.sendSignal(k.id) } label: {
                             HStack(spacing: 10) {
                                 Text(k.emoji).font(.system(size: 30))
-                                Text(k.title).font(.subheadline.weight(.bold)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.7)
+                                Text(k.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.7)
                                 Spacer(minLength: 0)
                             }
                             .padding(14).frame(maxWidth: .infinity, alignment: .leading)
@@ -119,7 +119,7 @@ struct SignalView: View {
 
     private func count(_ w: Who, _ n: Int) -> some View {
         VStack(spacing: 2) {
-            Text("\(n)").font(.system(size: 28, weight: .heavy, design: .rounded)).contentTransition(.numericText())
+            Text("\(n)").font(.system(size: 28, weight: .medium)).contentTransition(.numericText())
             Text("\(store.name(w)) скучает").font(.caption).foregroundStyle(store.color(w)).lineLimit(1)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 12).card()
@@ -147,7 +147,7 @@ struct SignalOverlay: View {
                 }
                 VStack(spacing: 10) {
                     Text(k.emoji).font(.system(size: 110))
-                    Text(k.title).font(.title.weight(.heavy)).foregroundStyle(.white)
+                    Text(k.title).font(.title.weight(.medium)).foregroundStyle(.white)
                     Text("от \(store.name(s.who))").font(.subheadline).foregroundStyle(.white.opacity(0.85))
                 }
                 .padding(30)

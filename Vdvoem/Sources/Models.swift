@@ -186,11 +186,11 @@ struct Profile: Codable {
     var myName = ""
     var partnerName = ""
     var start = Date()
-    var myHex = "4C9AF0"
-    var partnerHex = "D870A8"
+    var myHex = "0593C6"
+    var partnerHex = "DB3996"
     var theme: ThemeMode = .system
-    var radius: Double = 22
-    var design: DesignStyle = .rounded
+    var radius: Double = 20
+    var design: DesignStyle = .standard
     var haptics = true
     var order: [Module] = Module.defaultOrder
     var disabled: [Module] = []
@@ -199,14 +199,14 @@ struct Profile: Codable {
     var partnerCode = ""
     var lockApp = false
     var notifications = false
-    var themeID = "fresh"
+    var themeID = "lagoon"
     var wallpaper = "none"
     var iconID = ""
     var shareLocation = false
     var bubbleStyle = 0
     var cardStyle = 0              // 0 — мягкие с тенью, 1 — плоские, 2 — контур
-    var bgStyle = 0                // 0 — свечение, 1 — аврора (движется), 2 — однотонный
-    var iconStyle = 1              // 0 — контурные, 1 — неоновые, 2 — объёмные
+    var bgStyle = 0                // 0 — тон верха, 1 — аврора (движется), 2 — однотонный
+    var iconStyle = 0              // 0 — контурные, 1 — неоновые, 2 — объёмные
     var bgPattern = 0              // 0 — без узора, 1 — точки, 2 — сердечки, 3 — волны
     var sound = true               // «стеклянный» звук при выборе темы
 
@@ -218,11 +218,11 @@ struct Profile: Codable {
         myName = v(.myName, "")
         partnerName = v(.partnerName, "")
         start = v(.start, Date())
-        myHex = v(.myHex, "4C9AF0")
-        partnerHex = v(.partnerHex, "D870A8")
+        myHex = v(.myHex, "0593C6")
+        partnerHex = v(.partnerHex, "DB3996")
         theme = v(.theme, .system)
-        radius = v(.radius, 22)
-        design = v(.design, .rounded)
+        radius = v(.radius, 20)
+        design = v(.design, .standard)
         haptics = v(.haptics, true)
         var ord: [Module] = v(.order, Module.defaultOrder)
         for m in Module.defaultOrder where !ord.contains(m) { if m == .today { ord.insert(m, at: 0) } else { ord.append(m) } }
@@ -233,14 +233,14 @@ struct Profile: Codable {
         partnerCode = v(.partnerCode, "")
         lockApp = v(.lockApp, false)
         notifications = v(.notifications, false)
-        themeID = v(.themeID, "fresh")
+        themeID = v(.themeID, "lagoon")
         wallpaper = v(.wallpaper, "none")
         iconID = v(.iconID, "")
         shareLocation = v(.shareLocation, false)
         bubbleStyle = v(.bubbleStyle, 0)
         cardStyle = v(.cardStyle, 0)
         bgStyle = v(.bgStyle, 0)
-        iconStyle = v(.iconStyle, 1)
+        iconStyle = v(.iconStyle, 0)
         bgPattern = v(.bgPattern, 0)
         sound = v(.sound, true)
     }

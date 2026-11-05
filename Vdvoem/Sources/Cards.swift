@@ -157,20 +157,20 @@ struct CardTile: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(String(card.name.prefix(1)).uppercased())
-                        .font(.system(size: 20, weight: .heavy, design: .rounded)).foregroundStyle(c)
+                        .font(.system(size: 20, weight: .medium)).foregroundStyle(c)
                         .frame(width: 40, height: 40).background(.white, in: Circle())
                     Spacer()
                     Image(systemName: "barcode").font(.title2).foregroundStyle(.white.opacity(0.85))
                 }
                 Spacer()
-                Text(card.name).font(.title3.weight(.bold)).foregroundStyle(.white)
+                Text(card.name).font(.title3.weight(.semibold)).foregroundStyle(.white)
                 Text(masked(card.number)).font(.subheadline.monospaced()).foregroundStyle(.white.opacity(0.85))
             }
             .padding(18)
         }
         .frame(height: 170)
         .clipShape(RoundedRectangle(cornerRadius: Theme.r(24), style: .continuous))
-        .shadow(color: c.opacity(0.35), radius: 14, y: 8)
+        .shadow(color: .black.opacity(0.12), radius: 12, y: 6)
     }
 
     private func masked(_ n: String) -> String {
@@ -197,7 +197,7 @@ struct CardShowView: View {
                     }
                 }
                 Spacer()
-                Text(card.name).font(.largeTitle.weight(.bold)).foregroundStyle(.white)
+                Text(card.name).font(.largeTitle.weight(.semibold)).foregroundStyle(.white)
                 VStack(spacing: 14) {
                     BarcodeView(text: card.number, kind: card.symbology)
                         .frame(maxHeight: card.symbology == "qr" || card.symbology == "aztec" ? 260 : 130)

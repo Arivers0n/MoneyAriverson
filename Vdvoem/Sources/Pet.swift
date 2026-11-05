@@ -67,7 +67,7 @@ struct PetView: View {
                 .rotationEffect(.degrees(jump ? 6 : -6))
                 .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: jump)
                 .onAppear { jump = true }
-            Text("Вылупите питомца").font(.title2.weight(.heavy))
+            Text("Вылупите питомца").font(.title2.weight(.medium))
             Text("Он будет расти от того, что вы делаете вместе: сообщений, сигналов, фото, игр.")
                 .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
             TextField("Имя питомца", text: $name)
@@ -82,7 +82,7 @@ struct PetView: View {
         let scale = min(1.25, 0.9 + Double(store.petLevel) * 0.04)
         return VStack(spacing: 16) {
             VStack(spacing: 4) {
-                Text(p.name).font(.system(size: 28, weight: .heavy, design: .rounded))
+                Text(p.name).font(.system(size: 28, weight: .medium))
                 Text("Уровень \(store.petLevel)").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                 ProgressView(value: store.petLevelProgress).tint(Color(hex: pal.b)).frame(width: 180)
             }
@@ -137,7 +137,7 @@ struct PetView: View {
         Button(action: run) {
             VStack(spacing: 4) {
                 Text(emoji).font(.system(size: 30))
-                Text(title).font(.caption.weight(.bold)).foregroundStyle(.primary)
+                Text(title).font(.caption.weight(.semibold)).foregroundStyle(.primary)
             }
             .frame(maxWidth: .infinity).padding(.vertical, 12)
             .glass(RoundedRectangle(cornerRadius: Theme.r(18), style: .continuous), interactive: true)

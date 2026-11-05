@@ -34,12 +34,15 @@ struct ColorPair: Identifiable {
 }
 
 let colorPairs: [ColorPair] = [
-    ColorPair(id: "Океан и роза", me: "4C9AF0", partner: "D870A8"),
+    ColorPair(id: "Лагуна", me: "0593C6", partner: "DB3996"),
+    ColorPair(id: "Полночь", me: "0297DE", partner: "F2683F"),
+    ColorPair(id: "Индиго", me: "2A56D6", partner: "EC72B0"),
+    ColorPair(id: "Малахит", me: "0F8F6B", partner: "FF7A59"),
+    ColorPair(id: "Янтарь", me: "E8A02B", partner: "2BB8A8"),
+    ColorPair(id: "Вишня", me: "E4456F", partner: "2FB89A"),
     ColorPair(id: "Мята и коралл", me: "3FC9A5", partner: "FF7A6B"),
     ColorPair(id: "Фиалка и янтарь", me: "8C7BF2", partner: "F5A524"),
-    ColorPair(id: "Бирюза и малина", me: "22B8CF", partner: "E64980"),
-    ColorPair(id: "Графит и золото", me: "8E95A5", partner: "E3B341"),
-    ColorPair(id: "Лайм и сирень", me: "8BC34A", partner: "B388FF")
+    ColorPair(id: "Графит и золото", me: "8E95A5", partner: "E3B341")
 ]
 
 // MARK: - Модификаторы
@@ -54,10 +57,11 @@ struct CardBG: ViewModifier {
             content.background(Pal.card, in: shape)
         case 2:
             content.background(Pal.card.opacity(0.45), in: shape)
-                .overlay(shape.stroke(Color.primary.opacity(0.14), lineWidth: 1.2))
+                .overlay(shape.stroke(Color.primary.opacity(0.12), lineWidth: 1))
         default:
             content.background(Pal.card.opacity(0.4), in: shape).glass(shape)
-                .shadow(color: Theme.accent.opacity(0.10), radius: 14, y: 8)
+                .overlay(shape.stroke(Color.primary.opacity(0.06), lineWidth: 1))
+                .shadow(color: .black.opacity(0.05), radius: 12, y: 6)
         }
     }
 }
@@ -69,7 +73,7 @@ struct BigButton: ViewModifier {
             .font(.headline)
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 17)
+            .padding(.vertical, 16)
             .glass(RoundedRectangle(cornerRadius: min(store.radius, 26), style: .continuous), tint: store.meColor, interactive: true)
             .background(store.meColor.opacity(0.85), in: RoundedRectangle(cornerRadius: min(store.radius, 26), style: .continuous))
     }
@@ -92,6 +96,20 @@ extension View {
 }
 
 // MARK: - Компоненты
+
+/// Знак приложения: два пересекающихся кружка в цветах пары.
+struct PairMark: View {
+    @EnvironmentObject var store: Store
+    var size: CGFloat = 24
+    var body: some View {
+        HStack(spacing: -size * 0.35) {
+            Circle().fill(store.meColor).frame(width: size, height: size)
+            Circle().fill(store.partnerColor).frame(width: size, height: size)
+                .overlay(Circle().stroke(Pal.bg, lineWidth: 2))
+        }
+        .accessibilityHidden(true)
+    }
+}
 
 struct ScopePill: View {
     @EnvironmentObject var store: Store
@@ -128,7 +146,7 @@ struct SectionTitle: View {
     var body: some View {
         HStack(spacing: 6) {
             Circle().fill(color).frame(width: 8, height: 8)
-            Text(text.uppercased()).font(.caption.weight(.semibold)).foregroundStyle(.secondary).tracking(1)
+            Text(text).font(.footnote.weight(.medium)).foregroundStyle(.secondary)
             Spacer()
         }
         .padding(.top, 10).padding(.horizontal, 4)
@@ -146,7 +164,7 @@ struct EmptyState: View {
     var body: some View {
         VStack(spacing: 14) {
             Image(systemName: icon).font(.system(size: 56)).foregroundStyle(.tertiary).padding(.top, 70)
-            Text(title).font(.title2.bold()).multilineTextAlignment(.center)
+            Text(title).font(.title2.weight(.medium)).multilineTextAlignment(.center)
             Text(text).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
             if let action, let onTap {
                 Button(action: onTap) { Text(action).bigButton() }.padding(.top, 10)
@@ -185,7 +203,7 @@ struct FormSheet<C: View>: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Отмена") { dismiss() } }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Готово") { onSave(); dismiss() }.bold().disabled(!canSave)
+                        Button("Готово") { onSave(); dismiss() }.fontWeight(.semibold).disabled(!canSave)
                     }
                 }
         }
@@ -199,9 +217,9 @@ struct Chip: View {
     var color: Color = .secondary
     var body: some View {
         Text(text)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(color.opacity(0.18), in: Capsule())
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(color.opacity(0.14), in: Capsule())
             .foregroundStyle(color)
     }
 }
@@ -238,7 +256,7 @@ struct LockGate<Content: View>: View {
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "lock.fill").font(.system(size: 48)).foregroundStyle(.secondary)
-                    Text("«\(title)» закрыт").font(.title3.bold())
+                    Text("«\(title)» закрыт").font(.title3.weight(.medium))
                     Button { auth() } label: { Text("Разблокировать").bigButton() }
                         .padding(.horizontal, 40)
                 }
