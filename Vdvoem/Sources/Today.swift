@@ -238,8 +238,8 @@ struct TodayView: View {
                     Image(systemName: "chevron.down").rotationEffect(.degrees(history ? 180 : 0))
                     Text("История").font(.subheadline.weight(.medium))
                 }
-                .foregroundStyle(.secondary)
             }
+            .foregroundStyle(Color.secondary)
             if history {
                 let items = store.data.statuses.sorted { $0.started > $1.started }.prefix(12)
                 if items.isEmpty { Text("Статусов пока не было").font(.footnote).foregroundStyle(.secondary) }

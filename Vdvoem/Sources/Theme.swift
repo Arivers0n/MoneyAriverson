@@ -509,17 +509,17 @@ struct LivePreview: View {
         ZStack {
             WallpaperView(id: store.p.wallpaper)
             VStack(spacing: 10) {
-                HStack(spacing: 10) {
-                    Image(systemName: "frying.pan.fill").font(.title3).foregroundStyle(.white)
-                        .frame(width: 42, height: 42).background(.white.opacity(0.2), in: Circle())
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Готовлю").font(.headline).foregroundStyle(.white)
-                        Text("\(store.name(.partner)) · 10 мин назад").font(.caption).foregroundStyle(.white.opacity(0.85))
+                HStack(spacing: 12) {
+                    Image(systemName: "frying.pan.fill").font(.title3).foregroundStyle(Color(hex: "E8590C"))
+                        .frame(width: 42, height: 42).background(Color(hex: "E8590C").opacity(0.14), in: Circle())
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Готовлю").font(.headline)
+                        Text("\(store.name(.partner)) · 10 мин назад").font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
                 }
                 .padding(12)
-                .background(Color(hex: "C2480A"), in: RoundedRectangle(cornerRadius: store.radius, style: .continuous))
+                .background(Pal.card, in: RoundedRectangle(cornerRadius: store.radius, style: .continuous))
                 HStack {
                     Text("Что на ужин?").font(.subheadline).padding(.horizontal, 12).padding(.vertical, 8)
                         .background(store.partnerColor, in: RoundedRectangle(cornerRadius: bubble, style: .continuous)).foregroundStyle(store.partnerColor.onAccent)
