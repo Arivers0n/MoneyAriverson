@@ -2,11 +2,9 @@ name: Скриншоты Вдвоём (симулятор)
 
 # Собирает приложение для симулятора iOS, снимает экраны в демо-режиме
 # и кладёт PNG в ветку vdvoem-screens (и в артефакт сборки).
+# Запускается только вручную (Actions → Run workflow): macOS-серверы дефицитны, на каждый пуш не тратим.
 on:
   workflow_dispatch:
-  push:
-    branches: [vdvoem]
-    paths: ['Vdvoem/**', '.github/workflows/vdvoem-screens.yml']
 
 permissions:
   contents: write
@@ -18,7 +16,7 @@ concurrency:
 jobs:
   shots:
     runs-on: macos-15-intel
-    timeout-minutes: 45
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -84,18 +82,12 @@ jobs:
               echo "$name: кадр пустой, попытка $try"
             done
           }
-          shot today-lagoon          -demo today
-          shot today-both-lagoon     -demo today-both
-          shot today-lagoon-dark     -demo today -scheme dark
-          for t in midnight indigo malachite amber cherry classic graphite; do
-            shot today-$t -demo today-both -theme $t
-          done
+          shot today-lagoon          -demo today-both
+          shot today-midnight        -demo today-both -theme midnight
           shot more-lagoon           -demo more
-          shot chat-lagoon           -demo chat
           shot tasks-lagoon          -demo tasks
           shot appearance-lagoon     -demo appearance
-          shot root-lagoon           -demo root
-          shot root-midnight         -demo root -theme midnight
+          shot root-malachite        -demo root -theme malachite
           ls -la shots
 
       - uses: actions/upload-artifact@v4
