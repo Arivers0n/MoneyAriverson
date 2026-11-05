@@ -308,6 +308,7 @@ struct TodayView: View {
                 Label("Вместе", systemImage: "heart").font(.caption.weight(.medium)).foregroundStyle(.secondary)
                 let days = max(0, Calendar.current.dateComponents([.day], from: store.p.start, to: Date()).day ?? 0)
                 Text("\(days)").font(.system(size: 28, weight: .medium).monospacedDigit())
+                    .contentTransition(.numericText()).animation(Motion.curve(0.3), value: days)
                 Text("дней").font(.caption).foregroundStyle(.secondary)
             }
             .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading).card()
@@ -330,6 +331,7 @@ struct TodayView: View {
                         }
                         Spacer()
                         Text(b.map { "\(Int($0.level * 100))%" } ?? "—").font(.subheadline.weight(.medium).monospacedDigit())
+                            .contentTransition(.numericText()).animation(Motion.curve(0.3), value: b?.level)
                     }
                     GeometryReader { g in
                         ZStack(alignment: .leading) {

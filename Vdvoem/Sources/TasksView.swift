@@ -32,6 +32,8 @@ struct TasksView: View {
                 }
             }
         }
+        // Задача, которую отметили или передали, плавно переезжает в другую группу, а не перескакивает
+        .animation(Motion.spring, value: store.data.tasks)
         .navigationTitle("Задачи")
         .pairToolbar(add: { adding = true })
         .sheet(isPresented: $adding) { AddTaskSheet() }
