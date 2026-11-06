@@ -15,6 +15,12 @@ struct SettingsView: View {
                 DatePicker("Дата начала", selection: $store.data.profile.start, in: ...Date(), displayedComponents: .date)
             }
 
+            group("Фото") {
+                AvatarPickerRow(who: .me)
+                Divider()
+                AvatarPickerRow(who: .partner)
+            }
+
             group("Цвета") {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {

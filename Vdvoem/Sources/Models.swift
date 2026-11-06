@@ -64,7 +64,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .radar: return "Подарочный радар"
         case .notes: return "Заметки"
         case .days: return "Наши даты"
-        case .mood: return "Шарики по настроению"
+        case .mood: return "Настроение"
         case .dates: return "Идеи свиданий"
         case .movies: return "Фильмы"
         case .today: return "Сегодня"
@@ -123,7 +123,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .radar: return "📡"
         case .notes: return "📝"
         case .days: return "💑"
-        case .mood: return "🫙"
+        case .mood: return "🌙"
         case .dates: return "🍷"
         case .movies: return "🎬"
         case .today: return "🌤️"
@@ -152,7 +152,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .radar: return "Идеи для подарка"
         case .notes: return "Общие заметки"
         case .days: return "Годовщины и счётчики"
-        case .mood: return "Шарики по настроению"
+        case .mood: return "Две луны и цвет недели"
         case .dates: return "Куда сходить вдвоём"
         case .movies: return "Что смотрим и смотрели"
         case .today: return "Статус, сон, трекер"
@@ -480,6 +480,7 @@ struct AppData: Codable {
     var batteries: [BatteryInfo] = []
     var movies: [MovieItem] = []
     var compatAnswers: [CompatAnswer] = []
+    var avatars: [AvatarItem] = []
 
     init() {}
 
@@ -519,6 +520,7 @@ struct AppData: Codable {
         batteries = v(.batteries, [])
         movies = v(.movies, [])
         compatAnswers = v(.compatAnswers, [])
+        avatars = v(.avatars, [])
     }
 }
 

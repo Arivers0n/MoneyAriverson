@@ -9,13 +9,8 @@ struct Avatar: View {
         let st = store.statusNow(who)
         let ring = st.map { Color(hex: statusKind($0.kind).hex) } ?? store.color(who)
         ZStack(alignment: .bottomTrailing) {
-            ZStack {
-                Circle().fill(store.color(who))
-                Text(String(store.name(who).prefix(1)).uppercased())
-                    .font(.system(size: size * 0.42, weight: .medium)).foregroundStyle(.white)
-            }
-            .frame(width: size, height: size)
-            .overlay(Circle().stroke(ring, lineWidth: 2).padding(-4))
+            AvatarFace(who: who, size: size)
+                .overlay(Circle().stroke(ring, lineWidth: 2).padding(-4))
             if let st {
                 Group {
                     if let e = st.emoji, !e.isEmpty {
@@ -260,7 +255,7 @@ struct TodayView: View {
         HStack(spacing: 12) {
             tile("Сон", "moon.zzz", "9DB7FF", detail: sleepDetail) { SleepView() }
             tile("Трекер", "chart.bar", "FFC25C", detail: trackerDetail) { TrackerView() }
-            tile("Банка", "face.smiling", "7EE0C0", detail: jarDetail) { JarView() }
+            tile("Настроение", "face.smiling", "7EE0C0", detail: jarDetail) { JarView() }
         }
     }
 
@@ -286,7 +281,7 @@ struct TodayView: View {
     }
     private var jarDetail: String {
         let n = store.data.jar.filter { Calendar.current.isDateInToday($0.date) }.count
-        return n == 0 ? "Бросить шарик" : "Шариков: \(n)"
+        return n == 0 ? "Как вы сейчас?" : "Сегодня: \(n)"
     }
 
     // Расстояние и дни

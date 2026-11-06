@@ -61,17 +61,9 @@ struct TypingDots: View {
 }
 
 struct PlayerAvatar: View {
-    @EnvironmentObject var store: Store
     let who: Who
     var size: CGFloat = 40
-    var body: some View {
-        ZStack {
-            Circle().fill(LinearGradient(colors: [store.color(who), store.color(who).opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing))
-            Text(String(store.name(who).prefix(1)).uppercased())
-                .font(.system(size: size * 0.44, weight: .semibold, design: .rounded)).foregroundStyle(.white)
-        }
-        .frame(width: size, height: size)
-    }
+    var body: some View { AvatarFace(who: who, size: size) }
 }
 
 /// Верхняя плашка партии: кто ходит, подсвечивается и «дышит».

@@ -194,6 +194,7 @@ private func makeAdapters() -> [Adapter] {
         adapter("matches", \AppData.matches) { GameFlip.flip($0) },
         adapter("compatAnswers", \AppData.compatAnswers) { a in var x = a; x.who = a.who.flipped; return x },
         adapter("movies", \AppData.movies) { m in var x = m; x.owner = m.owner?.flipped; return x },
+        adapter("avatars", \AppData.avatars) { a in var x = a; x.who = a.who.flipped; return x },
     ]
 }
 
