@@ -144,9 +144,8 @@ migrate((app) => {
 }, (app) => {})
 VDEOF
 
-put "$DIR/pb_hooks/vdvoem.pb.js" <<'VDEOF'
-/// <reference path="../pb_data/types.d.ts" />
-// Маршруты «Вдвоём». Все требуют вход пользователя из коллекции vd_users.
+put "$DIR/pb_hooks/vdlib.js" <<'VDEOF'
+/// Помощники «Вдвоём». Обычный модуль (не .pb.js): подключается из обработчиков через require.
 
 const VD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
@@ -171,43 +170,53 @@ function vdPairJSON(app, rec) {
     return { id: rec.id, code: rec.getString("code"), creator: rec.getString("creator"), members: members }
 }
 
+module.exports = { vdCode, vdPairOf, vdPairJSON }
+VDEOF
+
+put "$DIR/pb_hooks/vdvoem.pb.js" <<'VDEOF'
+/// <reference path="../pb_data/types.d.ts" />
+// Маршруты «Вдвоём». Все требуют вход пользователя из коллекции vd_users.
+
 // Моя пара (или null).
 routerAdd("POST", "/api/vd/pair/me", (e) => {
-    const rec = vdPairOf(e.app, e.auth.id)
-    return e.json(200, { pair: rec ? vdPairJSON(e.app, rec) : null })
+    const L = require(`${__hooks}/vdlib.js`)
+    const rec = L.vdPairOf(e.app, e.auth.id)
+    return e.json(200, { pair: rec ? L.vdPairJSON(e.app, rec) : null })
 }, $apis.requireAuth("vd_users"))
 
 // Создать пару и получить код приглашения.
 routerAdd("POST", "/api/vd/pair/create", (e) => {
-    let rec = vdPairOf(e.app, e.auth.id)
+    const L = require(`${__hooks}/vdlib.js`)
+    let rec = L.vdPairOf(e.app, e.auth.id)
     if (!rec) {
         const col = e.app.findCollectionByNameOrId("vd_pairs")
         rec = new Record(col)
-        let code = vdCode()
+        let code = L.vdCode()
         for (let i = 0; i < 20; i++) {
             let busy = false
             try { e.app.findFirstRecordByFilter("vd_pairs", "code = {:c}", { c: code }); busy = true } catch (_) {}
             if (!busy) break
-            code = vdCode()
+            code = L.vdCode()
         }
         rec.set("code", code)
         rec.set("creator", e.auth.id)
         rec.set("members", [e.auth.id])
         e.app.save(rec)
     }
-    return e.json(200, { pair: vdPairJSON(e.app, rec) })
+    return e.json(200, { pair: L.vdPairJSON(e.app, rec) })
 }, $apis.requireAuth("vd_users"))
 
 // Присоединиться по коду партнёра (в паре — ровно двое).
 routerAdd("POST", "/api/vd/pair/join", (e) => {
+    const L = require(`${__hooks}/vdlib.js`)
     const body = e.requestInfo().body || {}
     const code = String(body.code || "").trim().toUpperCase()
     if (code.length < 4) throw new BadRequestError("Введите код партнёра")
-    const mine = vdPairOf(e.app, e.auth.id)
+    const mine = L.vdPairOf(e.app, e.auth.id)
     let rec
     try { rec = e.app.findFirstRecordByFilter("vd_pairs", "code = {:c}", { c: code }) }
     catch (_) { throw new NotFoundError("Код не найден. Проверьте его у партнёра.") }
-    if (mine && mine.id === rec.id) return e.json(200, { pair: vdPairJSON(e.app, rec) })
+    if (mine && mine.id === rec.id) return e.json(200, { pair: L.vdPairJSON(e.app, rec) })
     if (mine && mine.getStringSlice("members").length > 1) throw new BadRequestError("Вы уже состоите в паре")
     const m = rec.getStringSlice("members")
     if (m.length >= 2) throw new BadRequestError("В этой паре уже двое")
@@ -216,12 +225,13 @@ routerAdd("POST", "/api/vd/pair/join", (e) => {
     m.push(e.auth.id)
     rec.set("members", m)
     e.app.save(rec)
-    return e.json(200, { pair: vdPairJSON(e.app, rec) })
+    return e.json(200, { pair: L.vdPairJSON(e.app, rec) })
 }, $apis.requireAuth("vd_users"))
 
 // Выйти из пары (данные пары остаются у второго).
 routerAdd("POST", "/api/vd/pair/leave", (e) => {
-    const rec = vdPairOf(e.app, e.auth.id)
+    const L = require(`${__hooks}/vdlib.js`)
+    const rec = L.vdPairOf(e.app, e.auth.id)
     if (!rec) return e.json(200, { ok: true })
     const m = rec.getStringSlice("members").filter((x) => x !== e.auth.id)
     if (m.length === 0) { e.app.delete(rec) }
@@ -235,7 +245,8 @@ routerAdd("POST", "/api/vd/pair/leave", (e) => {
 
 // Забрать изменения после курсора srv (серверное время записи).
 routerAdd("POST", "/api/vd/pull", (e) => {
-    const pair = vdPairOf(e.app, e.auth.id)
+    const L = require(`${__hooks}/vdlib.js`)
+    const pair = L.vdPairOf(e.app, e.auth.id)
     if (!pair) throw new BadRequestError("Сначала соединитесь с партнёром")
     const body = e.requestInfo().body || {}
     const since = Number(body.since || 0)
@@ -256,7 +267,8 @@ routerAdd("POST", "/api/vd/pull", (e) => {
 
 // Отправить изменения. Побеждает более новая правка (cts в миллисекундах).
 routerAdd("POST", "/api/vd/push", (e) => {
-    const pair = vdPairOf(e.app, e.auth.id)
+    const L = require(`${__hooks}/vdlib.js`)
+    const pair = L.vdPairOf(e.app, e.auth.id)
     if (!pair) throw new BadRequestError("Сначала соединитесь с партнёром")
     const body = e.requestInfo().body || {}
     const docs = Array.isArray(body.docs) ? body.docs.slice(0, 300) : []
@@ -285,7 +297,8 @@ routerAdd("POST", "/api/vd/push", (e) => {
 
 // Загрузка фото в пару: multipart, поле "file". Ответ: { id, file }.
 routerAdd("POST", "/api/vd/media", (e) => {
-    const pair = vdPairOf(e.app, e.auth.id)
+    const L = require(`${__hooks}/vdlib.js`)
+    const pair = L.vdPairOf(e.app, e.auth.id)
     if (!pair) throw new BadRequestError("Сначала соединитесь с партнёром")
     const files = e.findUploadedFiles("file")
     if (!files || files.length === 0) throw new BadRequestError("Нет файла")
@@ -299,6 +312,7 @@ routerAdd("POST", "/api/vd/media", (e) => {
 }, $apis.requireAuth("vd_users"))
 
 routerAdd("GET", "/api/vd/ping", (e) => {
+    const L = require(`${__hooks}/vdlib.js`)
     return e.json(200, { ok: true, app: "vdvoem", version: 2 })
 })
 
@@ -308,12 +322,14 @@ routerAdd("GET", "/api/vd/ping", (e) => {
 // Яндекс возвращает пользователя сюда, а мы передаём код обратно в приложение.
 // Redirect URI в кабинете Яндекса: https://ВАШ-ДОМЕН/api/vd/oauth-callback
 routerAdd("GET", "/api/vd/oauth-callback", (e) => {
+    const L = require(`${__hooks}/vdlib.js`)
     const q = e.request.url.rawQuery || ""
     return e.redirect(302, "vdvoem://oauth?" + q)
 })
 
 // Пароль устройства для аккаунта, созданного через Яндекс: по нему приложение тихо перезаходит, когда токен устарел.
 routerAdd("POST", "/api/vd/account/setpass", (e) => {
+    const L = require(`${__hooks}/vdlib.js`)
     const body = e.requestInfo().body || {}
     const pw = String(body.password || "")
     if (pw.length < 8) throw new BadRequestError("Слишком короткий пароль")
@@ -331,6 +347,7 @@ routerAdd("POST", "/api/vd/account/setpass", (e) => {
 
 // Перенос пары с «безымянного» аккаунта телефона на настоящий (при входе). Старый аккаунт удаляется, если опустел.
 routerAdd("POST", "/api/vd/account/adopt", (e) => {
+    const L = require(`${__hooks}/vdlib.js`)
     const b = e.requestInfo().body || {}
     const email = String(b.email || "").toLowerCase()
     const pw = String(b.password || "")
@@ -339,8 +356,8 @@ routerAdd("POST", "/api/vd/account/adopt", (e) => {
     try { old = e.app.findAuthRecordByEmail("vd_users", email) } catch (_) { return e.json(200, { adopted: false }) }
     if (old.id === e.auth.id || !old.validatePassword(pw)) return e.json(200, { adopted: false })
     let adopted = false
-    const op = vdPairOf(e.app, old.id)
-    if (op && !vdPairOf(e.app, e.auth.id)) {
+    const op = L.vdPairOf(e.app, old.id)
+    if (op && !L.vdPairOf(e.app, e.auth.id)) {
         op.set("members", op.getStringSlice("members").map((x) => (x === old.id ? e.auth.id : x)))
         if (op.getString("creator") === old.id) op.set("creator", e.auth.id)
         e.app.save(op)
@@ -348,7 +365,7 @@ routerAdd("POST", "/api/vd/account/adopt", (e) => {
         for (const d of docs) { d.set("author", e.auth.id); e.app.save(d) }
         adopted = true
     }
-    if (!vdPairOf(e.app, old.id)) { try { e.app.delete(old) } catch (_) {} }
+    if (!L.vdPairOf(e.app, old.id)) { try { e.app.delete(old) } catch (_) {} }
     return e.json(200, { adopted: adopted })
 }, $apis.requireAuth("vd_users"))
 
