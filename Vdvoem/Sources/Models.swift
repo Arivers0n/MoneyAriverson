@@ -339,6 +339,8 @@ struct ChatMessage: Identifiable, Codable, Hashable {
     var file: String? = nil
     var kind: String? = nil
     var dur: Double? = nil
+    /// Форма голоса для красивой картинки (44 значения 0...31).
+    var wave: [Int]? = nil
 }
 
 struct Plan: Identifiable, Codable, Hashable {
@@ -428,6 +430,15 @@ struct MoodEntry: Identifiable, Codable, Hashable {
     var mood: Int
 }
 
+/// Ответы одного человека в раунде теста. Каждый отвечает на своём телефоне, итог — когда готовы оба.
+struct CompatAnswer: Identifiable, Codable, Hashable {
+    var id = UUID()
+    var round: Int
+    var who: Who
+    var answers: [Int]
+    var date = Date()
+}
+
 struct CompatResult: Codable, Hashable {
     var percent: Int
     var date: Date
@@ -466,6 +477,7 @@ struct AppData: Codable {
     var pets: [PetState] = []
     var batteries: [BatteryInfo] = []
     var movies: [MovieItem] = []
+    var compatAnswers: [CompatAnswer] = []
 
     init() {}
 
@@ -504,6 +516,7 @@ struct AppData: Codable {
         pets = v(.pets, [])
         batteries = v(.batteries, [])
         movies = v(.movies, [])
+        compatAnswers = v(.compatAnswers, [])
     }
 }
 

@@ -192,6 +192,7 @@ private func makeAdapters() -> [Adapter] {
             var x = b; x.who = b.who.flipped; x.id = x.who.rawValue; return x
         },
         adapter("matches", \AppData.matches) { GameFlip.flip($0) },
+        adapter("compatAnswers", \AppData.compatAnswers) { a in var x = a; x.who = a.who.flipped; return x },
         adapter("movies", \AppData.movies) { m in var x = m; x.owner = m.owner?.flipped; return x },
     ]
 }

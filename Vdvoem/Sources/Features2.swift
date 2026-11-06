@@ -99,7 +99,7 @@ private let compatQuestions: [CQ] = [
     CQ(q: "Музыка в машине", a: ["Попса", "Рок", "Рэп", "Что угодно"])
 ]
 
-struct CompatView: View {
+struct LocalCompatView: View {
     @EnvironmentObject var store: Store
     @State private var phase = 0            // 0 старт, 1 я, 2 партнёр, 3 итог
     @State private var q = 0
@@ -173,6 +173,171 @@ struct CompatView: View {
         if q + 1 < compatQuestions.count { q += 1 }
         else if phase == 1 { phase = 2; q = 0 }
         else { phase = 3 }
+    }
+}
+
+/// Тест на совместимость: каждый отвечает на своём телефоне, итог открывается, когда ответили оба.
+struct CompatView: View {
+    @EnvironmentObject var store: Store
+    @EnvironmentObject var sync: SyncEngine
+
+    var body: some View {
+        if sync.status == .notPaired { LocalCompatView() } else { PairCompatView() }
+    }
+}
+
+struct PairCompatView: View {
+    @EnvironmentObject var store: Store
+    @State private var q = 0
+    @State private var picks: [Int] = []
+    @State private var revealed = false
+
+    private func answer(_ round: Int, _ w: Who) -> CompatAnswer? {
+        store.data.compatAnswers.filter { $0.round == round && $0.who == w }.max { $0.date < $1.date }
+    }
+
+    @State private var skipped = 0
+
+    private var lastRound: Int { store.data.compatAnswers.map { $0.round }.max() ?? 0 }
+    private var lastDone: Bool { lastRound > 0 && answer(lastRound, .me) != nil && answer(lastRound, .partner) != nil }
+
+    /// Раунд, который идёт сейчас. Завершённый показывается как итог, пока вы не начнёте новый.
+    private var round: Int { lastDone && skipped >= lastRound ? lastRound + 1 : max(1, lastRound) }
+
+    private var finished: [Int] {
+        Set(store.data.compatAnswers.map { $0.round }).filter { answer($0, .me) != nil && answer($0, .partner) != nil }.sorted(by: >)
+    }
+
+    private func percent(_ r: Int) -> Int {
+        guard let a = answer(r, .me), let b = answer(r, .partner) else { return 0 }
+        return zip(a.answers, b.answers).filter { $0.0 == $0.1 }.count * 100 / compatQuestions.count
+    }
+
+    var body: some View {
+        let r = round
+        let mine = answer(r, .me), theirs = answer(r, .partner)
+        Screen {
+            if mine == nil { question(r) }
+            else if theirs == nil { waiting }
+            else { result(r) }
+            if !finished.isEmpty && mine == nil { history }
+        }
+        .animation(Motion.spring, value: mine != nil)
+        .animation(Motion.spring, value: theirs != nil)
+        .navigationTitle("Тест на совместимость")
+    }
+
+    // Вопросы
+
+    private func question(_ r: Int) -> some View {
+        let item = compatQuestions[min(q, compatQuestions.count - 1)]
+        return VStack(spacing: 12) {
+            HStack {
+                Text("Раунд \(r) · вопрос \(q + 1) из \(compatQuestions.count)")
+                    .font(.caption.weight(.semibold)).foregroundStyle(store.meColor)
+                Spacer()
+            }
+            ProgressView(value: Double(q), total: Double(compatQuestions.count)).tint(store.meColor)
+            Text(item.q).font(.title2.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
+                .id("q\(q)").transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
+            ForEach(item.a.indices, id: \.self) { i in
+                Button { pick(i, round: r) } label: {
+                    Text(item.a[i]).font(.body.weight(.medium)).frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16).card()
+                }
+                .buttonStyle(PressStyle())
+            }
+            Text("Отвечайте честно: партнёр увидит ваши ответы только после того, как ответит сам.")
+                .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(.top, 6)
+        }
+        .animation(Motion.spring, value: q)
+    }
+
+    private func pick(_ i: Int, round r: Int) {
+        store.tap()
+        picks.append(i)
+        if q + 1 < compatQuestions.count { withAnimation(Motion.spring) { q += 1 } }
+        else {
+            store.data.compatAnswers.append(CompatAnswer(round: r, who: .me, answers: picks))
+            store.success()
+            picks = []; q = 0
+        }
+    }
+
+    // Ожидание партнёра
+
+    private var waiting: some View {
+        VStack(spacing: 18) {
+            TimelineView(.animation) { tl in
+                let t = tl.date.timeIntervalSinceReferenceDate
+                ZStack {
+                    ForEach(0..<3) { i in
+                        Circle().stroke(store.partnerColor.opacity(0.35 - Double(i) * 0.1), lineWidth: 2)
+                            .frame(width: 80 + CGFloat((t * 40 + Double(i) * 30).truncatingRemainder(dividingBy: 90)))
+                    }
+                    Image(systemName: "heart.fill").font(.system(size: 40)).foregroundStyle(store.partnerColor)
+                        .scaleEffect(1 + 0.08 * CGFloat(sin(t * 3)))
+                }
+                .frame(height: 170)
+            }
+            Text("Вы ответили!").font(.title2.weight(.semibold))
+            Text("Ждём, пока \(store.name(.partner)) пройдёт тест на своём телефоне. Результат появится сам.")
+                .multilineTextAlignment(.center).foregroundStyle(.secondary)
+            if !finished.isEmpty { history }
+        }
+        .padding(.top, 20)
+    }
+
+    // Итог
+
+    private func result(_ r: Int) -> some View {
+        let a = answer(r, .me)!, b = answer(r, .partner)!
+        let pct = percent(r)
+        return VStack(spacing: 14) {
+            ZStack {
+                Circle().stroke(Pal.field, lineWidth: 14)
+                Circle().trim(from: 0, to: revealed ? CGFloat(pct) / 100 : 0)
+                    .stroke(AngularGradient(colors: [store.meColor, store.partnerColor], center: .center), style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text("\(pct)%").font(.system(size: 52, weight: .semibold, design: .rounded)).contentTransition(.numericText())
+            }
+            .frame(width: 180, height: 180).padding(.top, 20)
+            .onAppear { withAnimation(.easeOut(duration: 1.1)) { revealed = true } }
+            Text(pct >= 70 ? "Вы на одной волне" : (pct >= 40 ? "Отличный баланс — есть о чём поговорить" : "Противоположности притягиваются"))
+                .multilineTextAlignment(.center).foregroundStyle(.secondary)
+            ForEach(compatQuestions.indices, id: \.self) { i in
+                let same = i < a.answers.count && i < b.answers.count && a.answers[i] == b.answers[i]
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(compatQuestions[i].q).font(.subheadline.weight(.semibold))
+                        Spacer()
+                        Image(systemName: same ? "checkmark.circle.fill" : "xmark.circle")
+                            .foregroundStyle(same ? Color.green : Color.secondary)
+                    }
+                    if i < a.answers.count, i < b.answers.count {
+                        Text("\(store.name(.me)): \(compatQuestions[i].a[a.answers[i]])  ·  \(store.name(.partner)): \(compatQuestions[i].a[b.answers[i]])")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(12).frame(maxWidth: .infinity, alignment: .leading).card()
+            }
+            Button { revealed = false; withAnimation(Motion.spring) { skipped = r } } label: { Text("Новый раунд").bigButton() }
+        }
+        .onAppear { store.data.compat = CompatResult(percent: pct, date: Date()) }
+    }
+
+    private var history: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Прошлые раунды").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            ForEach(finished.prefix(5), id: \.self) { r in
+                HStack {
+                    Text("Раунд \(r)").font(.subheadline)
+                    Spacer()
+                    Text("\(percent(r))%").font(.subheadline.weight(.semibold).monospacedDigit())
+                }
+                .padding(12).card()
+            }
+        }
     }
 }
 

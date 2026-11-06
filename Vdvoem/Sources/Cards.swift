@@ -2,6 +2,7 @@ import SwiftUI
 import VisionKit
 import Vision
 import CoreImage.CIFilterBuiltins
+import PhotosUI
 
 // MARK: - Штрих-коды
 
@@ -57,6 +58,43 @@ struct BarcodeView: View {
             Image(uiImage: img).interpolation(.none).resizable().scaledToFit()
         } else {
             Text(text).font(.title.monospaced())
+        }
+    }
+}
+
+// MARK: - Код с фото из галереи
+
+enum BarcodeReader {
+    /// Ищет штрих-код или QR на готовом снимке (из галереи). Возвращает значение и тип.
+    static func detect(in image: UIImage) async -> (String, String)? {
+        guard let cg = image.cgImage else { return nil }
+        let orientation = CGImagePropertyOrientation(image.imageOrientation)
+        return await Task.detached(priority: .userInitiated) { () -> (String, String)? in
+            let req = VNDetectBarcodesRequest()
+            let handler = VNImageRequestHandler(cgImage: cg, orientation: orientation, options: [:])
+            guard (try? handler.perform([req])) != nil else { return nil }
+            let items = (req.results ?? []).compactMap { r -> (String, String, CGFloat)? in
+                guard let v = r.payloadStringValue, !v.isEmpty else { return nil }
+                return (v, BarcodeKind.kind(from: r.symbology), r.boundingBox.width * r.boundingBox.height)
+            }
+            guard let best = items.max(by: { $0.2 < $1.2 }) else { return nil }
+            return (best.0, best.1)
+        }.value
+    }
+}
+
+extension CGImagePropertyOrientation {
+    init(_ o: UIImage.Orientation) {
+        switch o {
+        case .up: self = .up
+        case .down: self = .down
+        case .left: self = .left
+        case .right: self = .right
+        case .upMirrored: self = .upMirrored
+        case .downMirrored: self = .downMirrored
+        case .leftMirrored: self = .leftMirrored
+        case .rightMirrored: self = .rightMirrored
+        @unknown default: self = .up
         }
     }
 }
@@ -121,7 +159,7 @@ struct CardsView: View {
         Screen {
             if store.data.cards.isEmpty {
                 EmptyState(icon: "barcode.viewfinder", title: "Карты магазинов",
-                           text: "Наведите камеру на штрих-код карты — название и номер вводить не нужно. Покажете кассиру прямо с экрана.",
+                           text: "Наведите камеру на штрих-код карты или выберите фото карты из галереи — номер вводить не нужно. Покажете кассиру прямо с экрана.",
                            action: "Сканировать карту", onTap: { adding = true })
             }
             ForEach(store.data.cards) { c in
@@ -232,6 +270,9 @@ struct AddCardSheet: View {
     @State private var scanning = false
     @State private var manual = false
     @State private var typed = ""
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var photoNote: String?
+    @State private var reading = false
 
     var body: some View {
         NavigationStack {
@@ -286,6 +327,7 @@ struct AddCardSheet: View {
                 .padding(16)
             }
             .background(ThemeBackground())
+            .onChange(of: pickedPhoto) { _, item in readPhoto(item) }
             .navigationTitle("Новая карта")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { dismiss() } } }
@@ -304,6 +346,24 @@ struct AddCardSheet: View {
         }
     }
 
+    private func readPhoto(_ item: PhotosPickerItem?) {
+        guard let item else { return }
+        reading = true; photoNote = nil
+        Task {
+            defer { reading = false; pickedPhoto = nil }
+            guard let d = try? await item.loadTransferable(type: Data.self), let img = UIImage(data: d) else {
+                photoNote = "Не удалось открыть фото"; return
+            }
+            if let (v, k) = await BarcodeReader.detect(in: img) {
+                withAnimation(Motion.spring) { number = v; kind = k }
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            } else {
+                photoNote = "Код на фото не нашёлся. Выберите снимок, где штрих-код виден крупно и чётко, или введите номер вручную."
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            }
+        }
+    }
+
     private var scanBlock: some View {
         VStack(spacing: 14) {
             Image(systemName: "barcode.viewfinder").font(.system(size: 64)).foregroundStyle(store.meColor)
@@ -314,6 +374,17 @@ struct AddCardSheet: View {
                 Text("Сканер недоступен на этом устройстве — введите номер вручную.")
                     .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
+            PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                HStack(spacing: 8) {
+                    if reading { ProgressView() } else { Image(systemName: "photo.on.rectangle.angled") }
+                    Text(reading ? "Ищу код на фото…" : "Выбрать фото из галереи")
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 16).padding(.vertical, 11)
+                .background(Pal.card, in: Capsule())
+            }
+            .disabled(reading)
+            if let photoNote { Text(photoNote).font(.footnote).foregroundStyle(.red).multilineTextAlignment(.center) }
             Button(manual ? "Скрыть ввод" : "Ввести номер вручную") { manual.toggle() }.font(.footnote)
             if manual {
                 HStack {

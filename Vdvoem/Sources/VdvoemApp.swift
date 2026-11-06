@@ -101,6 +101,8 @@ struct RootView: View {
                 // Место под док.
                 Color.clear.frame(height: noDock ? 0 : 78)
             }
+            // Размеры меняются мгновенно (иначе поле ввода в чате «подпрыгивает»), плавно — только сам док.
+            .transaction(value: noDock) { $0.animation = nil }
             GlassDock(tabs: tabs, selected: Binding(get: { current }, set: { selected = $0 }))
                 .padding(.bottom, 2)
                 .opacity(noDock ? 0 : 1)

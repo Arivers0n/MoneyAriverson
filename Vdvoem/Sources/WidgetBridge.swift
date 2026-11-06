@@ -132,7 +132,7 @@ final class WidgetBridge {
         let todayMsgs = store.data.messages.filter { cal.isDateInToday($0.date) }
         s.messagesToday = todayMsgs.count
         if let last = store.data.messages.last {
-            s.lastMessage = last.kind == "voice" ? "🎤 Голосовое" : (last.kind == "circle" ? "🎥 Кружок" : last.text)
+            s.lastMessage = last.kind == "voice" ? "🎤 Голосовое" : last.text
         } else { s.lastMessage = "" }
     }
 }
