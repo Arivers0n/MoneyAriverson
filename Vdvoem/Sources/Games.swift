@@ -107,27 +107,20 @@ struct GamesView: View {
 
     private func kindTile(_ k: GameKind, locked: Bool) -> some View {
         let c = Color(hex: k.hex)
-        return ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: Theme.r(26), style: .continuous)
-                .fill(LinearGradient(colors: [c.opacity(0.34), c.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing))
-            RoundedRectangle(cornerRadius: Theme.r(26), style: .continuous)
-                .stroke(LinearGradient(colors: [.white.opacity(0.55), .white.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
-            Text(k.art).font(.system(size: 64)).rotationEffect(.degrees(-10)).opacity(0.9)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(.trailing, 8).padding(.bottom, 2)
-                .shadow(color: c.opacity(0.4), radius: 10, y: 6)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    if locked { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.secondary) }
-                    Spacer(minLength: 0)
-                }
-                Spacer(minLength: 6)
-                Text(k.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(.primary)
-                    .lineLimit(2).minimumScaleFactor(0.8).frame(maxWidth: 110, alignment: .leading)
-                Text(locked ? "Нужна пара" : k.blurb).font(.caption).foregroundStyle(.secondary).lineLimit(2).frame(maxWidth: 110, alignment: .leading)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(k.art).font(.system(size: 28)).frame(width: 46, height: 46)
+                    .background(c.opacity(0.16), in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
+                Spacer(minLength: 0)
+                if locked { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.secondary) }
             }
-            .padding(14)
+            Spacer(minLength: 4)
+            Text(k.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.8)
+            Text(locked ? "Нужна пара" : k.blurb).font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }
-        .frame(maxWidth: .infinity, minHeight: 138, maxHeight: 138, alignment: .topLeading)
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 118, maxHeight: 118, alignment: .topLeading)
+        .card()
         .opacity(locked ? 0.5 : 1)
     }
 
@@ -141,12 +134,8 @@ struct GamesView: View {
             }
             side(.partner, n: b, leads: b > a)
         }
-        .padding(.vertical, 18)
-        .background(
-            LinearGradient(colors: [store.meColor.opacity(0.22), store.partnerColor.opacity(0.22)], startPoint: .leading, endPoint: .trailing),
-            in: RoundedRectangle(cornerRadius: Theme.r(28), style: .continuous)
-        )
-        .overlay(RoundedRectangle(cornerRadius: Theme.r(28), style: .continuous).stroke(.white.opacity(0.35), lineWidth: 1))
+        .padding(.vertical, 16)
+        .card()
         .animation(Motion.spring, value: a)
         .animation(Motion.spring, value: b)
     }

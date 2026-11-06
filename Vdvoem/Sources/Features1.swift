@@ -25,20 +25,23 @@ struct ChatView: View {
     var body: some View {
         ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(spacing: 8) {
+                    VStack(spacing: 3) {
                         if store.data.messages.isEmpty {
                             EmptyState(icon: "bubble.left.and.bubble.right", title: "Ваш чат",
                                        text: "Короткие сообщения друг другу. Для общения между двумя телефонами нужна синхронизация.")
                         }
-                        ForEach(store.data.messages) { m in
+                        ForEach(Array(store.data.messages.enumerated()), id: \.element.id) { idx, m in
+                            let prev: ChatMessage? = idx > 0 ? store.data.messages[idx - 1] : nil
+                            let next: ChatMessage? = idx + 1 < store.data.messages.count ? store.data.messages[idx + 1] : nil
+                            let showTime = next == nil || next?.from != m.from || (next.map { $0.date.timeIntervalSince(m.date) > 300 } ?? true)
                             HStack {
                                 if m.from == .me { Spacer(minLength: 50) }
                                 VStack(alignment: m.from == .me ? .trailing : .leading, spacing: 2) {
                                     if m.kind == "voice" { VoiceBubble(m: m) }
                                     else {
                                         Text(m.text).padding(.horizontal, 14).padding(.vertical, 10)
-                                            .background(store.color(m.from), in: RoundedRectangle(cornerRadius: bubbleRadius(), style: .continuous))
-                                            .foregroundStyle(store.color(m.from).onAccent)
+                                            .background(m.from == .me ? store.color(m.from) : Pal.card, in: RoundedRectangle(cornerRadius: bubbleRadius(), style: .continuous))
+                                            .foregroundStyle(m.from == .me ? store.color(m.from).onAccent : Color.primary)
                                             .overlay(alignment: m.from == .me ? .bottomLeading : .bottomTrailing) {
                                                 if m.liked == true {
                                                     Image(systemName: "heart.fill").font(.system(size: 13)).foregroundStyle(Color(hex: "F43F5E"))
@@ -53,10 +56,13 @@ struct ChatView: View {
                                                 }
                                             }
                                     }
-                                    Text(m.date.formatted(Date.FormatStyle().locale(ruLocale).hour().minute())).font(.caption2).foregroundStyle(.secondary)
+                                    if showTime {
+                                        Text(m.date.formatted(Date.FormatStyle().locale(ruLocale).hour().minute())).font(.caption2).foregroundStyle(.secondary).padding(.bottom, 6)
+                                    }
                                 }
                                 if m.from == .partner { Spacer(minLength: 50) }
                             }
+                            .padding(.top, prev?.from == m.from ? 0 : 6)
                             .id(m.id)
                             .transition(.scale(scale: 0.85, anchor: m.from == .me ? .bottomTrailing : .bottomLeading).combined(with: .opacity))
                         }
