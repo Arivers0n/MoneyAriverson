@@ -157,6 +157,7 @@ struct Screen<Content: View>: View {
                 .padding(.bottom, 30)
         }
         .dockScroll()
+        .modifier(SoftTopEdge())
         .background(ThemeBackground())
     }
 }

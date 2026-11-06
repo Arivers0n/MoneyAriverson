@@ -33,6 +33,8 @@ struct VdvoemApp: App {
             .preferredColorScheme(store.scheme)
             .tint(store.meColor)
             .animation(Store.spring, value: store.p.design)
+            .onAppear { NavFont.apply(store.p.design) }
+            .onChange(of: store.p.design) { _, d in NavFont.apply(d) }
             // Короткое содержимое не «пружинит» вверх-вниз: шапка и экран стоят на месте.
             .scrollBounceBehavior(.basedOnSize)
         }
@@ -79,14 +81,16 @@ struct RootView: View {
                     }
                 }
                 .animation(Motion.enter, value: current)
+                // Содержимое доходит до верха экрана (и до низа, если дока нет): никаких полос и обрезков у краёв.
+                .ignoresSafeArea(.container, edges: noDock ? Edge.Set.vertical : Edge.Set.top)
                 .mask(alignment: .bottom) {
                     VStack(spacing: 0) {
                         Rectangle()
                         LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
-                            .frame(height: noDock ? 0 : 16)
+                            .frame(height: noDock ? 0 : 24)
                     }
                 }
-                // Место под док: содержимое любого экрана заканчивается выше панели и ничем не перекрывается.
+                // Место под док.
                 Color.clear.frame(height: noDock ? 0 : 78)
             }
             GlassDock(tabs: tabs, selected: Binding(get: { current }, set: { selected = $0 }))
@@ -147,6 +151,7 @@ struct ModuleView: View {
             case .signal: SignalView()
             case .pet: PetView()
             case .dates: DatesView()
+            case .movies: MoviesView()
             }
         }
         .navigationTitle(module.title)

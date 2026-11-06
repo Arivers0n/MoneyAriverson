@@ -23,6 +23,13 @@ final class Store: ObservableObject {
         } else {
             data = AppData()
         }
+        // Один раз: «Сегодня» — первый раздел панели (запуск начинается с него).
+        if !UserDefaults.standard.bool(forKey: "vd.mig.today2") {
+            UserDefaults.standard.set(true, forKey: "vd.mig.today2")
+            data.profile.disabled.removeAll { $0 == .today }
+            data.profile.order.removeAll { $0 == .today }
+            data.profile.order.insert(.today, at: 0)
+        }
         applyTheme()
         sync.attach(self)
         location.attach(self)

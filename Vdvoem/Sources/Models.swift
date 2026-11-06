@@ -42,6 +42,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
     case days, mood, dates
     case today, memories, places
     case signal, pet
+    case movies
 
     var id: String { rawValue }
 
@@ -65,6 +66,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .days: return "Наши даты"
         case .mood: return "Шарики по настроению"
         case .dates: return "Идеи свиданий"
+        case .movies: return "Фильмы"
         case .today: return "Сегодня"
         case .memories: return "Фотолента"
         case .places: return "Карта"
@@ -93,6 +95,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .days: return "heart.text.square"
         case .mood: return "face.smiling"
         case .dates: return "wineglass"
+        case .movies: return "film"
         case .today: return "sun.max"
         case .memories: return "photo.on.rectangle.angled"
         case .places: return "map"
@@ -122,6 +125,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .days: return "💑"
         case .mood: return "🫙"
         case .dates: return "🍷"
+        case .movies: return "🎬"
         case .today: return "🌤️"
         case .memories: return "📸"
         case .places: return "🗺️"
@@ -150,6 +154,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .days: return "Годовщины и счётчики"
         case .mood: return "Шарики по настроению"
         case .dates: return "Куда сходить вдвоём"
+        case .movies: return "Что смотрим и смотрели"
         case .today: return "Статус, сон, трекер"
         case .memories: return "Общие фото"
         case .places: return "Метки и расстояние"
@@ -178,6 +183,7 @@ enum Module: String, Codable, CaseIterable, Identifiable {
         case .days: return "FF5A5F"
         case .mood: return "FDE047"
         case .dates: return "F43F5E"
+        case .movies: return "A855F7"
         case .today: return "FF9F43"
         case .memories: return "C084FC"
         case .places: return "10B981"
@@ -262,7 +268,7 @@ struct Profile: Codable {
 extension Module {
     static let defaultOrder: [Module] = [.today, .chat, .memories, .places, .signal, .pet, .tasks, .calendar, .wishes, .lists,
                                          .plans, .files, .cards, .question, .compat, .games, .capsule, .vote,
-                                         .radar, .notes, .days, .mood, .dates]
+                                         .radar, .notes, .days, .mood, .dates, .movies]
 }
 
 struct TaskItem: Identifiable, Codable, Hashable {
@@ -294,6 +300,20 @@ struct Wish: Identifiable, Codable, Hashable {
     var priority = 1
     var reserved = false           // тайно забронировано второй половинкой
     var got = false
+}
+
+/// Фильм, сериал или аниме: у каждого свой список (owner), у общих owner = nil.
+struct MovieItem: Identifiable, Codable, Hashable {
+    var id = UUID()
+    var title: String
+    var year = ""
+    var kind = 0               // 0 фильм, 1 сериал, 2 мультфильм, 3 аниме
+    var owner: Who? = nil      // nil — смотрим вместе
+    var state = 0              // 0 хочу посмотреть, 1 смотрю, 2 посмотрел
+    var rating = 0             // 0 — без оценки, 1…5
+    var progress = ""          // «2 сезон, 5 серия»
+    var note = ""
+    var date = Date()
 }
 
 struct ListEntry: Identifiable, Codable, Hashable {
@@ -440,6 +460,7 @@ struct AppData: Codable {
     var signals: [SignalItem] = []
     var pets: [PetState] = []
     var batteries: [BatteryInfo] = []
+    var movies: [MovieItem] = []
 
     init() {}
 
@@ -477,6 +498,7 @@ struct AppData: Codable {
         signals = v(.signals, [])
         pets = v(.pets, [])
         batteries = v(.batteries, [])
+        movies = v(.movies, [])
     }
 }
 

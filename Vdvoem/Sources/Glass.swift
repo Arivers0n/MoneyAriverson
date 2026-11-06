@@ -76,3 +76,62 @@ struct Jiggle: ViewModifier {
 extension View {
     func jiggle(_ on: Bool, seed: Double = 0) -> some View { modifier(Jiggle(on: on, seed: seed)) }
 }
+
+
+// MARK: - Шрифт заголовков навигации
+
+/// Заголовки экранов рисует система, поэтому `.fontDesign` на них не действует: задаём шрифт через внешний вид панели.
+enum NavFont {
+    static func apply(_ style: DesignStyle) {
+        let design: UIFontDescriptor.SystemDesign
+        switch style {
+        case .rounded: design = .rounded
+        case .serif: design = .serif
+        case .mono: design = .monospaced
+        case .standard: design = .default
+        }
+        func font(_ size: CGFloat, _ w: UIFont.Weight) -> UIFont {
+            let base = UIFont.systemFont(ofSize: size, weight: w)
+            if let d = base.fontDescriptor.withDesign(design) { return UIFont(descriptor: d, size: size) }
+            return base
+        }
+        let large = font(34, .bold), small = font(17, .semibold)
+        func make(_ transparent: Bool) -> UINavigationBarAppearance {
+            let a = UINavigationBarAppearance()
+            if transparent { a.configureWithTransparentBackground() } else { a.configureWithDefaultBackground() }
+            a.largeTitleTextAttributes = [.font: large]
+            a.titleTextAttributes = [.font: small]
+            return a
+        }
+        let standard = make(false), edge = make(true)
+        let proxy = UINavigationBar.appearance()
+        proxy.standardAppearance = standard
+        proxy.compactAppearance = standard
+        proxy.scrollEdgeAppearance = edge
+        // Уже созданные панели обновляем сразу.
+        for scene in UIApplication.shared.connectedScenes {
+            guard let ws = scene as? UIWindowScene else { continue }
+            for w in ws.windows { refresh(w, standard, edge) }
+        }
+    }
+
+    private static func refresh(_ v: UIView, _ s: UINavigationBarAppearance, _ e: UINavigationBarAppearance) {
+        if let bar = v as? UINavigationBar {
+            bar.standardAppearance = s
+            bar.compactAppearance = s
+            bar.scrollEdgeAppearance = e
+        }
+        for sub in v.subviews { refresh(sub, s, e) }
+    }
+}
+
+/// Мягкий верхний край на iOS 26: содержимое уходит под шапку плавно, без полосы с резкой границей.
+struct SoftTopEdge: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            content
+        }
+    }
+}
