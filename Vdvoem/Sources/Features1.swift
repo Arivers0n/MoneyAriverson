@@ -60,6 +60,7 @@ struct ChatView: View {
             }
             composer
         }
+        .background { WallpaperView(id: store.p.wallpaper).ignoresSafeArea() }
         .fullScreenCover(isPresented: $camera) {
             CircleCamera { url in
                 camera = false

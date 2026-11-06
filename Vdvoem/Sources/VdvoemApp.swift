@@ -95,6 +95,8 @@ struct RootView: View {
                         LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
                             .frame(height: noDock ? 0 : 24)
                     }
+                    // Маска сама не должна упираться в безопасные зоны — иначе она режет содержимое по краю статус-бара.
+                    .ignoresSafeArea()
                 }
                 // Место под док.
                 Color.clear.frame(height: noDock ? 0 : 78)

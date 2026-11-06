@@ -130,10 +130,31 @@ final class JarModel: ObservableObject {
 
 struct JarView: View {
     @EnvironmentObject var store: Store
-    @StateObject private var model = JarModel()
     @State private var note = ""
     @State private var selected: JarBall?
     @State private var mode = 0
+
+    private var todaySorted: [JarBall] { today.sorted { $0.date < $1.date } }
+
+    private var strip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(todaySorted.reversed()) { b in
+                    let m = jarMoods[min(max(b.mood, 0), jarMoods.count - 1)]
+                    HStack(spacing: 6) {
+                        Circle().fill(RadialGradient(colors: [Color(hex: m.hex).opacity(0.5), Color(hex: m.hex)], center: .topLeading, startRadius: 1, endRadius: 14))
+                            .frame(width: 14, height: 14)
+                        Text(store.name(b.who)).font(.caption.weight(.semibold))
+                        Text(b.date.formatted(Date.FormatStyle().locale(ruLocale).hour().minute())).font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 6).card()
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .padding(.horizontal, 2)
+            .animation(Motion.spring, value: todaySorted.count)
+        }
+    }
 
     private var today: [JarBall] { store.data.jar.filter { Calendar.current.isDateInToday($0.date) } }
 
@@ -145,7 +166,14 @@ struct JarView: View {
                     Text("Пузырёк").tag(1)
                 }
                 .pickerStyle(.segmented)
-                if mode == 0 { jar } else { bubbles }
+                if mode == 0 {
+                    VStack(spacing: 6) {
+                        LiquidJar(entries: todaySorted)
+                        Text(todaySorted.isEmpty ? "Налейте первое настроение дня" : "Сегодня: \(todaySorted.count) · качните банку пальцем")
+                            .font(.caption).foregroundStyle(.secondary).contentTransition(.numericText())
+                        strip
+                    }
+                } else { bubbles }
                 caption
                 picker
                 stats
@@ -156,55 +184,6 @@ struct JarView: View {
         .scrollIndicators(.hidden)
         .background(ThemeBackground())
         .navigationTitle("Банка настроения")
-        .onAppear {
-            model.scene.ownerColor = { [store] w in UIColor(store.color(w)) }
-            model.scene.onTapBall = { id in
-                withAnimation(Motion.spring) { selected = store.data.jar.first { $0.id == id } }
-            }
-            model.scene.sync(store.data.jar)
-        }
-        .onChange(of: store.data.jar) { _, new in model.scene.sync(new) }
-    }
-
-    private var lid: some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(LinearGradient(stops: [.init(color: Color(white: 0.55), location: 0), .init(color: Color(white: 0.95), location: 0.35),
-                                         .init(color: .white, location: 0.5), .init(color: Color(white: 0.7), location: 1)],
-                                 startPoint: .leading, endPoint: .trailing))
-            .frame(width: 210, height: 34)
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(.white.opacity(0.7), lineWidth: 1))
-            .shadow(color: .black.opacity(0.18), radius: 6, y: 3)
-    }
-
-    private var jar: some View {
-        VStack(spacing: -8) {
-            lid.zIndex(1)
-            jarBody
-        }
-        .padding(.bottom, 4)
-    }
-
-    private var jarBody: some View {
-        ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous)
-                .fill(LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .glass(RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous))
-            SpriteView(scene: model.scene, options: [.allowsTransparency])
-                .clipShape(RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous))
-            RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous)
-                .stroke(LinearGradient(colors: [.white.opacity(0.9), .white.opacity(0.15), .white.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 3)
-            Capsule().fill(.white.opacity(0.45)).frame(width: 12, height: 150)
-                .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 26).padding(.top, 60)
-            if store.data.jar.isEmpty {
-                Text("Банка пуста — бросьте первый шарик").font(.footnote).foregroundStyle(.secondary).padding(.top, 150)
-            }
-        }
-        .frame(height: 380)
-        .shadow(color: .black.opacity(0.10), radius: 16, y: 8)
-        .overlay(alignment: .bottom) {
-            Text("Наклоняйте телефон или касайтесь шариков").font(.caption2).foregroundStyle(.secondary).offset(y: 22)
-        }
-        .padding(.bottom, 22)
     }
 
     private var bubbles: some View {
