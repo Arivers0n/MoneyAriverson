@@ -72,7 +72,7 @@ struct RootView: View {
         // Новая вкладка плавно проявляется поверх старой, старая гаснет только после этого.
         ZStack(alignment: .bottom) {
             ZStack {
-                ThemeBackground()
+                ThemeBackground(animated: true)
                 // В чате обои лежат под всем экраном, включая области статус-бара и индикатора «домой».
                 if dock.hidden { WallpaperView(id: store.p.wallpaper).transition(.opacity) }
             }
@@ -86,6 +86,7 @@ struct RootView: View {
                             if t.id == "more" { MoreView() }
                             else if let m = Module(rawValue: t.id) { ModuleView(module: m) }
                         }
+                        .environment(\.screenActive, on)
                         .opacity(on || t.id == leaving ? 1 : 0)
                         .allowsHitTesting(on)
                         .accessibilityHidden(!on)

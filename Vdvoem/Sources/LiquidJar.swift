@@ -142,9 +142,9 @@ struct LiquidJar: View {
     }
 
     var body: some View {
-        TimelineView(.animation) { tl in
+        LiveTimeline(fps: 30) { date in
             Canvas { ctx, size in
-                draw(&ctx, size, tl.date.timeIntervalSinceReferenceDate)
+                draw(&ctx, size, date.timeIntervalSinceReferenceDate)
             }
         }
         .frame(height: 440)
@@ -172,9 +172,10 @@ struct LiquidJar: View {
         let inner = jarPath(jar.insetBy(dx: 5, dy: 5))
 
         // Тень на полу
-        var floor = ctx
-        floor.addFilter(.blur(radius: 10))
-        floor.fill(Path(ellipseIn: CGRect(x: jar.minX + 10, y: jar.maxY - 6, width: jar.width - 20, height: 22)), with: .color(.black.opacity(0.16)))
+        // Без размытия-фильтра (дорого на каждом кадре): мягкая тень — радиальный градиент.
+        ctx.fill(Path(ellipseIn: CGRect(x: jar.minX + 6, y: jar.maxY - 8, width: jar.width - 12, height: 26)),
+                 with: .radialGradient(Gradient(colors: [.black.opacity(0.2), .black.opacity(0)]),
+                                       center: CGPoint(x: jar.midX, y: jar.maxY + 5), startRadius: 0, endRadius: jar.width * 0.5))
 
         // Стекло: задняя стенка
         ctx.fill(outer, with: .linearGradient(Gradient(colors: [.white.opacity(0.22), .white.opacity(0.05)]),

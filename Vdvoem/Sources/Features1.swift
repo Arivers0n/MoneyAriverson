@@ -23,8 +23,7 @@ struct ChatView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollViewReader { proxy in
+        ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 8) {
                         if store.data.messages.isEmpty {
@@ -55,9 +54,11 @@ struct ChatView: View {
                 .onChange(of: store.data.messages.count) { _, _ in
                     if let last = store.data.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
                 }
-            }
-            composer
+                .defaultScrollAnchor(.bottom)
+                .scrollIndicators(.hidden)
+                .modifier(SoftTopEdge())
         }
+        .floatingFooter { composer }
         .background { WallpaperView(id: store.p.wallpaper).ignoresSafeArea() }
         .alert("Нет доступа к микрофону", isPresented: $micDenied) {
             Button("OK", role: .cancel) {}

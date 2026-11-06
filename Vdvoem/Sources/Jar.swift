@@ -300,8 +300,8 @@ struct MoodBubble: View {
     let balls: [JarBall]
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
-            let t = tl.date.timeIntervalSinceReferenceDate
+        LiveTimeline(fps: 24) { date in
+            let t = date.timeIntervalSinceReferenceDate
             let stops = gradientStops()
             ZStack {
                 Circle().fill(AngularGradient(gradient: Gradient(stops: stops), center: .center, angle: .degrees(t * 18)))

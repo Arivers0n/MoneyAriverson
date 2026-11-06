@@ -170,8 +170,8 @@ struct PetBody: View {
     let mood: PetMood
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
-            let t = Motion.reduced ? 0 : tl.date.timeIntervalSinceReferenceDate
+        LiveTimeline(fps: 24) { date in
+            let t = Motion.reduced ? 0 : date.timeIntervalSinceReferenceDate
             let breathe = 1 + CGFloat(sin(t * 2)) * 0.025
             let blink = (Int(t * 10) % 40) == 0
             ZStack {

@@ -6,6 +6,7 @@ import SwiftUI
 struct ConfettiBurst: View {
     let colors: [Color]
     @State private var start = Date()
+    @State private var finished = false
     private struct P {
         let x: Double, vx: Double, vy: Double, rot: Double, size: Double, color: Int, spin: Double
     }
@@ -15,7 +16,7 @@ struct ConfettiBurst: View {
     }
 
     var body: some View {
-        TimelineView(.animation) { tl in
+        TimelineView(.animation(minimumInterval: 1 / 40, paused: finished)) { tl in
             Canvas { ctx, size in
                 let t = tl.date.timeIntervalSince(start)
                 guard t < 2.6, !colors.isEmpty else { return }
@@ -32,6 +33,8 @@ struct ConfettiBurst: View {
         }
         .allowsHitTesting(false)
         .ignoresSafeArea()
+        .task { try? await Task.sleep(nanoseconds: 2_800_000_000); finished = true }
+        .opacity(finished ? 0 : 1)
     }
 }
 

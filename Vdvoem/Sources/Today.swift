@@ -43,9 +43,7 @@ struct TodayView: View {
     @State private var history = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            header.padding(.horizontal, 16).padding(.bottom, 6)
-            ScrollView {
+        ScrollView {
             VStack(spacing: 16) {
                 nowCard
                 if let mine = store.statusNow(.me) { statusHero(mine, who: .me) } else { askCard }
@@ -60,7 +58,7 @@ struct TodayView: View {
             }
             .scrollIndicators(.hidden)
             .dockScroll()
-        }
+        .floatingHeader { header.padding(.horizontal, 16) }
         .background(ThemeBackground())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)

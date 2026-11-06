@@ -21,6 +21,28 @@ enum Motion {
     static var bouncy: Animation { reduced ? curve(0.2) : .spring(response: 0.32, dampingFraction: 0.8) }
 }
 
+// MARK: - Экономия батареи: анимации стоят, когда их не видно
+
+private struct ScreenActiveKey: EnvironmentKey { static let defaultValue = true }
+extension EnvironmentValues {
+    /// Экран (вкладка) сейчас на виду. Все вкладки создаются сразу, и скрытые не должны крутить анимации.
+    var screenActive: Bool {
+        get { self[ScreenActiveKey.self] }
+        set { self[ScreenActiveKey.self] = newValue }
+    }
+}
+
+/// Анимация по времени: стоит на паузе, если вкладка скрыта или приложение свернуто; кадров не больше `fps`.
+struct LiveTimeline<Content: View>: View {
+    @Environment(\.screenActive) private var active
+    @Environment(\.scenePhase) private var phase
+    var fps: Double = 30
+    @ViewBuilder let content: (Date) -> Content
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / fps, paused: !active || phase != .active)) { tl in content(tl.date) }
+    }
+}
+
 // MARK: - Жидкое стекло iOS 26 (на старых iOS — материал)
 
 extension View {
@@ -126,11 +148,44 @@ enum NavFont {
     }
 }
 
+/// Плавное растворение контента под шапкой или под полем ввода (вместо резкого обреза).
+/// Один материал с маской-градиентом: дёшево для GPU, края без полосы.
+struct EdgeFade: View {
+    enum Side { case top, bottom }
+    let side: Side
+    var body: some View {
+        Rectangle().fill(.ultraThinMaterial)
+            .mask(LinearGradient(stops: [
+                .init(color: .black, location: 0),
+                .init(color: .black.opacity(0.85), location: 0.45),
+                .init(color: .clear, location: 1)
+            ], startPoint: side == .top ? .top : .bottom, endPoint: side == .top ? .bottom : .top))
+            .allowsHitTesting(false)
+    }
+}
+
+extension View {
+    /// Шапка поверх прокрутки: контент уходит под неё и растворяется.
+    func floatingHeader<H: View>(@ViewBuilder _ header: () -> H) -> some View {
+        safeAreaInset(edge: .top, spacing: 0) {
+            header().padding(.bottom, 14)
+                .background(alignment: .top) { EdgeFade(side: .top).padding(.bottom, -6).ignoresSafeArea(edges: .top) }
+        }
+    }
+    /// Панель ввода поверх прокрутки: сообщения уходят под неё и растворяются.
+    func floatingFooter<F: View>(@ViewBuilder _ footer: () -> F) -> some View {
+        safeAreaInset(edge: .bottom, spacing: 0) {
+            footer().padding(.top, 10)
+                .background(alignment: .bottom) { EdgeFade(side: .bottom).padding(.top, -6).ignoresSafeArea(edges: .bottom) }
+        }
+    }
+}
+
 /// Мягкий верхний край на iOS 26: содержимое уходит под шапку плавно, без полосы с резкой границей.
 struct SoftTopEdge: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.scrollEdgeEffectStyle(.soft, for: .top)
+            content.scrollEdgeEffectStyle(.soft, for: .top).scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
             content
         }

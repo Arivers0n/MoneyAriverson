@@ -87,6 +87,8 @@ enum Pal {
 struct ThemeBackground: View {
     @EnvironmentObject private var store: Store     // перерисовка при смене темы без пересоздания экрана
     @Environment(\.colorScheme) private var scheme
+    /// Живая «аврора» рисуется только на одном общем фоне приложения; на экранах — спокойная картинка без анимации.
+    var animated = false
 
     var body: some View {
         ZStack {
@@ -100,12 +102,10 @@ struct ThemeBackground: View {
                             .frame(height: g.size.height * 0.5)
                     }
                     if Theme.bgStyle == 1 {
-                        if Motion.reduced {
+                        if Motion.reduced || !animated {
                             blobs(t: 0)
                         } else {
-                            TimelineView(.animation(minimumInterval: 1 / 20)) { tl in
-                                blobs(t: tl.date.timeIntervalSinceReferenceDate)
-                            }
+                            LiveTimeline(fps: 15) { d in blobs(t: d.timeIntervalSinceReferenceDate) }
                         }
                     }
                 }
@@ -125,10 +125,10 @@ struct ThemeBackground: View {
             let w = g.size.width, h = g.size.height
             let a = scheme == .dark ? 0.22 : 0.30
             ZStack {
-                Circle().fill(Theme.accent.opacity(a)).frame(width: w * 0.9)
-                    .blur(radius: 80).offset(x: -w * 0.35 + CGFloat(sin(t / 5)) * 40, y: -h * 0.32 + CGFloat(cos(t / 6)) * 30)
-                Circle().fill(Theme.accent2.opacity(a * 0.8)).frame(width: w * 0.8)
-                    .blur(radius: 90).offset(x: w * 0.4 + CGFloat(cos(t / 7)) * 40, y: h * 0.05 + CGFloat(sin(t / 4)) * 40)
+                RadialGradient(colors: [Theme.accent.opacity(a), Theme.accent.opacity(0)], center: .center, startRadius: 0, endRadius: w * 0.62)
+                    .frame(width: w * 1.3, height: w * 1.3).offset(x: -w * 0.35 + CGFloat(sin(t / 5)) * 40, y: -h * 0.32 + CGFloat(cos(t / 6)) * 30)
+                RadialGradient(colors: [Theme.accent2.opacity(a * 0.8), Theme.accent2.opacity(0)], center: .center, startRadius: 0, endRadius: w * 0.6)
+                    .frame(width: w * 1.2, height: w * 1.2).offset(x: w * 0.4 + CGFloat(cos(t / 7)) * 40, y: h * 0.05 + CGFloat(sin(t / 4)) * 40)
             }
             .frame(width: w, height: h)
         }
@@ -179,14 +179,24 @@ struct WallpaperView: View {
         ZStack {
             LinearGradient(colors: [a, b], startPoint: .top, endPoint: .bottom)
             if w.pattern != .none {
-                Canvas { ctx, size in draw(w.pattern, ctx: &ctx, size: size) }
+                WallCanvas(pattern: w.pattern).equatable()
                     .allowsHitTesting(false)
             }
         }
         .ignoresSafeArea()
     }
 
-    private func draw(_ p: WallPattern, ctx: inout GraphicsContext, size: CGSize) {
+}
+
+/// Узор обоев. Equatable: рисуется один раз и не перерисовывается при каждом обновлении экрана.
+struct WallCanvas: View, Equatable {
+    let pattern: WallPattern
+    var body: some View {
+        Canvas { ctx, size in Self.draw(pattern, ctx: &ctx, size: size) }
+            .drawingGroup()
+    }
+
+    private static func draw(_ p: WallPattern, ctx: inout GraphicsContext, size: CGSize) {
         let ink = Color.primary
         switch p {
         case .none: break

@@ -268,8 +268,8 @@ struct PairCompatView: View {
 
     private var waiting: some View {
         VStack(spacing: 18) {
-            TimelineView(.animation) { tl in
-                let t = tl.date.timeIntervalSinceReferenceDate
+            LiveTimeline(fps: 30) { date in
+                let t = date.timeIntervalSinceReferenceDate
                 ZStack {
                     ForEach(0..<3) { i in
                         Circle().stroke(store.partnerColor.opacity(0.35 - Double(i) * 0.1), lineWidth: 2)

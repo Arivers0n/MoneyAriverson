@@ -3,7 +3,7 @@ import UserNotifications
 
 @MainActor
 final class Store: ObservableObject {
-    @Published var data: AppData { didSet { save(); sync.dataChanged(data); applyTheme(); location.apply(); WidgetBridge.shared.update(self) } }
+    @Published var data: AppData { didSet { save(); scheduleSync(); applyTheme(); location.apply(); WidgetBridge.shared.update(self) } }
     @Published var scope: Scope = .we
     /// Скругление во время движения слайдера: меняет экран мгновенно, но не пишет на диск/в синхронизацию на каждом шаге.
     @Published var liveRadius: Double? = nil { didSet { Theme.radius = CGFloat(liveRadius ?? data.profile.radius) } }
@@ -56,6 +56,17 @@ final class Store: ObservableObject {
     }
 
     private var saveTask: Task<Void, Never>?
+    private var syncTask: Task<Void, Never>?
+
+    /// Сравнение с сервером кодирует все записи, поэтому делаем его не на каждую мелкую правку, а раз в 0,25 с.
+    private func scheduleSync() {
+        syncTask?.cancel()
+        syncTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            guard !Task.isCancelled, let self else { return }
+            self.sync.dataChanged(self.data)
+        }
+    }
 
     /// Запись на диск с паузой 0,3 с и вне главного потока: частые правки не тормозят экран.
     private func save() {
@@ -71,6 +82,8 @@ final class Store: ObservableObject {
 
     /// Немедленная запись (при сворачивании приложения).
     func flushSave() {
+        syncTask?.cancel()
+        sync.dataChanged(data)
         saveTask?.cancel()
         Store.write(data, to: url)
     }
