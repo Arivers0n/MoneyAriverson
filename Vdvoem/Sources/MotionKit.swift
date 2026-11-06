@@ -346,41 +346,66 @@ final class DialState: ObservableObject {
     }
 }
 
+struct DialBubble: View {
+    @EnvironmentObject var store: Store
+    let emoji: String
+    let angle: Double
+    let radius: CGFloat
+    let on: Bool
+
+    var body: some View {
+        let fill: Color = on ? store.meColor.opacity(0.35) : Color.white.opacity(0.14)
+        let dx: CGFloat = CGFloat(cos(angle)) * radius
+        let dy: CGFloat = CGFloat(sin(angle)) * radius
+        Text(emoji).font(.system(size: 30))
+            .frame(width: 54, height: 54)
+            .background(Circle().fill(fill))
+            .scaleEffect(on ? 1.35 : 1)
+            .offset(x: dx, y: dy)
+            .animation(Motion.bouncy, value: on)
+    }
+}
+
 struct DialOverlay: View {
     @EnvironmentObject var dial: DialState
     @EnvironmentObject var store: Store
     private let radius: CGFloat = 92
 
+    private func clamped(_ size: CGSize) -> CGPoint {
+        let x = min(max(dial.center.x, radius + 34), size.width - radius - 34)
+        let y = min(max(dial.center.y, radius + 90), size.height - radius - 90)
+        return CGPoint(x: x, y: y)
+    }
+
+    private func angle(_ i: Int) -> Double {
+        Double(i) / Double(max(1, dial.items.count)) * 2 * Double.pi - Double.pi / 2
+    }
+
+    private var ring: some View {
+        let d: CGFloat = radius * 2 + 56
+        return ZStack {
+            Circle().fill(.ultraThinMaterial).frame(width: d, height: d)
+                .overlay(Circle().stroke(.white.opacity(0.25), lineWidth: 1))
+            Circle().fill(store.meColor.opacity(0.25)).frame(width: 30, height: 30)
+            ForEach(0..<dial.items.count, id: \.self) { i in
+                DialBubble(emoji: dial.items[i].emoji, angle: angle(i), radius: radius, on: dial.hover == i)
+            }
+            if let h = dial.hover, h < dial.items.count {
+                Text(dial.items[h].title).font(.footnote.weight(.semibold)).foregroundStyle(.white)
+                    .padding(.horizontal, 10).padding(.vertical, 5).background(.black.opacity(0.55), in: Capsule())
+                    .offset(y: -radius - 60)
+            }
+        }
+    }
+
     var body: some View {
         GeometryReader { g in
             if dial.active {
-                let c = CGPoint(x: min(max(dial.center.x, radius + 34), g.size.width - radius - 34),
-                                y: min(max(dial.center.y, radius + 90), g.size.height - radius - 90))
                 ZStack {
-                    Color.black.opacity(0.28).ignoresSafeArea().transition(.opacity)
-                    ZStack {
-                        Circle().fill(.ultraThinMaterial).frame(width: radius * 2 + 56, height: radius * 2 + 56)
-                            .overlay(Circle().stroke(.white.opacity(0.25), lineWidth: 1))
-                        Circle().fill(store.meColor.opacity(0.25)).frame(width: 30, height: 30)
-                        ForEach(Array(dial.items.enumerated()), id: \.element.id) { i, item in
-                            let a = Double(i) / Double(dial.items.count) * 2 * .pi - .pi / 2
-                            let on = dial.hover == i
-                            Text(item.emoji).font(.system(size: 30))
-                                .frame(width: 54, height: 54)
-                                .background(Circle().fill(on ? store.meColor.opacity(0.35) : Color.white.opacity(0.14)))
-                                .scaleEffect(on ? 1.35 : 1)
-                                .offset(x: CGFloat(cos(a)) * radius, y: CGFloat(sin(a)) * radius)
-                                .animation(Motion.bouncy, value: on)
-                        }
-                        if let h = dial.hover {
-                            Text(dial.items[h].title).font(.footnote.weight(.semibold)).foregroundStyle(.white)
-                                .padding(.horizontal, 10).padding(.vertical, 5).background(.black.opacity(0.55), in: Capsule())
-                                .offset(y: -radius - 60).transition(.opacity)
-                        }
-                    }
-                    .position(c)
-                    .transition(.scale(scale: 0.4).combined(with: .opacity))
+                    Color.black.opacity(0.28).ignoresSafeArea()
+                    ring.position(clamped(g.size))
                 }
+                .transition(.opacity)
             }
         }
         .allowsHitTesting(false)
