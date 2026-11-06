@@ -40,6 +40,7 @@ struct TodayView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                pairHero
                 nowCard
                 if let mine = store.statusNow(.me) { statusHero(mine, who: .me) } else { askCard }
                 if let theirs = store.statusNow(.partner) { statusHero(theirs, who: .partner) }
@@ -100,6 +101,40 @@ struct TodayView: View {
             }
         }
         .padding(.top, 4)
+    }
+
+    // Пара: два фото и сердце между ними
+
+    private func daysWord(_ n: Int) -> String {
+        let m = n % 100, d = n % 10
+        if m >= 11 && m <= 14 { return "дней" }
+        if d == 1 { return "день" }
+        if d >= 2 && d <= 4 { return "дня" }
+        return "дней"
+    }
+
+    private var pairHero: some View {
+        let n = store.daysTogether
+        return VStack(spacing: 12) {
+            ZStack {
+                HStack(spacing: -22) {
+                    AvatarFace(who: .me, size: 84).overlay(Circle().stroke(store.meColor, lineWidth: 3))
+                    AvatarFace(who: .partner, size: 84).overlay(Circle().stroke(store.partnerColor, lineWidth: 3))
+                }
+                LiveTimeline(fps: 24) { date in
+                    let beat = max(0, sin(date.timeIntervalSinceReferenceDate * 3))
+                    Image(systemName: "heart.fill").font(.system(size: 20))
+                        .foregroundStyle(LinearGradient(colors: [store.meColor, store.partnerColor], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .scaleEffect(1 + 0.14 * CGFloat(beat))
+                        .padding(8).background(Circle().fill(.ultraThinMaterial))
+                }
+            }
+            VStack(spacing: 2) {
+                Text("\(n)").font(.system(size: 40, weight: .semibold, design: .rounded)).contentTransition(.numericText())
+                Text("\(daysWord(n)) вместе").font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 20).frame(maxWidth: .infinity).card()
     }
 
     // Главное сейчас: последнее сообщение, дела и ближайшая дата — то, ради чего открывают приложение
