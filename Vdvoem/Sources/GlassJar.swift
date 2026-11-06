@@ -1,0 +1,123 @@
+import SwiftUI
+
+// MARK: - Стеклянная банка со светящимися шарами настроения
+
+struct JarShape: Shape {
+    func path(in r: CGRect) -> Path {
+        let w = r.width, h = r.height
+        let neck = w * 0.58, nx = r.midX - neck / 2
+        let top = r.minY, shoulderY = r.minY + h * 0.14, bodyTop = r.minY + h * 0.28, rad = w * 0.22
+        var p = Path()
+        p.move(to: CGPoint(x: nx, y: top))
+        p.addLine(to: CGPoint(x: nx + neck, y: top))
+        p.addLine(to: CGPoint(x: nx + neck, y: shoulderY))
+        p.addQuadCurve(to: CGPoint(x: r.maxX, y: bodyTop), control: CGPoint(x: r.maxX, y: shoulderY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY - rad))
+        p.addQuadCurve(to: CGPoint(x: r.maxX - rad, y: r.maxY), control: CGPoint(x: r.maxX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX + rad, y: r.maxY))
+        p.addQuadCurve(to: CGPoint(x: r.minX, y: r.maxY - rad), control: CGPoint(x: r.minX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX, y: bodyTop))
+        p.addQuadCurve(to: CGPoint(x: nx, y: shoulderY), control: CGPoint(x: r.minX, y: shoulderY))
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// Один светящийся шар: цвет настроения, блик и тонкое кольцо цвета автора.
+struct MoodMarble: View {
+    let color: Color
+    let ring: Color
+    let d: CGFloat
+
+    var body: some View {
+        ZStack {
+            Circle().fill(RadialGradient(colors: [color.opacity(0.55), color], center: UnitPoint(x: 0.3, y: 0.28), startRadius: 1, endRadius: d * 0.75))
+            Ellipse().fill(Color.white.opacity(0.6)).frame(width: d * 0.3, height: d * 0.16)
+                .rotationEffect(.degrees(-30)).offset(x: -d * 0.2, y: -d * 0.24)
+            Circle().stroke(ring.opacity(0.9), lineWidth: 2)
+        }
+        .frame(width: d, height: d)
+        .shadow(color: color.opacity(0.5), radius: 6, y: 2)
+    }
+}
+
+struct GlassJar: View {
+    @EnvironmentObject var store: Store
+    let balls: [JarBall]            // по времени, старые первыми
+    @State private var tilt: CGFloat = 0
+
+    private let d: CGFloat = 32
+
+    private func jitter(_ id: UUID, _ salt: Int) -> CGFloat {
+        let v = abs((id.uuidString + "\(salt)").hashValue % 1000)
+        return CGFloat(v) / 1000 - 0.5
+    }
+
+    private func spot(_ i: Int, _ b: JarBall, jw: CGFloat, jh: CGFloat) -> CGPoint {
+        let inner = jw - 24
+        let perRow = max(2, Int(inner / (d * 0.92)))
+        let row = i / perRow, col = i % perRow
+        let step = inner / CGFloat(perRow)
+        let shift: CGFloat = row % 2 == 0 ? 0 : step / 2
+        var x = 12 + step / 2 + CGFloat(col) * step + shift + jitter(b.id, 1) * 4
+        x = min(max(x, 12 + d / 2), jw - 12 - d / 2)
+        let y = jh - 14 - d / 2 - CGFloat(row) * d * 0.8 + jitter(b.id, 2) * 3
+        return CGPoint(x: x, y: y)
+    }
+
+    var body: some View {
+        GeometryReader { g in
+            let jw = min(g.size.width * 0.74, 250)
+            let jh = g.size.height - 26
+            ZStack {
+                Ellipse().fill(Color.black.opacity(0.12)).frame(width: jw * 0.9, height: 16).blur(radius: 6)
+                    .offset(y: jh / 2 + 10)
+                jar(jw: jw, jh: jh)
+                    .rotationEffect(.degrees(Double(tilt) * 7), anchor: .bottom)
+            }
+            .frame(width: g.size.width, height: g.size.height)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 2)
+                    .onChanged { v in tilt = max(-1, min(1, v.translation.width / 90)) }
+                    .onEnded { _ in withAnimation(Motion.bouncy) { tilt = 0 } }
+            )
+        }
+        .frame(height: 340)
+        .accessibilityLabel("Банка настроения")
+    }
+
+    private func jar(jw: CGFloat, jh: CGFloat) -> some View {
+        let shown = Array(balls.suffix(36))
+        return ZStack(alignment: .topLeading) {
+            JarShape().fill(LinearGradient(colors: [Color.white.opacity(0.2), Color.white.opacity(0.04)], startPoint: .top, endPoint: .bottom))
+            LiveTimeline(fps: 15) { date in
+                let t = date.timeIntervalSinceReferenceDate
+                ZStack(alignment: .topLeading) {
+                    ForEach(Array(shown.enumerated()), id: \.element.id) { i, b in
+                        let p = spot(i, b, jw: jw, jh: jh)
+                        let bob = CGFloat(sin(t * 1.1 + Double(i) * 0.9)) * 1.6
+                        MoodMarble(color: Color(hex: moodOf(b.mood).hex), ring: store.color(b.who), d: d)
+                            .position(x: p.x, y: p.y + bob)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+                .animation(Motion.bouncy, value: shown.count)
+            }
+            .frame(width: jw, height: jh)
+            Capsule().fill(Color.white.opacity(0.35)).frame(width: 7, height: jh * 0.42)
+                .offset(x: 16, y: jh * 0.34).blur(radius: 1)
+                .allowsHitTesting(false)
+        }
+        .frame(width: jw, height: jh)
+        .clipShape(JarShape())
+        .overlay(JarShape().stroke(LinearGradient(colors: [Color.white.opacity(0.85), Color.white.opacity(0.25)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2))
+        .overlay(alignment: .top) {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(LinearGradient(colors: [store.meColor, store.partnerColor], startPoint: .leading, endPoint: .trailing))
+                .frame(width: jw * 0.58 + 14, height: 16)
+                .offset(y: -8)
+        }
+        .shadow(color: Color.black.opacity(0.1), radius: 12, y: 6)
+    }
+}

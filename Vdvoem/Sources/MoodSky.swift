@@ -128,7 +128,6 @@ struct JarView: View {
                 picker
                 ribbon
                 if let d = openDay { dayDetail(d) }
-                favorites
                 history
             }
             .padding(.horizontal, 16).padding(.bottom, 28)
@@ -138,19 +137,19 @@ struct JarView: View {
         .navigationTitle("Настроение")
     }
 
-    // MARK: Две луны
+    // MARK: Банка
+
+    private var todayBalls: [JarBall] {
+        store.data.jar.filter { Calendar.current.isDateInToday($0.date) }.sorted { $0.date < $1.date }
+    }
 
     private var orbs: some View {
-        VStack(spacing: 10) {
-            ZStack(alignment: .top) {
-                Capsule()
-                    .fill(LinearGradient(colors: [store.meColor.opacity(0.7), store.partnerColor.opacity(0.7)], startPoint: .leading, endPoint: .trailing))
-                    .frame(height: 3).padding(.horizontal, 74).padding(.top, 70)
-                    .blur(radius: 0.5)
-                HStack(alignment: .top, spacing: 0) {
-                    MoodOrb(who: .me)
-                    MoodOrb(who: .partner)
-                }
+        VStack(spacing: 8) {
+            GlassJar(balls: todayBalls)
+            Text(todayBalls.isEmpty ? "Бросьте первый шарик дня" : "Сегодня шариков: \(todayBalls.count) · качните банку пальцем")
+                .font(.footnote).foregroundStyle(.secondary).contentTransition(.numericText())
+            HStack(spacing: 10) {
+                ForEach(Who.allCases, id: \.self) { w in whoChip(w) }
             }
             if sameWave {
                 Label("Вы на одной волне", systemImage: "sparkles")
@@ -160,8 +159,22 @@ struct JarView: View {
                     .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(.top, 8)
         .animation(Motion.spring, value: sameWave)
+    }
+
+    private func whoChip(_ w: Who) -> some View {
+        let last = store.data.jar.filter { $0.who == w }.max { $0.date < $1.date }
+        return HStack(spacing: 8) {
+            AvatarFace(who: w, size: 30)
+                .overlay(Circle().stroke(last.map { Color(hex: moodOf($0.mood).hex) } ?? store.color(w), lineWidth: 2).padding(-2))
+            VStack(alignment: .leading, spacing: 0) {
+                Text(store.name(w)).font(.caption.weight(.semibold)).lineLimit(1)
+                Text(last.map { moodOf($0.mood).emoji + " " + $0.date.agoText } ?? "нет отметок")
+                    .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8).frame(maxWidth: .infinity).card()
     }
 
     // MARK: Выбор настроения

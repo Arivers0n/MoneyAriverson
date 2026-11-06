@@ -45,7 +45,6 @@ struct TodayView: View {
                 statusCard
                 tiles
                 infoRow
-                batteryRow
                 historyBlock
             }
             .padding(.horizontal, 16).padding(.bottom, 24).padding(.top, 4)
@@ -371,28 +370,43 @@ struct TodayView: View {
     // Расстояние и дни
 
     private var infoRow: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Label("Между нами", systemImage: "location").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+        VStack(spacing: 12) {
+            HStack {
+                Label("Между нами", systemImage: "location").font(.subheadline).foregroundStyle(.secondary)
+                Spacer()
                 if let d = store.distanceKm() {
-                    Text(d.kmText).font(.system(size: 28, weight: .medium).monospacedDigit())
+                    Text(d.kmText).font(.system(size: 20, weight: .medium).monospacedDigit())
                         .contentTransition(.numericText()).animation(Motion.curve(0.3), value: d.kmText)
                 } else {
-                    Text(store.p.shareLocation ? "Ждём партнёра" : "Скрыто").font(.title3.weight(.medium))
-                    Text(store.p.shareLocation ? " " : "Включите в настройках").font(.caption).foregroundStyle(.secondary)
+                    Text(store.p.shareLocation ? "Ждём партнёра" : "Скрыто").font(.subheadline).foregroundStyle(.secondary)
                 }
             }
-            .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading).card()
-            VStack(alignment: .leading, spacing: 4) {
-                Label("Вместе", systemImage: "heart").font(.caption.weight(.medium)).foregroundStyle(.secondary)
-                let days = max(0, Calendar.current.dateComponents([.day], from: store.p.start, to: Date()).day ?? 0)
-                Text("\(days)").font(.system(size: 28, weight: .medium).monospacedDigit())
-                    .contentTransition(.numericText()).animation(Motion.curve(0.3), value: days)
-                Text("дней").font(.caption).foregroundStyle(.secondary)
+            Divider()
+            HStack(spacing: 16) {
+                ForEach(Who.allCases, id: \.self) { w in batteryMini(w) }
             }
-            .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading).card()
         }
-        .fixedSize(horizontal: false, vertical: true)
+        .padding(16).card()
+    }
+
+    private func batteryMini(_ w: Who) -> some View {
+        let b = store.data.batteries.first { $0.who == w }
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Circle().fill(store.color(w)).frame(width: 7, height: 7)
+                Text(store.name(w)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                Spacer(minLength: 0)
+                Text(b.map { "\(Int($0.level * 100))%" } ?? "—").font(.caption.weight(.semibold).monospacedDigit())
+            }
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.primary.opacity(0.08))
+                    if let b { Capsule().fill(batteryColor(b.level)).frame(width: max(6, g.size.width * CGFloat(b.level))) }
+                }
+            }
+            .frame(height: 6)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     // Батарея

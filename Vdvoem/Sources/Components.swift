@@ -81,21 +81,6 @@ struct CardBG: ViewModifier {
         case 2:
             content.background(Pal.card.opacity(0.45), in: shape)
                 .overlay(shape.stroke(Color.primary.opacity(0.12), lineWidth: 1))
-        case 3:
-            // Ретро: плотная рамка и жёсткая тень без размытия
-            content.background(Pal.card, in: shape)
-                .overlay(shape.stroke(Color.primary.opacity(0.85), lineWidth: 2))
-                .background { shape.fill(Color.primary.opacity(0.85)).offset(x: 4, y: 4) }
-        case 4:
-            // Бумага: тёплый лист, тонкая рамка, мягкая тень как у открытки
-            content.background(Pal.card, in: shape)
-                .overlay(shape.stroke(Color(hex: "C9B79A").opacity(0.5), lineWidth: 1))
-                .shadow(color: Color(hex: "6B4F2A").opacity(0.12), radius: 10, y: 5)
-        case 5:
-            // Игривый: пухлая рамка и «объёмная» цветная нижняя тень
-            content.background(Pal.card, in: shape)
-                .overlay(shape.stroke(store.meColor.opacity(0.35), lineWidth: 3))
-                .shadow(color: store.meColor.opacity(0.28), radius: 0, x: 0, y: 5)
         default:
             // Жидкое стекло: фон темы просвечивает и преломляется; лёгкий оттенок карточки держит читаемость.
             content.glass(shape, tint: store.glassTint)
