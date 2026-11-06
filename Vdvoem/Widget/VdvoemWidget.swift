@@ -63,7 +63,7 @@ struct VDProvider: AppIntentTimelineProvider {
 
 // MARK: - Вёрстка
 
-private func hex(_ s: String) -> Color {
+func vdHex(_ s: String) -> Color {
     var v: UInt64 = 0
     Scanner(string: s).scanHexInt64(&v)
     return Color(red: Double((v >> 16) & 255) / 255, green: Double((v >> 8) & 255) / 255, blue: Double(v & 255) / 255)
@@ -82,8 +82,8 @@ struct VDView: View {
     let entry: VDEntry
 
     private var s: VDSnapshot { entry.snap }
-    private var partner: Color { hex(s.partnerHex) }
-    private var me: Color { hex(s.myHex) }
+    private var partner: Color { vdHex(s.partnerHex) }
+    private var me: Color { vdHex(s.myHex) }
 
     var body: some View {
         Group {
@@ -113,7 +113,7 @@ struct VDView: View {
 
     private var statusBlock: some View {
         let active = s.activeStatus(entry.date)
-        let tint = active ? hex(s.statusHex) : partner
+        let tint = active ? vdHex(s.statusHex) : partner
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Circle().fill(partner).frame(width: 8, height: 8)
@@ -255,5 +255,19 @@ struct VdvoemWidget: Widget {
 
 @main
 struct VdvoemWidgetBundle: WidgetBundle {
-    var body: some Widget { VdvoemWidget() }
+    var body: some Widget {
+        VdvoemWidget()
+        VDTasksWidget()
+        VDWeekWidget()
+        VDDatesWidget()
+        VDPlansWidget()
+        VDWishesWidget()
+        VDMoviesWidget()
+        VDCapsuleWidget()
+        VDPollWidget()
+        VDGamesWidget()
+        VDPetWidget()
+        VDPartnerPhotoWidget()
+        VDChatWidget()
+    }
 }

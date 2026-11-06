@@ -117,6 +117,12 @@ struct RootView: View {
             }
         }
         // Новая вкладка всегда показывается с развёрнутым доком.
+        .onOpenURL { url in
+            guard url.scheme == "vdvoem", let host = url.host else { return }
+            let map = ["home": "today", "capsules": "capsule", "polls": "vote", "photos": "memories"]
+            let id = map[host] ?? host
+            selected = tabs.contains { $0.id == id } ? id : "more"
+        }
         .onChange(of: current) { _, _ in dock.set(false, haptics: false) }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in typing = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in typing = false }
