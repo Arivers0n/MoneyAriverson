@@ -120,6 +120,7 @@ struct RootView: View {
         .animation(Motion.enter, value: noDock)
         .overlay { SignalOverlay() }
         .overlay { DialOverlay() }
+        .overlay { ToastHost() }
         .environmentObject(dock)
         .environmentObject(dial)
         // Запуск всегда с «Сегодня» (если раздел в панели), а не с того, что окажется первым.

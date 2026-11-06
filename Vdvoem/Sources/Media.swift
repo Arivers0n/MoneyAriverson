@@ -42,7 +42,7 @@ struct RemoteImage: View {
             } else if failed {
                 Image(systemName: "photo").foregroundStyle(.secondary)
             } else {
-                ProgressView()
+                SkeletonBox()
             }
         }
         .animation(Motion.curve(0.25), value: image != nil)

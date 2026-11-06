@@ -129,7 +129,7 @@ extension Store {
 
     func addBall(mood: Int, note: String) {
         data.jar.append(JarBall(who: .me, mood: mood, note: note.trimmingCharacters(in: .whitespaces)))
-        success()
+        Toasts.shared.show("Настроение отмечено", symbol: "sparkles")
     }
 
     // MARK: Расстояние

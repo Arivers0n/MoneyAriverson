@@ -48,7 +48,7 @@ extension Store {
         var list = data.avatars.filter { $0.who != w }
         if let image, let d = AvatarCache.encode(image) { list.append(AvatarItem(who: w, jpeg: d)) }
         data.avatars = list
-        success()
+        Toasts.shared.show(image == nil ? "Фото убрано" : "Фото обновлено", symbol: "person.crop.circle.badge.checkmark")
     }
 }
 
