@@ -54,7 +54,7 @@ enum Push {
         UIApplication.shared.registerForRemoteNotifications()
     }
 
-    static func upload(_ sync: SyncEngine) async {
+    @MainActor static func upload(_ sync: SyncEngine) async {
         guard let t = token, sync.isPaired else { return }
         let ok = await sync.registerDevice(t)
         UserDefaults.standard.set(ok, forKey: "vd.pushOK")
@@ -68,7 +68,7 @@ enum Push {
         try? BGTaskScheduler.shared.submit(r)
     }
 
-    static func fallbackCheck(_ sync: SyncEngine) async {
+    @MainActor static func fallbackCheck(_ sync: SyncEngine) async {
         scheduleRefresh()
         guard !working else { return }
         for n in await sync.backgroundCheck() {
