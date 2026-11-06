@@ -38,13 +38,16 @@ struct MemoriesView: View {
             }
             .padding(.horizontal, 14).padding(.top, 12)
 
-            Button { opened = p } label: {
-                RemoteImage(media: p.media, file: p.file)
-                    .aspectRatio(CGFloat(min(max(p.ratio, 0.75), 1.6)), contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
-                    .padding(.horizontal, 10)
-            }
-            .buttonStyle(PressStyle())
+            RemoteImage(media: p.media, file: p.file)
+                .aspectRatio(CGFloat(min(max(p.ratio, 0.75), 1.6)), contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
+                .padding(.horizontal, 10)
+                .doubleTapHeart {
+                    if store.data.reactions.first(where: { $0.photo == p.id && $0.who == .me })?.emoji != "❤️" {
+                        withAnimation(Motion.spring) { store.react(p.id, emoji: "❤️") }
+                    }
+                }
+                .onTapGesture { opened = p }
 
             if !p.caption.isEmpty {
                 Text(p.caption).font(.body).padding(.horizontal, 14)

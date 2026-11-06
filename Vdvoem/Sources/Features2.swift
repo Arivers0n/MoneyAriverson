@@ -48,19 +48,18 @@ struct QuestionView: View {
             field(.me)
             field(.partner)
             let both = !answer.me.isEmpty && !answer.partner.isEmpty
-            Button {
-                withAnimation { reveal.toggle() }
-            } label: { Text(reveal ? "Скрыть ответы" : "Показать ответы").bigButton() }
-            .disabled(!both).opacity(both ? 1 : 0.4)
-            if reveal && both {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(store.name(.me)).font(.caption.weight(.semibold)).foregroundStyle(store.meColor)
-                    Text(answer.me)
-                    Divider()
-                    Text(store.name(.partner)).font(.caption.weight(.semibold)).foregroundStyle(store.partnerColor)
-                    Text(answer.partner)
+            if both {
+                // Ответы закрыты «защитным слоем»: стираем пальцем — и они проявляются.
+                ScratchCard(key: "answers-" + key, tint: store.partnerColor) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(store.name(.me)).font(.caption.weight(.semibold)).foregroundStyle(store.meColor)
+                        Text(answer.me)
+                        Divider()
+                        Text(store.name(.partner)).font(.caption.weight(.semibold)).foregroundStyle(store.partnerColor)
+                        Text(answer.partner)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 150, alignment: .leading).padding(16).card()
                 }
-                .frame(maxWidth: .infinity, alignment: .leading).padding(16).card()
             }
             Text("Ответы скрыты, пока не ответят оба.").font(.footnote).foregroundStyle(.secondary)
         }
@@ -366,9 +365,7 @@ struct CapsuleView: View {
                         }
                         Spacer()
                         if !ready {
-                            Button(role: .destructive) { store.data.capsules.removeAll { $0.id == c.id } } label: {
-                                Image(systemName: "trash").foregroundStyle(.tertiary)
-                            }
+                            HoldTrash { withAnimation { store.data.capsules.removeAll { $0.id == c.id } } }
                         }
                     }
                     .padding(14).card()
@@ -380,7 +377,12 @@ struct CapsuleView: View {
         .sheet(isPresented: $adding) { AddCapsuleSheet() }
         .sheet(item: $opened) { c in
             NavigationStack {
-                ScrollView { Text(c.text).padding(20).frame(maxWidth: .infinity, alignment: .leading) }
+                ScrollView {
+                    ScratchCard(key: "capsule-" + c.id.uuidString, hint: "Сотрите, чтобы прочитать письмо", tint: store.color(c.from)) {
+                        Text(c.text).padding(20).frame(maxWidth: .infinity, minHeight: 260, alignment: .topLeading)
+                    }
+                    .padding(16)
+                }
                     .background(Pal.bg.ignoresSafeArea())
                     .navigationTitle(c.title).navigationBarTitleDisplayMode(.inline)
             }
@@ -431,9 +433,7 @@ struct VoteView: View {
                     HStack {
                         Text(p.question).font(.headline)
                         Spacer()
-                        Button(role: .destructive) { store.data.polls.removeAll { $0.id == p.id } } label: {
-                            Image(systemName: "trash").foregroundStyle(.tertiary)
-                        }
+                        HoldTrash { withAnimation { store.data.polls.removeAll { $0.id == p.id } } }
                     }
                     ForEach(p.options) { o in
                         Button { vote(p, o) } label: {

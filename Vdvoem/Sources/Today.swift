@@ -101,6 +101,7 @@ struct TodayView: View {
             HStack(spacing: 4) {
                 VStack(spacing: 0) { Avatar(who: .me); Text("Я").font(.caption2.weight(.semibold)) }
                 VStack(spacing: 0) { Avatar(who: .partner); Text(store.name(.partner)).font(.caption2.weight(.semibold)).lineLimit(1) }
+                    .dialMenu(signalKinds.map { DialItem(id: $0.id, emoji: $0.emoji, title: $0.title) }) { store.sendSignal($0.id) }
             }
         }
         .padding(.top, 4)
@@ -296,6 +297,7 @@ struct TodayView: View {
                 Label("Между нами", systemImage: "location").font(.caption.weight(.medium)).foregroundStyle(.secondary)
                 if let d = store.distanceKm() {
                     Text(d.kmText).font(.system(size: 28, weight: .medium).monospacedDigit())
+                        .contentTransition(.numericText()).animation(Motion.curve(0.3), value: d.kmText)
                 } else {
                     Text(store.p.shareLocation ? "Ждём партнёра" : "Скрыто").font(.title3.weight(.medium))
                     Text(store.p.shareLocation ? " " : "Включите в настройках").font(.caption).foregroundStyle(.secondary)

@@ -50,6 +50,7 @@ struct VdvoemApp: App {
 struct RootView: View {
     @EnvironmentObject var store: Store
     @StateObject private var dock = DockState()
+    @StateObject private var dial = DialState()
     @State private var selected = ""
     @EnvironmentObject var sync: SyncEngine
     @State private var gate = false
@@ -118,7 +119,9 @@ struct RootView: View {
         }
         .animation(Motion.enter, value: noDock)
         .overlay { SignalOverlay() }
+        .overlay { DialOverlay() }
         .environmentObject(dock)
+        .environmentObject(dial)
         // Запуск всегда с «Сегодня» (если раздел в панели), а не с того, что окажется первым.
         .onAppear {
             if selected.isEmpty { selected = tabs.first(where: { $0.id == Module.today.rawValue })?.id ?? tabs.first?.id ?? "more" }

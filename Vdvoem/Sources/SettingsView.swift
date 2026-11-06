@@ -125,12 +125,8 @@ struct SettingsView: View {
                     }))
             }
 
-            Button(role: .destructive) { confirmReset = true } label: {
-                Text("Сбросить все данные").frame(maxWidth: .infinity).padding(16).card()
-            }
-            .confirmationDialog("Удалить все данные и начать заново?", isPresented: $confirmReset, titleVisibility: .visible) {
-                Button("Удалить всё", role: .destructive) { store.resetAll() }
-            }
+            HoldToConfirm(title: "Сбросить все данные — удерживайте", hold: 1.4) { store.resetAll() }
+                .padding(.top, 4)
         }
         .navigationTitle("Настройки")
     }

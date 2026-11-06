@@ -39,6 +39,19 @@ struct ChatView: View {
                                         Text(m.text).padding(.horizontal, 14).padding(.vertical, 10)
                                             .background(store.color(m.from), in: RoundedRectangle(cornerRadius: bubbleRadius(), style: .continuous))
                                             .foregroundStyle(store.color(m.from).onAccent)
+                                            .overlay(alignment: m.from == .me ? .bottomLeading : .bottomTrailing) {
+                                                if m.liked == true {
+                                                    Image(systemName: "heart.fill").font(.system(size: 13)).foregroundStyle(Color(hex: "F43F5E"))
+                                                        .padding(4).background(.thinMaterial, in: Circle())
+                                                        .offset(x: m.from == .me ? -8 : 8, y: 10)
+                                                        .transition(.scale.combined(with: .opacity))
+                                                }
+                                            }
+                                            .doubleTapHeart {
+                                                if let i = store.data.messages.firstIndex(where: { $0.id == m.id }) {
+                                                    withAnimation(Motion.bouncy) { store.data.messages[i].liked = (store.data.messages[i].liked == true) ? nil : true }
+                                                }
+                                            }
                                     }
                                     Text(m.date.formatted(Date.FormatStyle().locale(ruLocale).hour().minute())).font(.caption2).foregroundStyle(.secondary)
                                 }

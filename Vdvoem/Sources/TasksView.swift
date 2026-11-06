@@ -62,11 +62,7 @@ struct TaskRow: View {
                 withAnimation(Motion.spring) { t.done.toggle() }
                 if t.done { store.success() } else { store.tap() }
             } label: {
-                Image(systemName: t.done ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
-                    .contentTransition(.symbolEffect(.replace))
-                    .symbolEffect(.bounce, value: t.done)
-                    .foregroundStyle(t.done ? store.color(t.owner ?? .me) : Color.secondary)
+                DrawnCheck(done: t.done, color: store.color(t.owner ?? .me), size: 26)
             }
             .buttonStyle(PressStyle())
 

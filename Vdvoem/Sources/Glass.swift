@@ -16,7 +16,14 @@ enum Motion {
     /// Нажатие: мгновенный отклик.
     static var press: Animation { .easeOut(duration: 0.1) }
     /// Обычная пружина: почти без отскока, всегда можно перехватить на лету.
-    static var spring: Animation { reduced ? curve(0.2) : .spring(response: 0.38, dampingFraction: 0.92) }
+    static var spring: Animation {
+        if reduced { return curve(0.2) }
+        switch Theme.cardStyle {
+        case 5: return .spring(response: 0.42, dampingFraction: 0.58)   // игривый: заметные пружинки
+        case 3: return .easeOut(duration: 0.12)                          // ретро: быстро и чётко
+        default: return .spring(response: 0.38, dampingFraction: 0.92)
+        }
+    }
     /// Для движений после жеста (перетаскивание, сброс на место): чуть пружинит, как физический предмет.
     static var bouncy: Animation { reduced ? curve(0.2) : .spring(response: 0.32, dampingFraction: 0.8) }
 }

@@ -54,6 +54,19 @@ struct ThemeDef: Identifiable, Hashable {
         // Фисташка: свежая зелень
         ThemeDef(id: "pistachio", title: "Фисташка", bgL: "F5F8EC", bgD: "0E1408", topL: "DDEBBE", topD: "2E4410",
                  cardL: "FFFFFF", cardD: "172010", fieldL: "E7EED3", fieldD: "232F18"),
+        // «Миры» с характером (идея Ovio): у каждого свои шрифт, форма, тени, фон и движение.
+        // Бумага (Craft): тёплая бумага, зерно, книжный шрифт
+        ThemeDef(id: "paper", title: "Бумага", bgL: "FAF4E8", bgD: "16120D", topL: "F1E3C8", topD: "2E2416",
+                 cardL: "FFFCF4", cardD: "211B14", fieldL: "F0E7D3", fieldD: "2C241A"),
+        // Игривый (Toy): круглое, яркое, с пружинками
+        ThemeDef(id: "toy", title: "Игривый", bgL: "FFF3FA", bgD: "1B0F1F", topL: "FFD3EC", topD: "4A1B49",
+                 cardL: "FFFFFF", cardD: "2A1630", fieldL: "FFE3F2", fieldD: "3A2142"),
+        // Ретро: моно-шрифт, плотные рамки, жёсткие тени
+        ThemeDef(id: "retro", title: "Ретро", bgL: "F1EDD6", bgD: "0F130F", topL: "E4DEB8", topD: "1E2A1E",
+                 cardL: "FBF8E8", cardD: "182018", fieldL: "E6E1C5", fieldD: "223022"),
+        // Зернистый градиент: цветные пятна с плёночным зерном
+        ThemeDef(id: "grainient", title: "Зернистый", bgL: "F6F1FA", bgD: "0E0B16", topL: "E7D9F8", topD: "2A1650",
+                 cardL: "FFFFFF", cardD: "1B1626", fieldL: "EEE6F8", fieldD: "2A2140"),
         // Туман: холодный серо-голубой
         ThemeDef(id: "fog", title: "Туман", bgL: "F1F4F8", bgD: "0C1016", topL: "D6DEEA", topD: "1C2838",
                  cardL: "FFFFFF", cardD: "141A22", fieldL: "E2E8F0", fieldD: "202A36")
@@ -101,7 +114,7 @@ struct ThemeBackground: View {
                         LinearGradient(colors: [Pal.top, Pal.top.opacity(0)], startPoint: .top, endPoint: .bottom)
                             .frame(height: g.size.height * 0.5)
                     }
-                    if Theme.bgStyle == 1 {
+                    if Theme.bgStyle == 1 || Theme.bgStyle == 3 {
                         if Motion.reduced || !animated {
                             blobs(t: 0)
                         } else {
@@ -112,6 +125,9 @@ struct ThemeBackground: View {
             }
             .id(store.p.themeID)
             .transition(.opacity)
+            if Theme.bgStyle == 3 || Theme.bgStyle == 4 {
+                GrainOverlay(strength: Theme.bgStyle == 3 ? 0.22 : 0.16).allowsHitTesting(false)
+            }
             PatternOverlay(kind: store.p.bgPattern)
                 .id(store.p.bgPattern)
                 .transition(.opacity)
@@ -642,5 +658,33 @@ struct WallpaperPreview: View {
     let id: String
     var body: some View {
         WallpaperView(id: id).allowsHitTesting(false)
+    }
+}
+
+
+/// Плёночное зерно: одна маленькая картинка шума, замощённая на весь экран. Не анимируется — почти ничего не стоит.
+struct GrainOverlay: View {
+    let strength: Double
+    @Environment(\.colorScheme) private var scheme
+
+    private static let tile: UIImage = {
+        let n = 128
+        var px = [UInt8](repeating: 0, count: n * n * 4)
+        var g = SystemRandomNumberGenerator()
+        for i in 0..<(n * n) {
+            let v = UInt8.random(in: 0...255, using: &g)
+            px[i * 4] = v; px[i * 4 + 1] = v; px[i * 4 + 2] = v; px[i * 4 + 3] = 255
+        }
+        let cs = CGColorSpaceCreateDeviceRGB()
+        let ctx = CGContext(data: &px, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n * 4, space: cs,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        return ctx?.makeImage().map { UIImage(cgImage: $0) } ?? UIImage()
+    }()
+
+    var body: some View {
+        Image(uiImage: Self.tile).resizable(resizingMode: .tile)
+            .blendMode(scheme == .dark ? .screen : .multiply)
+            .opacity(strength * (scheme == .dark ? 0.25 : 0.55))
+            .ignoresSafeArea()
     }
 }

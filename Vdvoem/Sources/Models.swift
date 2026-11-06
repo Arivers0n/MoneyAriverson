@@ -341,6 +341,8 @@ struct ChatMessage: Identifiable, Codable, Hashable {
     var dur: Double? = nil
     /// Форма голоса для красивой картинки (44 значения 0...31).
     var wave: [Int]? = nil
+    /// Двойной тап по сообщению — сердечко (необязательное поле: старые версии его просто не видят).
+    var liked: Bool? = nil
 }
 
 struct Plan: Identifiable, Codable, Hashable {

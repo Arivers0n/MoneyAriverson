@@ -11,6 +11,8 @@ struct ThemeLook {
     let pattern: Int           // 0 нет, 1 точки, 2 сердечки, 3 волны
     var pair: (String, String)? = nil   // цвета пары (только у ярких тем, где нужен контраст)
     var mode: ThemeMode? = nil          // принудительный режим (тёмные темы)
+    var card: Int? = nil                // стиль карточек «мира»: 3 ретро, 4 бумага, 5 игривый
+    var bg: Int? = nil                  // фон «мира»: 3 зернистый градиент, 4 бумага с зерном
 
     static func of(_ id: String) -> ThemeLook {
         switch id {
@@ -33,6 +35,10 @@ struct ThemeLook {
         case "espresso":  return ThemeLook(icon: 0, font: .standard, radius: 16, pattern: 0, pair: ("D2955A", "5FC2B0"), mode: .dark)
         case "rose":      return ThemeLook(icon: 0, font: .standard, radius: 24, pattern: 0, pair: ("D6226B", "1C9FC9"))
         case "pistachio": return ThemeLook(icon: 0, font: .standard, radius: 18, pattern: 0, pair: ("5E8C16", "E8622C"))
+        case "paper":     return ThemeLook(icon: 0, font: .serif, radius: 12, pattern: 0, pair: ("B5533C", "4F7A5A"), card: 4, bg: 4)
+        case "toy":       return ThemeLook(icon: 1, font: .rounded, radius: 30, pattern: 2, pair: ("FF5FA2", "6C7BFF"), card: 5, bg: 0)
+        case "retro":     return ThemeLook(icon: 0, font: .mono, radius: 0, pattern: 1, pair: ("E4572E", "1F7A8C"), card: 3, bg: 2)
+        case "grainient": return ThemeLook(icon: 0, font: .rounded, radius: 24, pattern: 0, pair: ("7B5CFF", "FF8A5B"), card: 0, bg: 3)
         case "fog":       return ThemeLook(icon: 0, font: .standard, radius: 16, pattern: 0, pair: ("4F6FA8", "D98A5B"))
         default:          return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0,
                                            pair: ("0593C6", "DB3996"))   // «Лагуна» — по умолчанию
@@ -60,6 +66,9 @@ extension Store {
         pr.design = look.font
         pr.radius = look.radius
         pr.bgPattern = look.pattern
+        // «Миры» меняют ещё и карточки с фоном; обычные темы возвращают их к стандарту, только если до этого был «мир»
+        if look.card != nil || prev.card != nil { pr.cardStyle = look.card ?? 0 }
+        if look.bg != nil || prev.bg != nil { pr.bgStyle = look.bg ?? 0 }
         if let pair = look.pair { pr.myHex = pair.0; pr.partnerHex = pair.1 }
         if let m = look.mode { pr.theme = m } else if prev.mode != nil { pr.theme = .system }
         liveRadius = nil

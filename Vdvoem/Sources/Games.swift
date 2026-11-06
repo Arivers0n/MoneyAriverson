@@ -282,7 +282,7 @@ struct MatchView: View {
                 } label: { Text("Реванш").bigButton() }
                     .padding(.horizontal, 16)
             } else if !hotSeat && m.turn != .me && m.kind != .rps && !(m.kind == .battleship && !Battleship.bothReady(m)) && !(m.kind == .hangman && m.word == nil) {
-                HStack(spacing: 8) { Text("Ждём ход партнёра").font(.footnote).foregroundStyle(.secondary); TypingDots() }
+                HStack(spacing: 8) { Text("Ждём ход партнёра").font(.footnote).foregroundStyle(.secondary).shimmer(); TypingDots() }
             }
         }
     }
