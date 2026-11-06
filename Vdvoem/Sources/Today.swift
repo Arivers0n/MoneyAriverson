@@ -42,8 +42,7 @@ struct TodayView: View {
             VStack(spacing: 16) {
                 pairHero
                 nowCard
-                if let mine = store.statusNow(.me) { statusHero(mine, who: .me) } else { askCard }
-                if let theirs = store.statusNow(.partner) { statusHero(theirs, who: .partner) }
+                statusCard
                 tiles
                 infoRow
                 batteryRow
@@ -94,11 +93,6 @@ struct TodayView: View {
             }
             .buttonStyle(PressStyle())
             .accessibilityLabel("Чат")
-            HStack(spacing: 4) {
-                VStack(spacing: 0) { Avatar(who: .me); Text("Я").font(.caption2.weight(.semibold)) }
-                VStack(spacing: 0) { Avatar(who: .partner); Text(store.name(.partner)).font(.caption2.weight(.semibold)).lineLimit(1) }
-                    .dialMenu(signalKinds.map { DialItem(id: $0.id, emoji: $0.emoji, title: $0.title) }) { store.sendSignal($0.id) }
-            }
         }
         .padding(.top, 4)
     }
@@ -115,26 +109,81 @@ struct TodayView: View {
 
     private var pairHero: some View {
         let n = store.daysTogether
-        return VStack(spacing: 12) {
-            ZStack {
-                HStack(spacing: -22) {
-                    AvatarFace(who: .me, size: 84).overlay(Circle().stroke(store.meColor, lineWidth: 3))
-                    AvatarFace(who: .partner, size: 84).overlay(Circle().stroke(store.partnerColor, lineWidth: 3))
-                }
-                LiveTimeline(fps: 24) { date in
-                    let beat = max(0, sin(date.timeIntervalSinceReferenceDate * 3))
-                    Image(systemName: "heart.fill").font(.system(size: 20))
-                        .foregroundStyle(LinearGradient(colors: [store.meColor, store.partnerColor], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .scaleEffect(1 + 0.14 * CGFloat(beat))
-                        .padding(8).background(Circle().fill(.ultraThinMaterial))
-                }
+        return HStack(spacing: 16) {
+            HStack(spacing: -16) {
+                Avatar(who: .me, size: 60)
+                Avatar(who: .partner, size: 60)
+                    .dialMenu(signalKinds.map { DialItem(id: $0.id, emoji: $0.emoji, title: $0.title) }) { store.sendSignal($0.id) }
             }
-            VStack(spacing: 2) {
-                Text("\(n)").font(.system(size: 40, weight: .semibold, design: .rounded)).contentTransition(.numericText())
-                Text("\(daysWord(n)) вместе").font(.subheadline).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(n)").font(.system(size: 34, weight: .semibold, design: .rounded)).contentTransition(.numericText())
+                Text("\(daysWord(n)) вместе").font(.footnote).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            LiveTimeline(fps: 24) { date in
+                let beat = max(0, sin(date.timeIntervalSinceReferenceDate * 3))
+                Image(systemName: "heart.fill").font(.system(size: 22))
+                    .foregroundStyle(LinearGradient(colors: [store.meColor, store.partnerColor], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .scaleEffect(1 + 0.14 * CGFloat(beat))
             }
         }
-        .padding(.vertical, 20).frame(maxWidth: .infinity).card()
+        .padding(.horizontal, 16).padding(.vertical, 10).frame(maxWidth: .infinity).card()
+    }
+
+    // Статусы обоих в одной карточке
+
+    @ViewBuilder private var statusCard: some View {
+        VStack(spacing: 0) {
+            statusLine(.me)
+            if store.statusNow(.partner) != nil {
+                Divider().padding(.leading, 68)
+                statusLine(.partner)
+            }
+        }
+        .card()
+        .animation(Motion.spring, value: store.data.statuses)
+    }
+
+    private func statusLine(_ who: Who) -> some View {
+        let st = store.statusNow(who)
+        return Button {
+            if who == .me { showStatus = true; store.tap() }
+        } label: {
+            HStack(spacing: 12) {
+                if let s = st {
+                    let k = statusKind(s.kind)
+                    let c = Color(hex: k.hex).boosted(minS: 0.55, minB: 0.8)
+                    Group {
+                        if s.hasPhoto, let m = s.media, let f = s.file {
+                            RemoteImage(media: m, file: f, thumb: "160x160").frame(width: 44, height: 44)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        } else if let e = s.emoji, !e.isEmpty {
+                            Text(e).font(.system(size: 22)).frame(width: 44, height: 44).background(c.opacity(0.14), in: Circle())
+                        } else {
+                            Image(systemName: k.symbol).font(.system(size: 19)).foregroundStyle(c)
+                                .frame(width: 44, height: 44).background(c.opacity(0.14), in: Circle())
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(s.title).font(.system(size: 17, weight: .medium)).lineLimit(1)
+                        let extra = [s.place, s.note].filter { !$0.isEmpty }.joined(separator: " · ")
+                        Text((who == .me ? "Я" : store.name(who)) + " · " + (extra.isEmpty ? s.started.agoText : extra + " · " + s.started.agoText))
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                } else {
+                    Image(systemName: "plus").font(.system(size: 18, weight: .semibold)).foregroundStyle(store.meColor)
+                        .frame(width: 44, height: 44).background(store.meColor.opacity(0.14), in: Circle())
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Добавить статус").font(.system(size: 17, weight: .medium))
+                        Text("\(store.name(.partner)) увидит его сразу").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 8)
+                if who == .me { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary) }
+            }
+            .padding(.horizontal, 16).padding(.vertical, 12).contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
     }
 
     // Главное сейчас: последнее сообщение, дела и ближайшая дата — то, ради чего открывают приложение
@@ -296,10 +345,10 @@ struct TodayView: View {
 
     private func tile<D: View>(_ title: String, _ icon: String, _ hex: String, detail: String, @ViewBuilder dest: @escaping () -> D) -> some View {
         NavigationLink { dest() } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                ArtIcon(symbol: icon, color: Color(hex: hex), size: 24)
+            VStack(alignment: .leading, spacing: 6) {
+                ArtIcon(symbol: icon, color: Color(hex: hex), size: 22)
                 Text(title).font(.subheadline.weight(.medium)).foregroundStyle(.primary)
-                Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2).frame(height: 32, alignment: .topLeading)
+                Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
         }
