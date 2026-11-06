@@ -65,7 +65,13 @@ struct RootView: View {
         // Все вкладки создаются сразу (прокрутка и ввод сохраняются, на первом заходе ничего не «выскакивает»).
         // Новая вкладка плавно проявляется поверх старой, старая гаснет только после этого.
         ZStack(alignment: .bottom) {
-            ThemeBackground()
+            ZStack {
+                ThemeBackground()
+                // В чате обои лежат под всем экраном, включая области статус-бара и индикатора «домой».
+                if dock.hidden { WallpaperView(id: store.p.wallpaper).transition(.opacity) }
+            }
+            .ignoresSafeArea()
+            .animation(Motion.enter, value: dock.hidden)
             VStack(spacing: 0) {
                 ZStack {
                     ForEach(tabs) { t in

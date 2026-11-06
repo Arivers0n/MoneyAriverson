@@ -166,7 +166,25 @@ struct JarView: View {
         .onChange(of: store.data.jar) { _, new in model.scene.sync(new) }
     }
 
+    private var lid: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(LinearGradient(stops: [.init(color: Color(white: 0.55), location: 0), .init(color: Color(white: 0.95), location: 0.35),
+                                         .init(color: .white, location: 0.5), .init(color: Color(white: 0.7), location: 1)],
+                                 startPoint: .leading, endPoint: .trailing))
+            .frame(width: 210, height: 34)
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(.white.opacity(0.7), lineWidth: 1))
+            .shadow(color: .black.opacity(0.18), radius: 6, y: 3)
+    }
+
     private var jar: some View {
+        VStack(spacing: -8) {
+            lid.zIndex(1)
+            jarBody
+        }
+        .padding(.bottom, 4)
+    }
+
+    private var jarBody: some View {
         ZStack(alignment: .top) {
             RoundedRectangle(cornerRadius: Theme.r(56), style: .continuous)
                 .fill(LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -238,12 +256,21 @@ struct JarView: View {
                         store.addBall(mood: m.id, note: note)
                         note = ""
                     } label: {
-                        VStack(spacing: 4) {
-                            Text(m.emoji).font(.system(size: 30))
+                        VStack(spacing: 6) {
+                            let c = Color(hex: m.hex)
+                            Text(m.emoji).font(.system(size: 26))
+                                .frame(width: 54, height: 54)
+                                .background(
+                                    ZStack {
+                                        Circle().fill(RadialGradient(colors: [c.opacity(0.55), c], center: .topLeading, startRadius: 2, endRadius: 60))
+                                        Circle().fill(.white.opacity(0.5)).frame(width: 18, height: 9).rotationEffect(.degrees(-30)).offset(x: -10, y: -17)
+                                        Circle().stroke(.white.opacity(0.6), lineWidth: 1.5)
+                                    }
+                                )
+                                .shadow(color: c.opacity(0.4), radius: 6, y: 3)
                             Text(m.title).font(.system(size: 10, weight: .semibold)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.6)
                         }
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(Color(hex: m.hex).opacity(0.18), in: RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
                     }
                     .buttonStyle(PressStyle())
                 }

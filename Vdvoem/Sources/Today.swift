@@ -356,35 +356,19 @@ struct TodayView: View {
     // История статусов
 
     private var historyBlock: some View {
-        VStack(spacing: 8) {
-            Button { withAnimation(Motion.curve(0.25)) { history.toggle() } } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.down").rotationEffect(.degrees(history ? 180 : 0))
-                    Text("История").font(.subheadline.weight(.medium))
+        NavigationLink { StatusFeedView() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "rectangle.stack.fill").foregroundStyle(store.meColor)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("История статусов").font(.subheadline.weight(.semibold))
+                    Text("Что вы делали и когда").font(.caption).foregroundStyle(.secondary)
                 }
+                Spacer()
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
             }
-            .foregroundStyle(Color.secondary)
-            if history {
-                let items = store.data.statuses.sorted { $0.started > $1.started }.prefix(12)
-                if items.isEmpty { Text("Статусов пока не было").font(.footnote).foregroundStyle(.secondary) }
-                ForEach(Array(items)) { s in
-                    let k = statusKind(s.kind)
-                    HStack(spacing: 12) {
-                        Group {
-                            if let e = s.emoji, !e.isEmpty { Text(e) } else { Image(systemName: k.symbol).foregroundStyle(Color(hex: k.hex)) }
-                        }
-                        .frame(width: 36, height: 36).background(Color(hex: k.hex).opacity(0.15), in: Circle())
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("\(store.name(s.who)) — \(s.title)").font(.subheadline.weight(.medium))
-                            if !s.note.isEmpty { Text(s.note).font(.caption).foregroundStyle(.secondary) }
-                        }
-                        Spacer()
-                        Text(s.started.agoText).font(.caption).foregroundStyle(.secondary)
-                    }
-                    .padding(12).card()
-                }
-            }
+            .padding(14).card()
         }
+        .buttonStyle(PressStyle())
     }
 }
 

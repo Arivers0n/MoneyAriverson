@@ -103,7 +103,8 @@ enum NavFont {
             a.titleTextAttributes = [.font: small]
             return a
         }
-        let standard = make(false), edge = make(true)
+        // Панель всегда прозрачная: фон экрана и обои идут до самого верха, без полосы-«крышки».
+        let standard = make(true), edge = make(true)
         let proxy = UINavigationBar.appearance()
         proxy.standardAppearance = standard
         proxy.compactAppearance = standard
