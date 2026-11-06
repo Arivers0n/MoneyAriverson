@@ -47,22 +47,18 @@ struct GamesView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var sync: SyncEngine
     @State private var openID: UUID?
+    @State private var appeared = false
 
     private var playing: [GameMatch] { store.data.matches.filter { $0.state == .playing }.sorted { $0.updated > $1.updated } }
     private var finished: [GameMatch] { store.data.matches.filter { $0.state != .playing }.sorted { $0.updated > $1.updated } }
 
     var body: some View {
         Screen {
-            HStack {
-                stat(.me)
-                Divider().frame(height: 50)
-                stat(.partner)
-            }
-            .padding(18).card()
+            scoreboard
 
             SectionTitle("Новая партия")
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                ForEach(GameKind.allCases) { k in
+                ForEach(Array(GameKind.allCases.enumerated()), id: \.element) { idx, k in
                     let locked = k.needsPair && sync.status == .notPaired
                     Button {
                         let m = store.newMatch(k)
@@ -70,6 +66,10 @@ struct GamesView: View {
                     } label: { kindTile(k, locked: locked) }
                     .buttonStyle(PressStyle())
                     .disabled(locked)
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : 18)
+                    .scaleEffect(appeared ? 1 : 0.94)
+                    .animation(Motion.spring.delay(Double(idx) * 0.035), value: appeared)
                 }
             }
 
@@ -96,41 +96,75 @@ struct GamesView: View {
 
             Text(sync.status == .notPaired
                  ? "Пока вы не соединились с партнёром, партии идут на одном телефоне — передавайте его друг другу."
-                 : "Играйте с разных телефонов: ход партнёра появится у вас сразу. Игры со скрытыми картами и флотом (Морской бой, Дурак, Камень-ножницы-бумага, Виселица) доступны после соединения. Фоновых уведомлений нет — откройте приложение.")
+                 : "Играйте с разных телефонов: ход партнёра появится у вас сразу. Игры со скрытыми картами и флотом (Морской бой, Дурак, Камень-ножницы-бумага, Виселица) доступны после соединения.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
+        .onAppear { appeared = true }
         .navigationTitle("Игры")
         .navigationDestination(item: $openID) { id in MatchView(matchID: id) }
         .animation(Motion.spring, value: store.data.matches.count)
     }
 
     private func kindTile(_ k: GameKind, locked: Bool) -> some View {
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top) {
-                ArtIcon(symbol: k.icon, color: Color(hex: k.hex), size: 26)
-                Spacer(minLength: 0)
-                if locked { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.secondary) }
+        let c = Color(hex: k.hex)
+        return ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: Theme.r(26), style: .continuous)
+                .fill(LinearGradient(colors: [c.opacity(0.34), c.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing))
+            RoundedRectangle(cornerRadius: Theme.r(26), style: .continuous)
+                .stroke(LinearGradient(colors: [.white.opacity(0.55), .white.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+            Text(k.art).font(.system(size: 64)).rotationEffect(.degrees(-10)).opacity(0.9)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(.trailing, 8).padding(.bottom, 2)
+                .shadow(color: c.opacity(0.4), radius: 10, y: 6)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    if locked { Image(systemName: "lock.fill").font(.caption).foregroundStyle(.secondary) }
+                    Spacer(minLength: 0)
+                }
+                Spacer(minLength: 6)
+                Text(k.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(.primary)
+                    .lineLimit(2).minimumScaleFactor(0.8).frame(maxWidth: 110, alignment: .leading)
+                Text(locked ? "Нужна пара" : k.blurb).font(.caption).foregroundStyle(.secondary).lineLimit(2).frame(maxWidth: 110, alignment: .leading)
             }
-            Spacer(minLength: 6)
-            Text(k.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(.primary)
-                .lineLimit(2).minimumScaleFactor(0.8)
-            Text(locked ? "Нужна пара" : k.blurb).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            .padding(14)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 132, maxHeight: 132, alignment: .topLeading)
-        .card()
+        .frame(maxWidth: .infinity, minHeight: 138, maxHeight: 138, alignment: .topLeading)
         .opacity(locked ? 0.5 : 1)
     }
 
-    private func stat(_ w: Who) -> some View {
-        HStack(spacing: 10) {
-            Circle().fill(store.color(w)).frame(width: 18, height: 18)
-            VStack(alignment: .leading) {
-                Text("\(store.wins(w))").font(.title.weight(.semibold).monospacedDigit()).contentTransition(.numericText())
-                Text("\(store.name(w)) · побед").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+    private var scoreboard: some View {
+        let a = store.wins(.me), b = store.wins(.partner)
+        return HStack(spacing: 0) {
+            side(.me, n: a, leads: a > b)
+            VStack(spacing: 4) {
+                Text("VS").font(.caption.weight(.heavy)).foregroundStyle(.secondary)
+                Capsule().fill(Color.primary.opacity(0.12)).frame(width: 2, height: 44)
             }
-            Spacer(minLength: 0)
+            side(.partner, n: b, leads: b > a)
         }
+        .padding(.vertical, 18)
+        .background(
+            LinearGradient(colors: [store.meColor.opacity(0.22), store.partnerColor.opacity(0.22)], startPoint: .leading, endPoint: .trailing),
+            in: RoundedRectangle(cornerRadius: Theme.r(28), style: .continuous)
+        )
+        .overlay(RoundedRectangle(cornerRadius: Theme.r(28), style: .continuous).stroke(.white.opacity(0.35), lineWidth: 1))
+        .animation(Motion.spring, value: a)
+        .animation(Motion.spring, value: b)
+    }
+
+    private func side(_ w: Who, n: Int, leads: Bool) -> some View {
+        VStack(spacing: 6) {
+            ZStack(alignment: .top) {
+                PlayerAvatar(who: w, size: 50).padding(.top, 10)
+                if leads {
+                    Image(systemName: "crown.fill").font(.system(size: 16)).foregroundStyle(Color(hex: "F5B83D"))
+                        .shadow(color: Color(hex: "F5B83D").opacity(0.6), radius: 4)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            Text("\(n)").font(.system(size: 38, weight: .bold, design: .rounded).monospacedDigit()).contentTransition(.numericText())
+            Text("\(store.name(w)) · побед").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func matchRow(_ m: GameMatch) -> some View {
@@ -149,6 +183,7 @@ struct GamesView: View {
         HStack(spacing: 14) {
             Image(systemName: icon).font(.title3).frame(width: 44, height: 44)
                 .background(highlight ? store.meColor.opacity(0.25) : Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(12), style: .continuous))
+                .background { if highlight { PulseRing(color: store.meColor).padding(2) } }
             VStack(alignment: .leading, spacing: 2) {
                 Text(t).font(.body.weight(.medium))
                 Text(sub).font(.caption).foregroundStyle(highlight ? store.meColor : .secondary)
@@ -186,6 +221,12 @@ struct MatchView: View {
             }
         }
         .background(ThemeBackground())
+        .overlay {
+            if let m, m.state == .won, let w = m.winner {
+                ConfettiBurst(colors: [store.color(w), Color(hex: "F5B83D"), Color(hex: "FF9AA8"), Color(hex: "8EC5FF"), Color(hex: "B7A6FF")])
+                    .id(m.id.uuidString + "win")
+            }
+        }
         .navigationTitle(m?.kind.title ?? "Игра")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -199,6 +240,9 @@ struct MatchView: View {
         }
         .onChange(of: m?.moves) { _, _ in
             if let m, m.state == .playing, m.turn == .me, !hotSeat { store.tap() }
+        }
+        .onChange(of: m?.state) { _, st in
+            if st == .won { store.tap() }
         }
     }
 
@@ -224,11 +268,8 @@ struct MatchView: View {
         case .won: text = "Победил(а) \(store.name(m.winner ?? .me))"; who = m.winner
         case .draw: text = "Ничья"; who = nil
         }
-        return HStack(spacing: 8) {
-            if let who { Circle().fill(store.color(who)).frame(width: 14, height: 14) }
-            Text(text).font(.headline).contentTransition(.opacity)
-        }
-        .animation(Motion.curve(0.2), value: text)
+        return TurnBanner(turn: m.state == .playing ? who : nil, text: text)
+            .padding(.horizontal, 16)
     }
 
     private func footer(_ m: GameMatch) -> some View {
@@ -241,7 +282,7 @@ struct MatchView: View {
                 } label: { Text("Реванш").bigButton() }
                     .padding(.horizontal, 16)
             } else if !hotSeat && m.turn != .me && m.kind != .rps && !(m.kind == .battleship && !Battleship.bothReady(m)) && !(m.kind == .hangman && m.word == nil) {
-                Text("Ждём ход партнёра…").font(.footnote).foregroundStyle(.secondary)
+                HStack(spacing: 8) { Text("Ждём ход партнёра").font(.footnote).foregroundStyle(.secondary); TypingDots() }
             }
         }
     }
@@ -279,12 +320,9 @@ struct MatchView: View {
                 Button { tryMove(m, i) } label: {
                     ZStack {
                         RoundedRectangle(cornerRadius: Theme.r(18), style: .continuous)
-                            .fill(win.contains(i) ? store.color(m.winner).opacity(0.28) : Pal.card)
+                            .fill(win.contains(i) ? store.color(m.winner).opacity(0.28) : Pal.card.opacity(0.75))
                         if p != 0 {
-                            Image(systemName: p == 1 ? "xmark" : "circle")
-                                .font(.system(size: 44, weight: .semibold))
-                                .foregroundStyle(store.color(p == 1 ? .me : .partner))
-                                .transition(.scale(scale: 0.3).combined(with: .opacity))
+                            DrawnMark(isX: p == 1, color: store.color(p == 1 ? .me : .partner))
                         }
                     }
                     .aspectRatio(1, contentMode: .fit)
@@ -292,6 +330,7 @@ struct MatchView: View {
                 .buttonStyle(PressStyle())
             }
         }
+        .boardPanel()
         .frame(maxWidth: 420)
     }
 
@@ -303,12 +342,7 @@ struct MatchView: View {
                     VStack(spacing: 5) {
                         ForEach(0..<6, id: \.self) { r in
                             let i = r * 7 + c
-                            let p = m.board[i]
-                            Circle()
-                                .fill(p == 0 ? Pal.bg : store.color(p == 1 ? .me : .partner))
-                                .overlay(Circle().stroke(win.contains(i) ? Color.primary : .clear, lineWidth: 3))
-                                .aspectRatio(1, contentMode: .fit)
-                                .transition(.move(edge: .top))
+                            DropDisc(owner: m.board[i], row: r, win: win.contains(i))
                         }
                     }
                     .padding(4)
@@ -317,6 +351,7 @@ struct MatchView: View {
                 .buttonStyle(PressStyle())
             }
         }
+        .boardPanel()
         .frame(maxWidth: 460)
     }
 
@@ -331,11 +366,8 @@ struct MatchView: View {
                         Button { tryMove(m, i) } label: {
                             ZStack {
                                 Rectangle().fill(Color(hex: (r + c) % 2 == 0 ? "2F7D5B" : "2A7253"))
-                                if p != 0 {
-                                    Circle().fill(store.color(p == 1 ? .me : .partner)).padding(4)
-                                        .overlay(Circle().stroke(.white.opacity(m.last == i ? 0.9 : 0), lineWidth: 2).padding(4))
-                                        .transition(.scale)
-                                } else if valid.contains(i) && canTap(m) {
+                                FlipDisc(owner: p, isLast: m.last == i)
+                                if p == 0, valid.contains(i), canTap(m) {
                                     Circle().fill(.white.opacity(0.35)).frame(width: 8, height: 8)
                                 }
                             }
@@ -353,6 +385,7 @@ struct MatchView: View {
             .font(.subheadline.weight(.semibold)).padding(.top, 8)
         }
         .clipShape(RoundedRectangle(cornerRadius: Theme.r(10), style: .continuous))
+        .boardPanel()
         .frame(maxWidth: 460)
     }
 }
