@@ -240,8 +240,10 @@ struct VDWeekView: View {
         let cal = Calendar.current
         let start = cal.startOfDay(for: e.date)
         let days = (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
-        func count(_ d: Date) -> Int {
-            e.snap.events.filter { cal.isDate($0.date, inSameDayAs: d) }.count + e.snap.tasks.filter { $0.due.map { cal.isDate($0, inSameDayAs: d) } ?? false }.count
+        let count: (Date) -> Int = { d in
+            let a = e.snap.events.filter { cal.isDate($0.date, inSameDayAs: d) }.count
+            let b = e.snap.tasks.filter { t in t.due.map { cal.isDate($0, inSameDayAs: d) } ?? false }.count
+            return a + b
         }
         let upcoming = e.snap.events.filter { daysFrom($0.date, now: e.date) < 7 }
         VDShell(e: e, title: "Неделя", icon: "calendar", url: "vdvoem://calendar") {
