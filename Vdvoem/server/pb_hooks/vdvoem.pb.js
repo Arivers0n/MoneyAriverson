@@ -99,6 +99,7 @@ routerAdd("POST", "/api/vd/push", (e) => {
     const col = e.app.findCollectionByNameOrId("vd_docs")
     const base = Date.now() * 1000
     let i = 0, saved = 0, skipped = 0
+    const fresh = []
     for (const d of docs) {
         const cid = String(d.cid || "")
         if (!cid) continue
@@ -106,6 +107,7 @@ routerAdd("POST", "/api/vd/push", (e) => {
         try { rec = e.app.findFirstRecordByFilter("vd_docs", "pair = {:p} && cid = {:c}", { p: pair.id, c: cid }) } catch (_) {}
         const cts = Number(d.cts || 0)
         if (rec && rec.getFloat("cts") >= cts) { skipped++; continue }
+        const isNew = !rec
         if (!rec) { rec = new Record(col); rec.set("pair", pair.id); rec.set("cid", cid) }
         rec.set("kind", String(d.kind || ""))
         rec.set("data", d.data || {})
@@ -115,7 +117,10 @@ routerAdd("POST", "/api/vd/push", (e) => {
         rec.set("author", e.auth.id)
         e.app.save(rec)
         saved++
+        if (!d.deleted && Date.now() - cts < 180000) fresh.push({ kind: String(d.kind || ""), data: d.data || {}, isNew: isNew })
     }
+    // Уведомление партнёру: сбой отправки не должен ломать синхронизацию
+    try { if (fresh.length) L.vdNotify(e.app, pair, e.auth.id, fresh) } catch (err) { console.log("Vdvoem: уведомления:", err) }
     return e.json(200, { saved: saved, skipped: skipped })
 }, $apis.requireAuth("vd_users"))
 
@@ -133,6 +138,28 @@ routerAdd("POST", "/api/vd/media", (e) => {
     rec.set("file", files[0])
     e.app.save(rec)
     return e.json(200, { id: rec.id, file: rec.getString("file") })
+}, $apis.requireAuth("vd_users"))
+
+// Токен для пуш-уведомлений от Apple: один токен — один пользователь (при смене аккаунта переезжает).
+routerAdd("POST", "/api/vd/device", (e) => {
+    const L = require(`${__hooks}/vdlib.js`)
+    const token = String((e.requestInfo().body || {}).token || "").trim()
+    if (!/^[0-9a-fA-F]{32,200}$/.test(token)) throw new BadRequestError("Неверный токен")
+    let rec = null
+    try { rec = e.app.findFirstRecordByFilter("vd_devices", "token = {:t}", { t: token }) } catch (_) {}
+    if (!rec) { rec = new Record(e.app.findCollectionByNameOrId("vd_devices")); rec.set("token", token) }
+    rec.set("user", e.auth.id)
+    e.app.save(rec)
+    return e.json(200, { ok: true })
+}, $apis.requireAuth("vd_users"))
+
+routerAdd("POST", "/api/vd/device/remove", (e) => {
+    const token = String((e.requestInfo().body || {}).token || "")
+    try {
+        const rec = e.app.findFirstRecordByFilter("vd_devices", "token = {:t} && user = {:u}", { t: token, u: e.auth.id })
+        e.app.delete(rec)
+    } catch (_) {}
+    return e.json(200, { ok: true })
 }, $apis.requireAuth("vd_users"))
 
 routerAdd("GET", "/api/vd/ping", (e) => {

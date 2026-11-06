@@ -35,6 +35,8 @@ targets:
         NSCameraUsageDescription: Чтобы снимать общие фото
         NSMicrophoneUsageDescription: Чтобы записывать голосовые сообщения и кружки
         ITSAppUsesNonExemptEncryption: false
+        UIBackgroundModes: [fetch, remote-notification]
+        BGTaskSchedulerPermittedIdentifiers: [ru.vdvoem.app.refresh]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ru.vdvoem.app
@@ -46,6 +48,7 @@ targets:
       path: Sources/Vdvoem.entitlements
       properties:
         com.apple.security.application-groups: [group.ru.vdvoem.app]
+        aps-environment: production
   VdvoemWidget:
     type: app-extension
     platform: iOS

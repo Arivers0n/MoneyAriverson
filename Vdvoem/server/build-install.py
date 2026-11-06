@@ -59,3 +59,66 @@ echo "Кошелёк и «Вдвоём» отвечают. Можно откры
 ''')
 open(os.path.join(here, "install-vd.sh"), "w", encoding="utf-8").write("\n".join(out))
 print("ok", len(files), "файлов")
+
+# ---- install-push.sh: служба отправки пушей в Apple ----
+push_py = open(os.path.join(here, "push", "vd-push.py"), encoding="utf-8").read().rstrip()
+sh = r'''#!/usr/bin/env bash
+# Включает пуш-уведомления «Вдвоём». Нужен ключ Apple (файл AuthKey_XXXXXXXXXX.p8), загруженный в /root.
+# Запуск:  sudo bash /root/install-push.sh ВАШ_TEAM_ID
+set -euo pipefail
+say() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
+die() { printf '\n\033[1;31mОшибка: %s\033[0m\n' "$*" >&2; exit 1; }
+[ "$(id -u)" -eq 0 ] || die "запустите через sudo"
+TEAM="${1:-}"
+[ -n "$TEAM" ] || die "укажите Team ID: bash /root/install-push.sh ABCDE12345"
+KEYFILE="$(ls /root/AuthKey_*.p8 2>/dev/null | head -1 || true)"
+[ -n "$KEYFILE" ] || die "не найден файл ключа /root/AuthKey_XXXXXXXXXX.p8 — загрузите его в /root по SFTP"
+KEYID="$(basename "$KEYFILE" .p8)"; KEYID="${KEYID#AuthKey_}"
+
+say "Ставлю нужные пакеты"
+apt-get install -y python3-venv python3-pip >/dev/null
+mkdir -p /opt/vd-push /etc/vdvoem
+[ -d /opt/vd-push/venv ] || python3 -m venv /opt/vd-push/venv
+/opt/vd-push/venv/bin/pip install -q --upgrade "httpx[http2]" "pyjwt[crypto]"
+
+say "Кладу службу и ключ"
+cat > /opt/vd-push/vd-push.py <<'VDPUSH'
+''' + push_py + r'''
+VDPUSH
+install -m 600 "$KEYFILE" /etc/vdvoem/AuthKey.p8
+cat > /etc/vdvoem-push.env <<ENVEOF
+APNS_KEY_ID=$KEYID
+APNS_TEAM_ID=$TEAM
+APNS_TOPIC=ru.vdvoem.app
+APNS_KEY_FILE=/etc/vdvoem/AuthKey.p8
+ENVEOF
+chmod 600 /etc/vdvoem-push.env
+cat > /etc/systemd/system/vd-push.service <<'UNIT'
+[Unit]
+Description=Vdvoem push (APNs)
+After=network-online.target
+
+[Service]
+EnvironmentFile=/etc/vdvoem-push.env
+ExecStart=/opt/vd-push/venv/bin/python /opt/vd-push/vd-push.py
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable vd-push >/dev/null 2>&1
+systemctl restart vd-push
+sleep 2
+if curl -fsS http://127.0.0.1:8788/ >/dev/null 2>&1; then
+  say "Готово: служба пушей работает"
+  echo "Ключ: $KEYID, Team ID: $TEAM. Теперь откройте приложение и разрешите уведомления."
+else
+  journalctl -u vd-push -n 30 --no-pager
+  die "служба не запустилась — пришлите вывод выше"
+fi
+'''
+open(os.path.join(here, "install-push.sh"), "w", encoding="utf-8").write(sh)
+print("ok push")

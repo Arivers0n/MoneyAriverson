@@ -209,7 +209,7 @@ final class SyncEngine: ObservableObject {
     @Published private(set) var accountKind: String = UserDefaults.standard.string(forKey: "vd.acc.kind") ?? "anon"
     @Published private(set) var accountEmail: String = UserDefaults.standard.string(forKey: "vd.acc.email") ?? ""
 
-    private weak var store: Store?
+    weak var store: Store?
     private let adapters = makeAdapters()
     private var cache: [String: [String: Data]] = [:]
     private var outbox: [String: SyncDoc] = [:]
@@ -372,7 +372,7 @@ final class SyncEngine: ObservableObject {
         return (d, (resp as? HTTPURLResponse)?.statusCode ?? 0)
     }
 
-    private func obj(_ dict: [String: Any]) -> Data {
+    func obj(_ dict: [String: Any]) -> Data {
         (try? JSONSerialization.data(withJSONObject: dict)) ?? Data("{}".utf8)
     }
 
@@ -417,7 +417,7 @@ final class SyncEngine: ObservableObject {
         saveState()
     }
 
-    private func send(_ path: String, _ body: Data, retry: Bool = true) async throws -> Data {
+    func send(_ path: String, _ body: Data, retry: Bool = true) async throws -> Data {
         if token.isEmpty { try await login() }
         let (d, code) = try await raw(path, body, bearer: token)
         if code == 401 && retry {
@@ -700,7 +700,7 @@ final class SyncEngine: ObservableObject {
         catch { if !(error is CancellationError) { status = .offline } }
     }
 
-    private func flush() async throws {
+    func flush() async throws {
         while pair != nil, !outbox.isEmpty {
             let batch = Array(outbox.values.sorted { $0.cts < $1.cts }.prefix(100))
             let body = try JSONEncoder().encode(["docs": batch])
@@ -713,7 +713,7 @@ final class SyncEngine: ObservableObject {
         if status == .offline || status == .connecting { status = (pair?.members.count ?? 0) >= 2 ? .live : .waitingPartner }
     }
 
-    private func pull() async throws {
+    func pull() async throws {
         guard pair != nil, !pulling else { return }
         pulling = true
         defer { pulling = false }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 struct SettingsView: View {
     @EnvironmentObject var store: Store
@@ -106,6 +107,8 @@ struct SettingsView: View {
             group("Безопасность и уведомления") {
                 Toggle("Закрыть приложение Face ID", isOn: $store.data.profile.lockApp)
                 Divider()
+                PushStatusRow()
+                Divider()
                 Toggle("Ежедневный «Вопрос дня»", isOn: Binding(
                     get: { store.p.notifications },
                     set: { on in
@@ -169,5 +172,36 @@ struct ReorderView: View {
         .environment(\.editMode, .constant(.active))
         .navigationTitle("Порядок")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+
+/// Состояние уведомлений от партнёра (чат, игры, сигналы…).
+struct PushStatusRow: View {
+    @EnvironmentObject var sync: SyncEngine
+    @Environment(\.scenePhase) private var phase
+    @State private var allowed = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Label("Сообщения и ходы партнёра", systemImage: "bell.badge")
+                Spacer()
+                Text(!sync.isPaired ? "после пары" : (!allowed ? "выключено" : (Push.working ? "включено" : "проверяем…")))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            if sync.isPaired && !allowed {
+                Button("Разрешить в настройках iPhone") {
+                    if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
+                }
+                .font(.footnote.weight(.semibold))
+            } else if sync.isPaired && !Push.working {
+                Text("Если пуши не приходят, приложение само проверяет новое в фоне, но реже.").font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+        .task(id: phase) {
+            let st = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+            allowed = st != .denied
+        }
     }
 }

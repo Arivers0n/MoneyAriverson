@@ -1,9 +1,11 @@
 import SwiftUI
 import UIKit
 import LocalAuthentication
+import BackgroundTasks
 
 @main
 struct VdvoemApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var store = Store()
     @Environment(\.scenePhase) private var phase
 
@@ -26,7 +28,7 @@ struct VdvoemApp: App {
             .environmentObject(store.sync)
             .onChange(of: phase) { _, new in
                 if new == .active { store.sync.resume(); store.updateBattery() }
-                else { store.flushSave() }
+                else { store.flushSave(); Push.scheduleRefresh() }
             }
             .environment(\.locale, Locale(identifier: "ru_RU"))
             .fontDesign(store.p.design.design)
@@ -37,6 +39,10 @@ struct VdvoemApp: App {
             .onChange(of: store.p.design) { _, d in NavFont.apply(d) }
             // Короткое содержимое не «пружинит» вверх-вниз: шапка и экран стоят на месте.
             .scrollBounceBehavior(.basedOnSize)
+        }
+        // Запасной вариант без пушей: iOS изредка будит приложение, оно проверяет новое.
+        .backgroundTask(.appRefresh(Push.refreshID)) {
+            await Push.fallbackCheck(store.sync)
         }
     }
 }
@@ -118,6 +124,15 @@ struct RootView: View {
             if !sync.isSignedIn && !sync.isPaired && !UserDefaults.standard.bool(forKey: "vd.skipConnect") { gate = true }
         }
         .fullScreenCover(isPresented: $gate) { ConnectGate() }
+        // Уведомления вне приложения: после соединения с партнёром просим разрешение и отдаём серверу токен.
+        .task(id: "\(sync.isPaired)|\(sync.accountEmail)") {
+            guard sync.isPaired else { return }
+            await Push.enable()
+            await Push.upload(sync)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .vdPushToken)) { _ in
+            Task { await Push.upload(sync) }
+        }
         .onChange(of: current) { old, _ in
             leaving = old
             Task {
