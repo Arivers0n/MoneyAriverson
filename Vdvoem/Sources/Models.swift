@@ -334,6 +334,11 @@ struct ChatMessage: Identifiable, Codable, Hashable {
     var text: String
     var from: Who
     var date = Date()
+    /// Голосовое или «кружок»: id записи в vd_media, имя файла, вид ("voice"/"circle"), длительность в секундах.
+    var media: String? = nil
+    var file: String? = nil
+    var kind: String? = nil
+    var dur: Double? = nil
 }
 
 struct Plan: Identifiable, Codable, Hashable {

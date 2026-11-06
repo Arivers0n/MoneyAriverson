@@ -1,5 +1,6 @@
 import SwiftUI
 import QuickLook
+import AVFoundation
 import UniformTypeIdentifiers
 
 // MARK: - Чат
@@ -9,6 +10,10 @@ struct ChatView: View {
     @State private var text = ""
     @EnvironmentObject var sync: SyncEngine
     @State private var sender: Who = .me
+    @StateObject private var voice = VoiceRecorder()
+    @State private var camera = false
+    @State private var sending = false
+    @State private var micDenied = false
 
     private func bubbleRadius() -> CGFloat {
         switch store.p.bubbleStyle {
@@ -31,9 +36,13 @@ struct ChatView: View {
                             HStack {
                                 if m.from == .me { Spacer(minLength: 50) }
                                 VStack(alignment: m.from == .me ? .trailing : .leading, spacing: 2) {
-                                    Text(m.text).padding(.horizontal, 14).padding(.vertical, 10)
-                                        .background(store.color(m.from), in: RoundedRectangle(cornerRadius: bubbleRadius(), style: .continuous))
-                                        .foregroundStyle(store.color(m.from).onAccent)
+                                    if m.kind == "voice" { VoiceBubble(m: m) }
+                                    else if m.kind == "circle" { CircleBubble(m: m) }
+                                    else {
+                                        Text(m.text).padding(.horizontal, 14).padding(.vertical, 10)
+                                            .background(store.color(m.from), in: RoundedRectangle(cornerRadius: bubbleRadius(), style: .continuous))
+                                            .foregroundStyle(store.color(m.from).onAccent)
+                                    }
                                     Text(m.date.formatted(Date.FormatStyle().locale(ruLocale).hour().minute())).font(.caption2).foregroundStyle(.secondary)
                                 }
                                 if m.from == .partner { Spacer(minLength: 50) }
@@ -49,7 +58,45 @@ struct ChatView: View {
                     if let last = store.data.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
                 }
             }
-            HStack(spacing: 10) {
+            composer
+        }
+        .background { WallpaperView(id: store.p.wallpaper).ignoresSafeArea() }
+        .fullScreenCover(isPresented: $camera) {
+            CircleCamera { url in
+                camera = false
+                if let url { Task { await sendCircle(url) } }
+            }.ignoresSafeArea()
+        }
+        .alert("Нет доступа к микрофону", isPresented: $micDenied) {
+            Button("OK", role: .cancel) {}
+        } message: { Text("Разрешите микрофон для «Вдвоём» в Настройках iPhone.") }
+        .hidesDock()
+        .scrollDismissesKeyboard(.interactively)
+    }
+
+    @ViewBuilder private var composer: some View {
+        let empty = text.trimmingCharacters(in: .whitespaces).isEmpty
+        HStack(spacing: 10) {
+            if voice.recording {
+                Button { _ = voice.stop(keep: false); store.tap() } label: {
+                    Image(systemName: "trash").font(.system(size: 17, weight: .semibold)).foregroundStyle(.red)
+                        .frame(width: 42, height: 42).glass(Circle(), tint: nil)
+                }.buttonStyle(PressStyle())
+                HStack(spacing: 8) {
+                    Circle().fill(.red).frame(width: 9, height: 9).opacity(voice.seconds.truncatingRemainder(dividingBy: 1) < 0.5 ? 1 : 0.3)
+                    Text(mmss(voice.seconds)).font(.body.monospacedDigit())
+                    Capsule().fill(store.meColor).frame(width: 6 + 80 * voice.level, height: 4)
+                        .animation(.easeOut(duration: 0.1), value: voice.level)
+                    Spacer()
+                }
+                .padding(.horizontal, 16).frame(height: 42)
+                .glass(Capsule(), tint: store.glassTint)
+                Button { Task { await sendVoice() } } label: {
+                    Image(systemName: "arrow.up").font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(store.meColor.onAccent)
+                        .frame(width: 42, height: 42).background(store.meColor, in: Circle())
+                }.buttonStyle(PressStyle())
+            } else {
                 if sync.status == .notPaired {
                     Menu {
                         Button(store.name(.me)) { sender = .me }
@@ -59,24 +106,71 @@ struct ChatView: View {
                 TextField("Сообщение", text: $text, axis: .vertical).lineLimit(1...4)
                     .padding(.horizontal, 16).padding(.vertical, 11)
                     .glass(RoundedRectangle(cornerRadius: 22, style: .continuous), tint: store.glassTint)
-                let empty = text.trimmingCharacters(in: .whitespaces).isEmpty
-                Button(action: send) {
-                    Image(systemName: "arrow.up").font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(store.meColor.onAccent)
-                        .frame(width: 42, height: 42)
-                        .background(store.meColor, in: Circle())
-                        .scaleEffect(empty ? 0.86 : 1)
-                        .opacity(empty ? 0.4 : 1)
+                if empty {
+                    if sync.status != .notPaired {
+                        Button { store.tap(); camera = true } label: {
+                            Image(systemName: "video.circle").font(.system(size: 22, weight: .regular))
+                                .foregroundStyle(store.meColor)
+                                .frame(width: 42, height: 42).glass(Circle(), tint: nil)
+                        }.buttonStyle(PressStyle()).disabled(sending)
+                        Button {
+                            Task {
+                                if await voice.start() { store.tap() } else { micDenied = true }
+                            }
+                        } label: {
+                            Image(systemName: "mic.fill").font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(store.meColor.onAccent)
+                                .frame(width: 42, height: 42).background(store.meColor, in: Circle())
+                        }.buttonStyle(PressStyle()).disabled(sending)
+                    } else {
+                        sendButton(empty: true)
+                    }
+                } else {
+                    sendButton(empty: false)
                 }
-                .buttonStyle(PressStyle())
-                .disabled(empty)
-                .animation(Motion.spring, value: empty)
             }
-            .padding(.horizontal, 12).padding(.vertical, 8)
         }
-        .background(WallpaperView(id: store.p.wallpaper))
-        .hidesDock()
-        .scrollDismissesKeyboard(.interactively)
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .animation(Motion.spring, value: voice.recording)
+        .animation(Motion.spring, value: empty)
+    }
+
+    private func sendButton(empty: Bool) -> some View {
+        Button(action: send) {
+            Image(systemName: "arrow.up").font(.system(size: 17, weight: .bold))
+                .foregroundStyle(store.meColor.onAccent)
+                .frame(width: 42, height: 42)
+                .background(store.meColor, in: Circle())
+                .opacity(empty ? 0.4 : 1)
+        }
+        .buttonStyle(PressStyle())
+        .disabled(empty)
+    }
+
+    private func sendVoice() async {
+        guard let (url, d) = voice.stop(keep: true), let data = try? Data(contentsOf: url) else { store.tap(); return }
+        sending = true; defer { sending = false; try? FileManager.default.removeItem(at: url) }
+        do {
+            let r = try await sync.upload(data: data, name: "voice.m4a", mime: "audio/mp4")
+            var m = ChatMessage(text: "🎤 Голосовое", from: .me)
+            m.media = r.id; m.file = r.file; m.kind = "voice"; m.dur = d
+            store.data.messages.append(m)
+            store.sfx(.send)
+        } catch { store.tap() }
+    }
+
+    private func sendCircle(_ url: URL) async {
+        guard let data = try? Data(contentsOf: url) else { return }
+        let asset = AVURLAsset(url: url)
+        let d = (try? await asset.load(.duration).seconds) ?? 0
+        sending = true; defer { sending = false; try? FileManager.default.removeItem(at: url) }
+        do {
+            let r = try await sync.upload(data: data, name: "circle.mov", mime: "video/quicktime")
+            var m = ChatMessage(text: "🎥 Кружок", from: .me)
+            m.media = r.id; m.file = r.file; m.kind = "circle"; m.dur = d.isFinite ? d : 0
+            store.data.messages.append(m)
+            store.sfx(.send)
+        } catch { store.tap() }
     }
 
     private func send() {

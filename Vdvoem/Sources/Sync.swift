@@ -429,24 +429,29 @@ final class SyncEngine: ObservableObject {
 
     /// Загрузка фото на сервер (multipart). Возвращает id записи и имя файла.
     func upload(jpeg: Data, retry: Bool = true) async throws -> (id: String, file: String) {
+        try await upload(data: jpeg, name: "photo.jpg", mime: "image/jpeg", retry: retry)
+    }
+
+    /// Загрузка любого файла в пару (фото, голосовое, кружок).
+    func upload(data: Data, name: String, mime: String, retry: Bool = true) async throws -> (id: String, file: String) {
         if token.isEmpty { try await login() }
         guard let url = URL(string: VDConfig.base + "/api/vd/media") else { throw SyncError.server("Неверный адрес сервера") }
         let boundary = "vd-" + UUID().uuidString
         var body = Data()
-        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"photo.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n".utf8))
-        body.append(jpeg)
+        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(name)\"\r\nContent-Type: \(mime)\r\n\r\n".utf8))
+        body.append(data)
         body.append(Data("\r\n--\(boundary)--\r\n".utf8))
         var r = URLRequest(url: url)
         r.httpMethod = "POST"
-        r.timeoutInterval = 90
+        r.timeoutInterval = 120
         r.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         r.setValue(token, forHTTPHeaderField: "Authorization")
         let (d, resp) = try await URLSession.shared.upload(for: r, from: body)
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
-        if code == 401 && retry { token = ""; return try await upload(jpeg: jpeg, retry: false) }
+        if code == 401 && retry { token = ""; return try await upload(data: data, name: name, mime: mime, retry: false) }
         guard (200..<300).contains(code) else { throw SyncError.server(Self.errText(d, code)) }
         let o = try JSONSerialization.jsonObject(with: d) as? [String: Any]
-        guard let id = o?["id"] as? String, let file = o?["file"] as? String else { throw SyncError.server("Сервер не принял фото") }
+        guard let id = o?["id"] as? String, let file = o?["file"] as? String else { throw SyncError.server("Сервер не принял файл") }
         return (id, file)
     }
 
