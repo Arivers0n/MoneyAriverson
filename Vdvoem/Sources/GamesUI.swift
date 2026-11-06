@@ -129,11 +129,11 @@ struct DrawnMark: View {
     let color: Color
     @State private var t: CGFloat = 0
     var body: some View {
-        Group {
-            if isX { XShape().trim(from: 0, to: t) }
-            else { Circle().trim(from: 0, to: t).rotation(.degrees(-90)) }
+        let style = StrokeStyle(lineWidth: 9, lineCap: .round)
+        return Group {
+            if isX { XShape().trim(from: 0, to: t).stroke(color, style: style) }
+            else { Circle().trim(from: 0, to: t).rotation(.degrees(-90)).stroke(color, style: style) }
         }
-        .stroke(color, style: StrokeStyle(lineWidth: 9, lineCap: .round))
         .shadow(color: color.opacity(0.45), radius: 6)
         .padding(28)
         .onAppear { withAnimation(.easeOut(duration: 0.38)) { t = 1 } }
