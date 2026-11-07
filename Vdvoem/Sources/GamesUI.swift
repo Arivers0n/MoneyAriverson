@@ -100,7 +100,9 @@ struct BoardPanel: ViewModifier {
         content
             .padding(14)
             .glass(RoundedRectangle(cornerRadius: Theme.r(30), style: .continuous), tint: store.glassTint)
-            .shadow(color: .black.opacity(0.08), radius: 18, y: 10)
+            .overlay(RoundedRectangle(cornerRadius: Theme.r(30), style: .continuous)
+                .strokeBorder(LinearGradient(colors: [Color.white.opacity(0.45), Color.white.opacity(0.03)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
+            .shadow(color: store.meColor.opacity(0.12), radius: 24, y: 12)
     }
 }
 
@@ -129,7 +131,7 @@ struct DrawnMark: View {
             if isX { XShape().trim(from: 0, to: t).stroke(color, style: style) }
             else { Circle().trim(from: 0, to: t).rotation(.degrees(-90)).stroke(color, style: style) }
         }
-        .shadow(color: color.opacity(0.45), radius: 6)
+        .shadow(color: color.opacity(0.55), radius: 8)
         .padding(28)
         .onAppear { withAnimation(.easeOut(duration: 0.38)) { t = 1 } }
     }
@@ -156,15 +158,16 @@ struct FlipDisc: View {
                 let c = store.color(shown == 1 ? .me : .partner)
                 Circle().fill(RadialGradient(colors: [c.opacity(0.7), c], center: .init(x: 0.35, y: 0.3), startRadius: 1, endRadius: 22))
                     .overlay(Circle().stroke(.white.opacity(isLast ? 0.95 : 0.25), lineWidth: isLast ? 2.5 : 1))
-                    .shadow(color: .black.opacity(0.35), radius: 2, y: 2)
+                    .overlay(Ellipse().fill(Color.white.opacity(0.4)).frame(width: 14, height: 7).rotationEffect(.degrees(-30)).offset(x: -7, y: -9).blur(radius: 0.5))
+                    .shadow(color: c.opacity(0.45), radius: 4, y: 3)
                     .padding(4)
-                    .scaleEffect(x: sx, y: 1)
+                    .rotation3DEffect(.degrees(Double((1 - sx) * 90)), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
                     .scaleEffect(pop)
             }
         }
         .onChange(of: owner) { old, new in
             if old != 0, new != 0, old != new {
-                withAnimation(.easeIn(duration: 0.14)) { sx = 0.02 }
+                withAnimation(.easeIn(duration: 0.14)) { sx = 0.0 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
                     shown = new
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.55)) { sx = 1 }
@@ -207,7 +210,7 @@ struct DropDisc: View {
         .onChange(of: owner) { old, new in
             guard old == 0, new != 0 else { return }
             dy = -CGFloat(row + 1) * 52 - 24
-            withAnimation(.interpolatingSpring(stiffness: 170, damping: 10)) { dy = 0 }
+            withAnimation(.interpolatingSpring(stiffness: 150, damping: 11)) { dy = 0 }
         }
         .onChange(of: win) { _, w in
             if w { withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) { glow = true } }
