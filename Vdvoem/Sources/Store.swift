@@ -47,8 +47,8 @@ final class Store: ObservableObject {
 
     func applyTheme() {
         Theme.current = ThemeDef.find(data.profile.themeID)
-        Theme.bgStyle = data.profile.bgStyle > 2 ? 0 : data.profile.bgStyle
-        Theme.cardStyle = data.profile.cardStyle > 2 ? 0 : data.profile.cardStyle
+        Theme.bgStyle = data.profile.bgStyle
+        Theme.cardStyle = data.profile.cardStyle
         Theme.bgPattern = data.profile.bgPattern
         Theme.radius = CGFloat(liveRadius ?? data.profile.radius)
         Theme.accent = Color(hex: data.profile.myHex)

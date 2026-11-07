@@ -16,18 +16,12 @@ struct ThemeLook {
 
     static func of(_ id: String) -> ThemeLook {
         switch id {
-        case "midnight":  return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0,
-                                           pair: ("0297DE", "F2683F"), mode: .dark)
-        case "indigo":    return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0,
-                                           pair: ("2A56D6", "EC72B0"))
         case "malachite": return ThemeLook(icon: 0, font: .standard, radius: 18, pattern: 0,
                                            pair: ("0F8F6B", "FF7A59"))
         case "amber":     return ThemeLook(icon: 0, font: .standard, radius: 16, pattern: 0,
                                            pair: ("E8A02B", "2BB8A8"), mode: .dark)
         case "cherry":    return ThemeLook(icon: 0, font: .standard, radius: 22, pattern: 0,
                                            pair: ("E4456F", "2FB89A"))
-        case "classic":   return ThemeLook(icon: 0, font: .standard, radius: 18, pattern: 0)
-        case "graphite":  return ThemeLook(icon: 0, font: .standard, radius: 12, pattern: 0)
         case "sunset":    return ThemeLook(icon: 0, font: .standard, radius: 22, pattern: 0, pair: ("E8553D", "7C5CE0"))
         case "lilac":     return ThemeLook(icon: 0, font: .standard, radius: 22, pattern: 0, pair: ("7C4DDB", "F29A3C"))
         case "ocean":     return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0, pair: ("0E8A9E", "F2677A"))
@@ -39,7 +33,9 @@ struct ThemeLook {
         case "toy":       return ThemeLook(icon: 1, font: .rounded, radius: 30, pattern: 2, pair: ("FF5FA2", "6C7BFF"), card: 5, bg: 0)
         case "retro":     return ThemeLook(icon: 0, font: .mono, radius: 0, pattern: 1, pair: ("E4572E", "1F7A8C"), card: 3, bg: 2)
         case "grainient": return ThemeLook(icon: 0, font: .rounded, radius: 24, pattern: 0, pair: ("7B5CFF", "FF8A5B"), card: 0, bg: 3)
-        case "fog":       return ThemeLook(icon: 0, font: .standard, radius: 16, pattern: 0, pair: ("4F6FA8", "D98A5B"))
+        case "aurora":    return ThemeLook(icon: 0, font: .rounded, radius: 26, pattern: 0, pair: ("19C3A0", "7A5CFF"), mode: .dark, card: 0, bg: 5)
+        case "neon":      return ThemeLook(icon: 2, font: .rounded, radius: 20, pattern: 0, pair: ("B24BFF", "00E0C6"), mode: .dark, card: 6, bg: 5)
+        case "mocha":     return ThemeLook(icon: 0, font: .serif, radius: 22, pattern: 0, pair: ("A8643C", "6F8F72"), card: 4, bg: 0)
         default:          return ThemeLook(icon: 0, font: .standard, radius: 20, pattern: 0,
                                            pair: ("0593C6", "DB3996"))   // «Лагуна» — по умолчанию
         }

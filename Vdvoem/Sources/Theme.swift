@@ -14,12 +14,7 @@ struct ThemeDef: Identifiable, Hashable {
         // Лагуна: небесно-голубой и ярко-розовый
         ThemeDef(id: "lagoon", title: "Лагуна", bgL: "EEF6FA", bgD: "0A141B", topL: "BFE3F2", topD: "0E3A52",
                  cardL: "FFFFFF", cardD: "111D26", fieldL: "DFEDF4", fieldD: "1A2B38"),
-        // Полночь: тёмно-синий, электрик и оранжевый
-        ThemeDef(id: "midnight", title: "Полночь", bgL: "EDF1FA", bgD: "0A1430", topL: "C9D8F4", topD: "123066",
-                 cardL: "FFFFFF", cardD: "111C3E", fieldL: "DFE6F4", fieldD: "1A284F"),
-        // Индиго: глубокий синий, белый и нежно-розовый
-        ThemeDef(id: "indigo", title: "Индиго", bgL: "F4F5FC", bgD: "0B1030", topL: "D8DEF7", topD: "14236E",
-                 cardL: "FFFFFF", cardD: "121838", fieldL: "E8EBF8", fieldD: "1C2452"),
+
         // Малахит: тёмная хвоя, светлая мята и коралл
         ThemeDef(id: "malachite", title: "Малахит", bgL: "F2F6F2", bgD: "08140F", topL: "CDE6DA", topD: "0F3A2B",
                  cardL: "FFFFFF", cardD: "0F1D17", fieldL: "E2ECE6", fieldD: "182B22"),
@@ -29,10 +24,7 @@ struct ThemeDef: Identifiable, Hashable {
         // Вишня: винный, вишнёвый и мята
         ThemeDef(id: "cherry", title: "Вишня", bgL: "FBF1F3", bgD: "16080E", topL: "F5CCD6", topD: "4A1328",
                  cardL: "FFFFFF", cardD: "230F17", fieldL: "F4E2E7", fieldD: "351A24"),
-        ThemeDef(id: "classic", title: "Классика", bgL: "F4F3F0", bgD: "0D0E12", topL: "F4F3F0", topD: "0D0E12",
-                 cardL: "FFFFFF", cardD: "1A1B20", fieldL: "ECEBE7", fieldD: "24262D"),
-        ThemeDef(id: "graphite", title: "Графит", bgL: "EFEFF1", bgD: "0A0A0B", topL: "DEDFE3", topD: "1A1B1F",
-                 cardL: "FFFFFF", cardD: "17171A", fieldL: "E4E4E8", fieldD: "222226"),
+
         // Закат: персиковое небо и сиреневая тень
         ThemeDef(id: "sunset", title: "Закат", bgL: "FDF3EE", bgD: "1A0E10", topL: "FAD3C4", topD: "4A1D25",
                  cardL: "FFFFFF", cardD: "26151A", fieldL: "F7E4DC", fieldD: "36212A"),
@@ -54,9 +46,15 @@ struct ThemeDef: Identifiable, Hashable {
         // Фисташка: свежая зелень
         ThemeDef(id: "pistachio", title: "Фисташка", bgL: "F5F8EC", bgD: "0E1408", topL: "DDEBBE", topD: "2E4410",
                  cardL: "FFFFFF", cardD: "172010", fieldL: "E7EED3", fieldD: "232F18"),
-        // Туман: холодный серо-голубой
-        ThemeDef(id: "fog", title: "Туман", bgL: "F1F4F8", bgD: "0C1016", topL: "D6DEEA", topD: "1C2838",
-                 cardL: "FFFFFF", cardD: "141A22", fieldL: "E2E8F0", fieldD: "202A36")
+        // «Миры»: у каждой свои карточки, фон, шрифт и пружина
+        ThemeDef(id: "paper", title: "Бумага", bgL: "FAF4E8", bgD: "16120D", topL: "F1E3C8", topD: "2E2416", cardL: "FFFCF4", cardD: "211B14", fieldL: "F0E7D3", fieldD: "2C241A"),
+        ThemeDef(id: "toy", title: "Игривый", bgL: "FFF3FA", bgD: "1B0F1F", topL: "FFD3EC", topD: "4A1B49", cardL: "FFFFFF", cardD: "2A1630", fieldL: "FFE3F2", fieldD: "3A2142"),
+        ThemeDef(id: "retro", title: "Ретро", bgL: "F1EDD6", bgD: "0F130F", topL: "E4DEB8", topD: "1E2A1E", cardL: "FBF8E8", cardD: "182018", fieldL: "E6E1C5", fieldD: "223022"),
+        ThemeDef(id: "grainient", title: "Зернистый", bgL: "F6F1FA", bgD: "0E0B16", topL: "E7D9F8", topD: "2A1650", cardL: "FFFFFF", cardD: "1B1626", fieldL: "EEE6F8", fieldD: "2A2140"),
+        // Новые: шёлковая сетка, неон, мокко
+        ThemeDef(id: "aurora", title: "Сияние", bgL: "EEF8F4", bgD: "070F14", topL: "C6F0E2", topD: "0B3A3F", cardL: "FFFFFF", cardD: "0D1B21", fieldL: "DDF0EA", fieldD: "15303A"),
+        ThemeDef(id: "neon", title: "Неон", bgL: "F3F0FA", bgD: "07060F", topL: "DCD2F7", topD: "1E0F3F", cardL: "FFFFFF", cardD: "100D1E", fieldL: "E6E0F5", fieldD: "1B1633"),
+        ThemeDef(id: "mocha", title: "Мокко", bgL: "F6EEE8", bgD: "130E0C", topL: "EBD3C4", topD: "3A241C", cardL: "FFFBF8", cardD: "1E1613", fieldL: "EEDFD4", fieldD: "2B201B"),
     ]
 
     static func find(_ id: String) -> ThemeDef { all.first { $0.id == id } ?? all[0] }
@@ -101,7 +99,7 @@ struct ThemeBackground: View {
                         LinearGradient(colors: [Pal.top, Pal.top.opacity(0)], startPoint: .top, endPoint: .bottom)
                             .frame(height: g.size.height * 0.5)
                     }
-                    if Theme.bgStyle == 1 {
+                    if Theme.bgStyle == 1 || Theme.bgStyle == 3 || Theme.bgStyle == 5 {
                         if Motion.reduced || !animated {
                             blobs(t: 0)
                         } else {
@@ -112,6 +110,9 @@ struct ThemeBackground: View {
             }
             .id(store.p.themeID)
             .transition(.opacity)
+            if Theme.bgStyle == 3 || Theme.bgStyle == 4 {
+                GrainOverlay(strength: Theme.bgStyle == 3 ? 0.22 : 0.16).allowsHitTesting(false)
+            }
             PatternOverlay(kind: store.p.bgPattern)
                 .id(store.p.bgPattern)
                 .transition(.opacity)
@@ -129,9 +130,35 @@ struct ThemeBackground: View {
                     .frame(width: w * 1.3, height: w * 1.3).offset(x: -w * 0.35 + CGFloat(sin(t / 5)) * 40, y: -h * 0.32 + CGFloat(cos(t / 6)) * 30)
                 RadialGradient(colors: [Theme.accent2.opacity(a * 0.8), Theme.accent2.opacity(0)], center: .center, startRadius: 0, endRadius: w * 0.6)
                     .frame(width: w * 1.2, height: w * 1.2).offset(x: w * 0.4 + CGFloat(cos(t / 7)) * 40, y: h * 0.05 + CGFloat(sin(t / 4)) * 40)
+            if Theme.bgStyle == 5 {
+                RadialGradient(colors: [Theme.accent2.opacity(a), Theme.accent2.opacity(0)], center: .center, startRadius: 0, endRadius: w * 0.55)
+                    .frame(width: w * 1.1, height: w * 1.1).offset(x: -w * 0.3 + CGFloat(cos(t / 8)) * 60, y: h * 0.38 + CGFloat(sin(t / 7)) * 50)
+                RadialGradient(colors: [Theme.accent.opacity(a * 0.7), Theme.accent.opacity(0)], center: .center, startRadius: 0, endRadius: w * 0.5)
+                    .frame(width: w, height: w).offset(x: w * 0.35 + CGFloat(sin(t / 9)) * 50, y: h * 0.3 + CGFloat(cos(t / 6)) * 40)
+            }
             }
             .frame(width: w, height: h)
         }
+    }
+}
+
+/// Зерно поверх фона: плитка случайного шума 128×128, смешивается с фоном.
+struct GrainOverlay: View {
+    @Environment(\.colorScheme) private var scheme
+    var strength: Double
+    private static let tile: UIImage = {
+        let n = 128
+        var px = [UInt8](repeating: 0, count: n * n * 4)
+        for i in 0..<(n * n) { let v = UInt8.random(in: 0...255); px[i*4] = v; px[i*4+1] = v; px[i*4+2] = v; px[i*4+3] = 255 }
+        let cs = CGColorSpaceCreateDeviceRGB()
+        let ctx = CGContext(data: &px, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n * 4, space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        return UIImage(cgImage: ctx.makeImage()!)
+    }()
+    var body: some View {
+        Image(uiImage: Self.tile).resizable(resizingMode: .tile)
+            .blendMode(scheme == .dark ? .screen : .multiply)
+            .opacity(strength * (scheme == .dark ? 0.25 : 0.55))
+            .ignoresSafeArea()
     }
 }
 
