@@ -346,10 +346,10 @@ struct TodayView: View {
         NavigationLink { dest() } label: {
             VStack(alignment: .leading, spacing: 6) {
                 ArtIcon(symbol: icon, color: Color(hex: hex), size: 22)
-                Text(title).font(.subheadline.weight(.medium)).foregroundStyle(.primary)
+                Text(title).font(.subheadline.weight(.medium)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.75)
                 Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
-            .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
+            .padding(14).frame(maxWidth: .infinity, alignment: .leading).card()
         }
         .buttonStyle(PressStyle())
     }
