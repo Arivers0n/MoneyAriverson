@@ -24,6 +24,10 @@ ICONS = [
     ("AppIcon-Aurora",   "6EE7B7", "6D3FE0", "3BA7FF", None),   # Аврора
     ("AppIcon-Mono",     "646B7A", "15181F", "E3B341", None),   # Графит
     ("AppIcon-Ink",      "26262C", "000000", "5A5A66", None),   # Тушь
+    ("AppIcon-Neon",     "5B22B8", "07060F", "00E0C6", None),   # Неон
+    ("AppIcon-Mocha",    "E3B08A", "4A2A1E", "FFF0E0", None),   # Мокко
+    ("AppIcon-Toy",      "FFB8DE", "7E74FF", "FFE066", None),   # Игривый
+    ("AppIcon-Paper",    "FAF4E8", "E8D9B8", "FFFFFF", ("B5533C", "4F7A5A")),  # Бумага
     ("AppIcon-Pearl",    "FBFAF7", "E2DED7", "FFFFFF", ("E4456F", "0593C6")),  # Жемчуг: цветные круги на светлом
 ]
 REMOVED = ["AppIcon-Ocean", "AppIcon-Peach", "AppIcon-Candy", "AppIcon-Cosmos", "AppIcon-Neon", "AppIcon-Lime"]

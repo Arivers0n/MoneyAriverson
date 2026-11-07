@@ -316,6 +316,10 @@ struct AppIconDef: Identifiable, Hashable {
         AppIconDef(id: "AppIcon-Aurora", title: "Аврора", a: "6EE7B7", b: "6D3FE0"),
         AppIconDef(id: "AppIcon-Mono", title: "Графит", a: "646B7A", b: "15181F"),
         AppIconDef(id: "AppIcon-Ink", title: "Тушь", a: "26262C", b: "000000"),
+        AppIconDef(id: "AppIcon-Neon", title: "Неон", a: "5B22B8", b: "07060F"),
+        AppIconDef(id: "AppIcon-Mocha", title: "Мокко", a: "E3B08A", b: "4A2A1E"),
+        AppIconDef(id: "AppIcon-Toy", title: "Игривый", a: "FFB8DE", b: "7E74FF"),
+        AppIconDef(id: "AppIcon-Paper", title: "Бумага", a: "FAF4E8", b: "E8D9B8", pair: ("B5533C", "4F7A5A")),
         AppIconDef(id: "AppIcon-Pearl", title: "Жемчуг", a: "FBFAF7", b: "E2DED7", pair: ("E4456F", "0593C6"))
     ]
 }

@@ -42,7 +42,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ru.vdvoem.app
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Night AppIcon-Indigo AppIcon-Mint AppIcon-Gold AppIcon-Berry AppIcon-Sunset AppIcon-Lavender AppIcon-Aurora AppIcon-Mono AppIcon-Ink AppIcon-Pearl"
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Night AppIcon-Indigo AppIcon-Mint AppIcon-Gold AppIcon-Berry AppIcon-Sunset AppIcon-Lavender AppIcon-Aurora AppIcon-Mono AppIcon-Ink AppIcon-Pearl AppIcon-Neon AppIcon-Mocha AppIcon-Toy AppIcon-Paper"
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
     entitlements:
       path: Sources/Vdvoem.entitlements
