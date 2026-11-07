@@ -121,48 +121,73 @@ struct GlassJar: View {
         .accessibilityLabel("Банка настроения")
     }
 
-    private func jar(jw: CGFloat, jh: CGFloat) -> some View {
-        let shown = Array(balls.suffix(36))
-        let dark = scheme == .dark
-        return ZStack(alignment: .topLeading) {
-            // стекло: толще у краёв, прозрачнее в центре
-            JarShape().fill(LinearGradient(colors: [Color.white.opacity(dark ? 0.12 : 0.34), Color.white.opacity(dark ? 0.03 : 0.08)], startPoint: .top, endPoint: .bottom))
+    private func glassBody(jw: CGFloat, jh: CGFloat, dark: Bool) -> some View {
+        let top = Color.white.opacity(dark ? 0.12 : 0.34)
+        let bot = Color.white.opacity(dark ? 0.03 : 0.08)
+        let edgeA = Color.white.opacity(dark ? 0.16 : 0.30)
+        let edgeB = Color.white.opacity(dark ? 0.10 : 0.22)
+        return ZStack {
+            JarShape().fill(LinearGradient(colors: [top, bot], startPoint: .top, endPoint: .bottom))
             JarShape().fill(LinearGradient(stops: [
-                .init(color: Color.white.opacity(dark ? 0.16 : 0.30), location: 0),
-                .init(color: .clear, location: 0.22),
-                .init(color: .clear, location: 0.78),
-                .init(color: Color.white.opacity(dark ? 0.10 : 0.22), location: 1)
+                Gradient.Stop(color: edgeA, location: 0),
+                Gradient.Stop(color: Color.clear, location: 0.22),
+                Gradient.Stop(color: Color.clear, location: 0.78),
+                Gradient.Stop(color: edgeB, location: 1)
             ], startPoint: .leading, endPoint: .trailing))
-            // тёплое свечение изнутри от шаров
-            RadialGradient(colors: [store.meColor.opacity(0.22), .clear], center: .bottom, startRadius: 0, endRadius: jw * 0.9)
-                .frame(width: jw, height: jh).allowsHitTesting(false)
-            LiveTimeline(fps: 20) { date in
-                let t = date.timeIntervalSinceReferenceDate
-                ZStack(alignment: .topLeading) {
-                    ForEach(Array(shown.enumerated()), id: \.element.id) { i, b in
-                        let p = spot(i, b, jw: jw, jh: jh)
-                        let bob = CGFloat(sin(t * 0.9 + Double(i) * 0.9)) * 1.4
-                        let sway = CGFloat(cos(t * 0.7 + Double(i) * 1.3)) * 0.8 + tilt * CGFloat(i % 5) * 1.2
-                        MoodMarble(color: Color(hex: moodOf(b.mood).hex), ring: store.color(b.who), d: d)
-                            .position(x: p.x + sway, y: p.y + bob)
-                            .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .scale(scale: 0.6)).combined(with: .opacity), removal: .opacity))
-                    }
-                }
-                .animation(.interpolatingSpring(stiffness: 120, damping: 11), value: shown.count)
-            }
-            .frame(width: jw, height: jh)
-            // длинный блик по левой стенке и короткий справа
-            Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.7), Color.white.opacity(0.05)], startPoint: .top, endPoint: .bottom))
-                .frame(width: 8, height: jh * 0.46).offset(x: 14, y: jh * 0.30).blur(radius: 1.2)
-                .allowsHitTesting(false)
-            Capsule().fill(Color.white.opacity(0.35)).frame(width: 4, height: jh * 0.12)
-                .offset(x: jw - 20, y: jh * 0.34).blur(radius: 1)
+            RadialGradient(colors: [store.meColor.opacity(0.22), Color.clear], center: .bottom, startRadius: 0, endRadius: jw * 0.9)
                 .allowsHitTesting(false)
         }
         .frame(width: jw, height: jh)
+    }
+
+    private func marbles(shown: [JarBall], jw: CGFloat, jh: CGFloat) -> some View {
+        LiveTimeline(fps: 20) { date in
+            let t = date.timeIntervalSinceReferenceDate
+            ZStack(alignment: .topLeading) {
+                ForEach(Array(shown.enumerated()), id: \.element.id) { i, b in
+                    marble(i, b, t: t, jw: jw, jh: jh)
+                }
+            }
+            .animation(.interpolatingSpring(stiffness: 120, damping: 11), value: shown.count)
+        }
+        .frame(width: jw, height: jh)
+    }
+
+    private func marble(_ i: Int, _ b: JarBall, t: Double, jw: CGFloat, jh: CGFloat) -> some View {
+        let p = spot(i, b, jw: jw, jh: jh)
+        let bob = CGFloat(sin(t * 0.9 + Double(i) * 0.9)) * 1.4
+        let sway = CGFloat(cos(t * 0.7 + Double(i) * 1.3)) * 0.8 + tilt * CGFloat(i % 5) * 1.2
+        let ins = AnyTransition.move(edge: .top).combined(with: .opacity)
+        return MoodMarble(color: Color(hex: moodOf(b.mood).hex), ring: store.color(b.who), d: d)
+            .position(x: p.x + sway, y: p.y + bob)
+            .transition(ins)
+    }
+
+    private func glints(jw: CGFloat, jh: CGFloat) -> some View {
+        ZStack(alignment: .topLeading) {
+            Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.7), Color.white.opacity(0.05)], startPoint: .top, endPoint: .bottom))
+                .frame(width: 8, height: jh * 0.46).offset(x: 14, y: jh * 0.30).blur(radius: 1.2)
+            Capsule().fill(Color.white.opacity(0.35)).frame(width: 4, height: jh * 0.12)
+                .offset(x: jw - 20, y: jh * 0.34).blur(radius: 1)
+        }
+        .frame(width: jw, height: jh, alignment: .topLeading)
+        .allowsHitTesting(false)
+    }
+
+    private func jar(jw: CGFloat, jh: CGFloat) -> some View {
+        let shown = Array(balls.suffix(36))
+        let dark = scheme == .dark
+        let rimGrad = LinearGradient(colors: [Color.white.opacity(0.95), Color.white.opacity(0.18), Color.white.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        let inner = Color.white.opacity(dark ? 0.08 : 0.22)
+        return ZStack(alignment: .topLeading) {
+            glassBody(jw: jw, jh: jh, dark: dark)
+            marbles(shown: shown, jw: jw, jh: jh)
+            glints(jw: jw, jh: jh)
+        }
+        .frame(width: jw, height: jh)
         .clipShape(JarShape())
-        .overlay(JarShape().stroke(LinearGradient(colors: [Color.white.opacity(0.95), Color.white.opacity(0.18), Color.white.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2.2))
-        .overlay(JarShape().inset(by: 3).stroke(Color.white.opacity(dark ? 0.08 : 0.22), lineWidth: 1))
+        .overlay(JarShape().stroke(rimGrad, lineWidth: 2.2))
+        .overlay(JarShape().stroke(inner, lineWidth: 1).scaleEffect(0.96))
         .overlay(alignment: .top) {
             JarLid(w: jw * 0.58 + 16, a: store.meColor, b: store.partnerColor).offset(y: -12)
         }
