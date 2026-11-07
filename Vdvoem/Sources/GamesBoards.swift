@@ -321,6 +321,7 @@ struct DurakBoard: View {
                     }
                 }
                 .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 6)
+                .containerRelativeFrame(.horizontal, alignment: .center)
             }
             Text(m.turn == .me ? (iAttack ? (open == nil && !table.isEmpty ? "Подкиньте карту того же достоинства или нажмите «Бито»" : "Ваша атака") : "Побейте карту старше мастью или козырем — или возьмите") : "Ходит \(store.name(.partner))")
                 .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)

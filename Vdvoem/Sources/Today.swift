@@ -40,6 +40,7 @@ struct TodayView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                Color.clear.frame(height: 2)
                 pairHero
                 nowCard
                 statusCard
@@ -109,9 +110,15 @@ struct TodayView: View {
     private var pairHero: some View {
         let n = store.daysTogether
         return HStack(spacing: 16) {
-            HStack(spacing: -16) {
-                Avatar(who: .me, size: 60)
-                Avatar(who: .partner, size: 60)
+            HStack(spacing: 8) {
+                Avatar(who: .me, size: 54)
+                LiveTimeline(fps: 24) { date in
+                    let beat = max(0, sin(date.timeIntervalSinceReferenceDate * 3))
+                    Image(systemName: "heart.fill").font(.system(size: 16))
+                        .foregroundStyle(LinearGradient(colors: [store.meColor, store.partnerColor], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .scaleEffect(1 + 0.18 * CGFloat(beat))
+                }
+                Avatar(who: .partner, size: 54)
                     .dialMenu(signalKinds.map { DialItem(id: $0.id, emoji: $0.emoji, title: $0.title) }) { store.sendSignal($0.id) }
             }
             VStack(alignment: .leading, spacing: 0) {
@@ -119,12 +126,6 @@ struct TodayView: View {
                 Text("\(daysWord(n)) вместе").font(.footnote).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            LiveTimeline(fps: 24) { date in
-                let beat = max(0, sin(date.timeIntervalSinceReferenceDate * 3))
-                Image(systemName: "heart.fill").font(.system(size: 22))
-                    .foregroundStyle(LinearGradient(colors: [store.meColor, store.partnerColor], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .scaleEffect(1 + 0.14 * CGFloat(beat))
-            }
         }
         .padding(.horizontal, 16).padding(.vertical, 10).frame(maxWidth: .infinity).card()
     }

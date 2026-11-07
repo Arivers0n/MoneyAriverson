@@ -115,7 +115,7 @@ struct BigButton: ViewModifier {
 }
 
 extension View {
-    func card() -> some View { modifier(CardBG()).modifier(SoftScroll()) }
+    func card() -> some View { modifier(CardBG()) }
     func bigButton() -> some View { modifier(BigButton()) }
 
     func pairToolbar(scope: Bool = true, add: (() -> Void)? = nil) -> some View {
@@ -349,21 +349,5 @@ struct PressStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.9 : 1)
             // Быстро вниз при касании, чуть мягче обратно при отпускании
             .animation(configuration.isPressed ? Motion.press : Motion.curve(0.22), value: configuration.isPressed)
-    }
-}
-
-
-/// Карточки мягко «въезжают» у краёв экрана при прокрутке — плавно, как инерция в Lenis: только прозрачность и лёгкий масштаб.
-struct SoftScroll: ViewModifier {
-    func body(content: Content) -> some View {
-        if Motion.reduced {
-            content
-        } else {
-            content.scrollTransition(.interactive, axis: .vertical) { c, ph in
-                c.opacity(1 - min(1, abs(ph.value)) * 0.45)
-                    .scaleEffect(1 - min(1, abs(ph.value)) * 0.035)
-                    .blur(radius: min(1, abs(ph.value)) * 1.5)
-            }
-        }
     }
 }
