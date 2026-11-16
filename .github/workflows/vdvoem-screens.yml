@@ -83,10 +83,8 @@ jobs:
             done
           }
           shot root-lagoon           -demo root
-          for th in espresso lagoon cosmos; do
-            shot today-stories-$th   -demo today-both -theme $th -layout 0
-            shot today-grid-$th      -demo today-both -theme $th -layout 1
-            shot today-pair-$th      -demo today-both -theme $th -layout 2
+          for st in pismo dvoe scena fridge pogoda foto bilet kasseta okna racia ostrova classic; do
+            shot today-$st           -demo today-both -layout $st
           done
           shot appearance-today      -demo appearance -scroll today
           ls -la shots

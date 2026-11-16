@@ -329,7 +329,7 @@ struct AppIconDef: Identifiable, Hashable {
 struct AppearanceView: View {
     @EnvironmentObject var store: Store
     @State private var iconError: String?
-    @AppStorage(TodayLayout.key) private var todayLayout = 0
+    @AppStorage(TodayStyle.key) private var todayStyle = TodayStyle.pismo.rawValue
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -345,13 +345,7 @@ struct AppearanceView: View {
                 }
                 LivePreview()
                 section("Экран «Сегодня»") {
-                    choice(Array(zip(TodayLayout.titles, TodayLayout.symbols)), Binding(
-                        get: { todayLayout }, set: { v in withAnimation(Store.spring) { todayLayout = v } }))
-                    Text(["Кружки статусов сверху, крупный счётчик дней и только важное.",
-                          "Плитки разного размера, как виджеты на экране «Домой».",
-                          "Одна большая карточка вас двоих, остальное — списком.",
-                          "Вид, который был раньше."][min(max(todayLayout, 0), 3)])
-                        .font(.caption).foregroundStyle(.secondary)
+                    TodayStylePicker(selection: $todayStyle)
                 }
                 section("Тема") {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 14) {

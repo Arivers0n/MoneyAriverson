@@ -71,7 +71,26 @@ extension Store {
            let wake = cal.date(bySettingHour: 7, minute: 15, second: 0, of: now) {
             d.sleeps = [SleepEntry(id: today + Who.me.rawValue, day: today, who: .me, bedtime: bed, wake: wake, quality: 4)]
         }
-        d.events = [EventItem(title: "Годовщина знакомства", date: now.addingTimeInterval(86400 * 9))]
+        var meet = EventItem(title: "Встреча", date: now.addingTimeInterval(86400 * 12), emoji: "🚆")
+        meet.meeting = true
+        d.events = [EventItem(title: "Годовщина знакомства", date: now.addingTimeInterval(86400 * 9)), meet]
+        // Утро: прежние статусы для ленты дня (уже сменены)
+        d.statuses.append(StatusItem(who: .partner, kind: "work", title: "Работаю", note: "", place: "офис",
+                                     started: now.addingTimeInterval(-4 * 3600), expires: now.addingTimeInterval(-600)))
+        d.statuses.append(StatusItem(who: .me, kind: "coffee", title: "Пью кофе", note: "", place: "",
+                                     started: now.addingTimeInterval(-5 * 3600), expires: now.addingTimeInterval(-1200)))
+        // Голосовое от партнёра (без файла — только для вида)
+        var v = ChatMessage(text: "🎤 Голосовое", from: .partner, date: now.addingTimeInterval(-1500))
+        v.kind = "voice"; v.dur = 7
+        v.wave = [4, 9, 16, 22, 12, 18, 26, 14, 8, 20, 28, 17, 10, 6, 14, 22, 25, 12, 7, 15, 19, 9, 5, 11, 16, 8, 4, 10, 18, 13, 6, 3, 9, 14, 7, 4, 8, 12, 6, 3, 5, 9, 4, 2]
+        d.messages.insert(v, at: 1)
+        // Настроения за неделю
+        let cal2 = Calendar.current
+        for back in 1...6 {
+            let day = cal2.date(byAdding: .day, value: -back, to: now) ?? now
+            d.jar.append(JarBall(who: .me, mood: [1, 4, 0, 1, 2, 0][back - 1], date: day))
+            d.jar.append(JarBall(who: .partner, mood: [0, 1, 1, 0, 4, 1][back - 1], date: day))
+        }
         data = d
         seedCountersIfNeeded()
     }

@@ -36,29 +36,56 @@ struct TodayView: View {
     @EnvironmentObject var sync: SyncEngine
     @State private var showStatus = false
     @State private var history = false
-    @AppStorage(TodayLayout.key) private var savedLayout = 0
+    @Environment(\.colorScheme) private var scheme
+    @AppStorage(TodayStyle.key) private var savedStyle = TodayStyle.pismo.rawValue
 
-    /// Вид экрана: выбирается в «Оформлении»; для скриншотов в CI — аргументом `-layout N`.
-    private var layout: Int { Demo.value("-layout").flatMap(Int.init) ?? savedLayout }
+    /// Вид экрана: выбирается в «Оформлении»; для скриншотов в CI — аргументом `-layout <имя>`.
+    private var style: TodayStyle {
+        TodayStyle(rawValue: Demo.value("-layout") ?? savedStyle) ?? .pismo
+    }
+
+    private var subtitle: String {
+        switch style {
+        case .okna:
+            let km = store.distanceKm().map { ", между вами " + $0.kmText } ?? ""
+            return "У обоих \(store.dayPart)" + km
+        case .foto:
+            let n = store.daysTogether
+            return "\(n.formatted(.number.locale(ruLocale)))-й день вместе"
+        default:
+            return dateTitle
+        }
+    }
 
     var body: some View {
+        let st = style
         ScrollView {
             Group {
-                switch layout {
-                case 1: TodayGrid(showStatus: $showStatus)
-                case 2: TodayPair(showStatus: $showStatus)
-                case 3: classic
-                default: TodayStories(showStatus: $showStatus)
+                switch st {
+                case .pismo: TodayPismo(showStatus: $showStatus)
+                case .dvoe: TodayDvoe(showStatus: $showStatus)
+                case .scena: TodayScena(showStatus: $showStatus)
+                case .fridge: TodayFridge(showStatus: $showStatus)
+                case .pogoda: TodayPogoda(showStatus: $showStatus)
+                case .foto: TodayFoto(showStatus: $showStatus)
+                case .bilet: TodayBilet(showStatus: $showStatus)
+                case .kasseta: TodayKasseta(showStatus: $showStatus)
+                case .okna: TodayOkna(showStatus: $showStatus)
+                case .racia: TodayRacia(showStatus: $showStatus)
+                case .ostrova: TodayOstrova(showStatus: $showStatus)
+                case .classic: classic.padding(.horizontal, 16).padding(.bottom, 24)
                 }
             }
-            .id(layout)
-            .padding(.horizontal, 16).padding(.bottom, 24).padding(.top, 4)
+            .id(st)
+            .padding(.top, 4)
             .animation(Motion.spring, value: store.data.statuses)
-            }
-            .scrollIndicators(.hidden)
-            .dockScroll()
-        .floatingHeader { header.padding(.horizontal, 16) }
-        .background(ThemeBackground())
+        }
+        .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+        .dockScroll()
+        .floatingHeader { TodayStyleHeader(style: st, subtitle: subtitle, unread: hasUnread).padding(.horizontal, st == .ostrova ? 20 : 16) }
+        .background(TodayStyleBackground(style: st).ignoresSafeArea())
+        .environment(\.colorScheme, st == .classic ? scheme : (st.dark ? .dark : .light))
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showStatus) { StatusSheet().environmentObject(store) }

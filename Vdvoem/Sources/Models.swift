@@ -288,6 +288,8 @@ struct EventItem: Identifiable, Codable, Hashable {
     var date: Date
     var emoji = "📌"
     var yearly = false
+    /// Это дата следующей встречи пары (новое необязательное поле: старые версии его не видят).
+    var meeting: Bool? = nil
 }
 
 struct Wish: Identifiable, Codable, Hashable {
