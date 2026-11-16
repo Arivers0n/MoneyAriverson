@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   shots:
-    runs-on: macos-15-intel
+    runs-on: macos-15
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
               echo "$name: приложение не запущено, перезапуск"
               xcrun simctl launch "$UDID" ru.vdvoem.app "$@"
             fi
-            # Медленный Intel-раннер: ждём, пока вместо пустого белого кадра появится интерфейс.
+            # Ждём, пока вместо пустого белого кадра появится интерфейс.
             for try in 1 2 3 4 5 6; do
               sleep 6
               xcrun simctl io "$UDID" screenshot "shots/$name.png"
