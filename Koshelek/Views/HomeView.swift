@@ -22,6 +22,7 @@ struct HomeView: View {
     @State private var micPressed = false
     @State private var reveal = false
     @State private var showAdd = false
+    @State private var showPet = false
 
     private var txs: [Tx] {
         guard let a = router.accFilter else { return allTxs }
@@ -54,6 +55,12 @@ struct HomeView: View {
                         mainColumn
                         Group { if layout.editing { editBar } else { bottomButtons } }
                             .transition(.opacity)
+                        if !layout.editing && !layout.order.contains("companion") {
+                            PetFab(txs: allTxs) { showPet = true }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                                .padding(.trailing, 14).padding(.bottom, 100)
+                                .transition(.opacity)
+                        }
                     }
                     .frame(width: colW)
                     if wide {
@@ -69,6 +76,7 @@ struct HomeView: View {
         .background(Backdrop())
         .background(shortcuts)
         .sheet(isPresented: $showAdd) { AddBlockSheet() }
+        .sheet(isPresented: $showPet) { PetSheet(txs: allTxs) }
     }
 
     /// Сочетания клавиш для клавиатуры iPad.

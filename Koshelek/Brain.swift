@@ -125,7 +125,21 @@ enum Claude {
         }
         content.append(["type": "text", "text": prompt])
         let body: [String: Any] = ["model": model ?? fastModel, "max_tokens": maxTokens, "messages": [["role": "user", "content": content]]]
-        return try await send(body, timeout: 90)
+        return try await retrying { try await send(body, timeout: 90) }
+    }
+
+    /// Один повтор при коротком сбое сети или шлюза — чтобы разбор не падал из-за секундной заминки.
+    static func retrying(_ run: () async throws -> String) async throws -> String {
+        do { return try await run() }
+        catch let e as ClaudeError {
+            switch e {
+            case .network: break
+            case .http(let c, _) where c == 502 || c == 504: break
+            default: throw e
+            }
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            return try await run()
+        }
     }
 
     /// Единая точка отправки запросов: адрес, ключ и заголовки берутся из настроек.
@@ -211,7 +225,7 @@ enum ImagePrep {
         return jpeg(img)
     }
     static func jpeg(_ img: UIImage) -> Data? {
-        let maxSide: CGFloat = 1600
+        let maxSide: CGFloat = 1280
         let s = img.size
         let k = min(1, maxSide / max(s.width, s.height))
         let size = CGSize(width: s.width * k, height: s.height * k)

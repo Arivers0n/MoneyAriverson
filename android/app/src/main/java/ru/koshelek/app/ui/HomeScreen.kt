@@ -89,7 +89,6 @@ fun HomeScreen() {
                                     }
                                 }
                                 attention(snap)
-                                item { CompanionCard(snap) }
                                 item { QuickBlock(snap.txs, masked) }
                                 feed(monthTxs, snap, masked)
                             }
@@ -98,6 +97,7 @@ fun HomeScreen() {
                         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(150.dp)
                             .background(Brush.verticalGradient(listOf(Color.Transparent, p.bg.copy(alpha = 0.85f), p.bg))))
                         BottomButtons(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 10.dp))
+                        PetFab(snap, Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 14.dp, bottom = 100.dp))
                     }
                 }
                 if (wide) {

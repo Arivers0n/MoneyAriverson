@@ -139,7 +139,7 @@ final class SpeechRecognizer: ObservableObject {
 
     private func tick() {
         guard isRecording, autoStop, heardThisSession else { return }
-        if Date().timeIntervalSince(lastChange) > 1.6 {
+        if Date().timeIntervalSince(lastChange) > 1.1 {
             stop()
             onAutoStop?()
         }

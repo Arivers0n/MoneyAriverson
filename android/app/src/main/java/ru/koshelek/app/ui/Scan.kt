@@ -161,7 +161,7 @@ private fun ScanProcessing(imgs: List<Bitmap>, error: String?, onRetry: () -> Un
     }
 }
 
-fun loadScaled(ctx: Context, uri: Uri, max: Int = 1600): Bitmap? = runCatching {
+fun loadScaled(ctx: Context, uri: Uri, max: Int = 1280): Bitmap? = runCatching {
     val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     ctx.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, o) }
     var s = 1
@@ -171,4 +171,4 @@ fun loadScaled(ctx: Context, uri: Uri, max: Int = 1600): Bitmap? = runCatching {
     if (k < 1f) Bitmap.createScaledBitmap(b, (b.width * k).toInt(), (b.height * k).toInt(), true) else b
 }.getOrNull()
 
-fun jpeg(b: Bitmap): ByteArray = ByteArrayOutputStream().also { b.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray()
+fun jpeg(b: Bitmap): ByteArray = ByteArrayOutputStream().also { b.compress(Bitmap.CompressFormat.JPEG, 72, it) }.toByteArray()

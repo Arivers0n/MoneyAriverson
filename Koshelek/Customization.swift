@@ -229,7 +229,7 @@ final class HomeLayout: ObservableObject {
         .init(id: "feed", title: "Операции", symbol: "list.bullet", hint: "Лента трат и доходов"),
         .init(id: "companion", title: "Напарник", symbol: "pawprint", hint: "Питомец, уровень и угощения"),
     ]
-    static let defaultOrder = ["summary", "companion", "insights", "attention", "quick", "feed"]
+    static let defaultOrder = ["summary", "insights", "attention", "quick", "feed"]
 
     struct Button: Identifiable, Hashable {
         let id: String
@@ -259,14 +259,10 @@ final class HomeLayout: ObservableObject {
         top = d.stringArray(forKey: "home.top") ?? ["search", "stats", "payments", "budgets"]
         showScan = d.object(forKey: "home.scan") as? Bool ?? true
         showPlus = d.object(forKey: "home.plus") as? Bool ?? true
-        // Блок «Напарник» один раз добавляем и тем, у кого порядок уже сохранён
-        if !d.bool(forKey: "home.companionAdded") {
-            d.set(true, forKey: "home.companionAdded")
-            if !order.contains("companion") {
-                if let i = order.firstIndex(of: "insights") { order.insert("companion", at: i) }
-                else if let i = order.firstIndex(of: "summary") { order.insert("companion", at: i + 1) }
-                else { order.insert("companion", at: 0) }
-            }
+        // Питомец переехал с главного экрана в плавающий значок: один раз убираем блок из сохранённого порядка
+        if !d.bool(forKey: "home.companionFab") {
+            d.set(true, forKey: "home.companionFab")
+            order.removeAll { $0 == "companion" }
         }
         // Новый блок «Частое» один раз добавляем и тем, у кого порядок уже сохранён
         if !d.bool(forKey: "home.quickAdded") {

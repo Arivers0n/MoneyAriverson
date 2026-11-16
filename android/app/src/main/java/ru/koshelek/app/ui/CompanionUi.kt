@@ -1,5 +1,6 @@
 package ru.koshelek.app.ui
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import ru.koshelek.app.core.*
 import ru.koshelek.app.data.Snapshot
+import ru.koshelek.app.data.Store
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -234,4 +236,36 @@ fun CompanionScreen() {
 @Composable
 fun PetChatScreen(petId: String, mood: String) {
     AdvisorChat({ Router.close() }, CompanionCatalog.def(petId), CompanionMood.entries.firstOrNull { it.raw == mood } ?: CompanionMood.CALM)
+}
+
+// MARK: Плавающий значок напарника
+
+/** Маленький полупрозрачный значок справа внизу: питомец слегка парит, рядом мерцает звёздочка. По нажатию — экран напарника. */
+@Composable
+fun PetFab(snap: Snapshot, modifier: Modifier = Modifier) {
+    val p = LocalPal.current
+    val pet = CompanionCatalog.def(CompanionEngine.petId)
+    val st = remember(snap, pet.id, CompanionEngine.fedCount, CompanionEngine.fedDay, Look.debtInTotals) {
+        CompanionEngine.compute(snap.txs, snap.prefs.budget, pet, fed = CompanionEngine.fedCount, fedDay = CompanionEngine.fedDay)
+    }
+    val tr = rememberInfiniteTransition(label = "fab")
+    val bob by tr.animateFloat(-2.5f, 2.5f, infiniteRepeatable(tween(2000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "bob")
+    val glow by tr.animateFloat(0f, 1f, infiniteRepeatable(tween(1300), RepeatMode.Reverse), label = "glow")
+    val moves = Look.animated
+    Box(modifier.graphicsLayer { translationY = if (moves) bob.dp.toPx() else 0f; alpha = 0.88f }) {
+        Box(Modifier.size(56.dp).glass().pressable({ Router.show(Route.Pet) }, 0.92f), contentAlignment = Alignment.Center) {
+            PetView(pet, st.mood, Modifier.size(40.dp), animated = false)
+        }
+        Text("✦", color = Color(0xFFFFC733), fontSize = (11 + 4 * (if (moves) glow else 0.5f)).sp,
+            modifier = Modifier.align(Alignment.TopEnd).offset(x = 3.dp, y = (-3).dp).graphicsLayer { alpha = if (moves) 0.45f + 0.55f * glow else 1f })
+    }
+}
+
+/** Экран напарника, открывается по значку. */
+@Composable
+fun PetSheetScreen() {
+    val snap by Store.snapshot.collectAsState()
+    SheetScaffold("Напарник", Icons.Rounded.Pets) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) { CompanionCard(snap) }
+    }
 }

@@ -275,3 +275,60 @@ struct PetPickerView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+
+// MARK: - Плавающий значок напарника
+
+/// Маленький полупрозрачный значок справа внизу: питомец слегка парит, рядом мерцает звёздочка.
+/// По нажатию открывается экран напарника.
+struct PetFab: View {
+    let txs: [Tx]
+    let action: () -> Void
+    @AppStorage("budget") private var budget: Double = 0
+    @AppStorage("pet.id") private var petID: String = CompanionCatalog.defaultID
+    @AppStorage("pet.fed") private var fed: Int = 0
+    @AppStorage("pet.fedDay") private var fedDay: Int = -1
+
+    var body: some View {
+        let pet = CompanionCatalog.def(petID)
+        let ops = txs.filter { $0.kind != .tr }.map {
+            CompanionOp(date: $0.date, isExpense: $0.kind == .exp, cat: $0.cat, amount: $0.amount, counts: countsInTotals($0))
+        }
+        let st = CompanionEngine.compute(ops: ops, budget: budget, pet: pet, fed: fed, fedDay: fedDay)
+        Button { Haptic.tap(); action() } label: {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !Motion.moves)) { tl in
+                let t = Motion.moves ? tl.date.timeIntervalSinceReferenceDate : 0
+                let bob = sin(t * 1.6) * 2.5
+                let a = 0.5 + 0.5 * sin(t * 2.4)
+                ZStack(alignment: .topTrailing) {
+                    PetView(pet: pet, mood: st.mood, animated: false)
+                        .frame(width: 40, height: 40)
+                        .frame(width: 56, height: 56)
+                        .glass(Circle(), interactive: true)
+                    Text("✦")
+                        .font(.system(size: 11 + 4 * a))
+                        .foregroundStyle(Color(red: 1, green: 0.78, blue: 0.2))
+                        .opacity(0.45 + 0.55 * a)
+                        .offset(x: 3, y: -3)
+                }
+                .offset(y: bob)
+            }
+            .opacity(0.88)
+            .contentShape(Circle())
+        }
+        .buttonStyle(Pressable(scale: 0.92))
+        .accessibilityLabel("Напарник \(pet.name)")
+    }
+}
+
+/// Экран напарника, который открывается по значку.
+struct PetSheet: View {
+    let txs: [Tx]
+    var body: some View {
+        ScrollView {
+            CompanionBlock(txs: txs).padding(16)
+        }
+        .background(Backdrop())
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}

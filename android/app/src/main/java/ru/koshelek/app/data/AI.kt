@@ -8,7 +8,7 @@ import ru.koshelek.app.core.*
 import java.time.LocalDate
 import java.time.YearMonth
 
-class AIError(message: String) : Exception(message)
+class AIError(message: String, val transient: Boolean = false) : Exception(message)
 
 /** ИИ через сервер Копилки: ключ хранится на сервере, приложение передаёт только токен входа. */
 object Claude {
@@ -39,7 +39,13 @@ object Claude {
         put("messages", buildJsonArray { messages.forEach { (u, t) -> add(buildJsonObject { put("role", if (u) "user" else "assistant"); put("content", t) }) } })
     })
 
-    private suspend fun send(body: JsonObject): String {
+    /** Один повтор при коротком сбое сети или шлюза — чтобы разбор не падал из-за секундной заминки. */
+    private suspend fun send(body: JsonObject): String =
+        try { sendOnce(body) } catch (e: AIError) {
+            if (e.transient) { kotlinx.coroutines.delay(700); sendOnce(body) } else throw e
+        }
+
+    private suspend fun sendOnce(body: JsonObject): String {
         if (!Server.loggedIn) throw AIError("ИИ работает после входа в аккаунт Копилки")
         val o = try { Server.call("/api/kp/ai", body) } catch (e: ApiError) {
             throw AIError(when (e.status) {
@@ -47,7 +53,7 @@ object Claude {
                 503 -> "ИИ на сервере не настроен"
                 0 -> "Нет связи с сервером"
                 else -> e.message ?: "Ошибка ИИ"
-            })
+            }, transient = e.status == 0 || e.status == 502 || e.status == 504)
         }
         val text = (o["content"] as? JsonArray)?.mapNotNull { (it as? JsonObject)?.takeIf { b -> b.str("type") == "text" }?.str("text") }?.joinToString("") ?: ""
         if (text.isBlank()) throw AIError("Не удалось разобрать ответ. Попробуйте иначе.")
