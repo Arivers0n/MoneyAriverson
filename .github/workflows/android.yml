@@ -28,7 +28,15 @@ jobs:
 
       - name: Собрать APK
         working-directory: android
+        env:
+          KOPILKA_KEYSTORE_B64: ${{ secrets.KOPILKA_KEYSTORE_B64 }}
+          KOPILKA_KEYSTORE_PASSWORD: ${{ secrets.KOPILKA_KEYSTORE_PASSWORD }}
         run: |
+          if [ -z "$KOPILKA_KEYSTORE_B64" ] || [ -z "$KOPILKA_KEYSTORE_PASSWORD" ]; then
+            echo "::error::Нет секретов KOPILKA_KEYSTORE_B64 / KOPILKA_KEYSTORE_PASSWORD в настройках репозитория"
+            exit 1
+          fi
+          printf '%s' "$KOPILKA_KEYSTORE_B64" | base64 -d > release.jks
           chmod +x gradlew
           ./gradlew assembleRelease testDebugUnitTest --console=plain
           cp app/build/outputs/apk/release/app-release.apk ../Kopilka.apk
@@ -55,10 +63,11 @@ jobs:
         continue-on-error: true
         env:
           MSG: ${{ github.event.head_commit.message }}
+          KP_UPLOAD_TOKEN: ${{ secrets.KP_UPLOAD_TOKEN }}
         run: |
           NOTES=$(printf '%s' "$MSG" | head -n1 | cut -c1-200)
           curl -fsS -X POST "https://2-27-25-140.sslip.io:8443/api/collections/kp_builds/records" \
-            -H "X-Kp-Upload: d0e5ad0614dc1beb6893c73086e152fc8d57f80c" \
+            -H "X-Kp-Upload: $KP_UPLOAD_TOKEN" \
             -F "version=${{ github.run_number }}" \
             -F "name=1.0.${{ github.run_number }}" \
             -F "notes=$NOTES" \

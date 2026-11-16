@@ -244,3 +244,19 @@ onRecordAfterCreateSuccess((e) => {
         for (let i = 3; i < all.length; i++) e.app.delete(all[i])
     } catch (err) { console.log("Kopilka: не удалось убрать старые сборки:", err) }
 }, "kp_builds")
+
+// Upload token for Android builds lives in /etc/kopilka.env (KP_UPLOAD_TOKEN), never in the repo.
+// On every start the kp_builds create rule is rebuilt from it; without a valid token uploads are closed.
+onServe((e) => {
+    try {
+        const t = String($os.getenv("KP_UPLOAD_TOKEN") || "").trim()
+        const rule = /^[A-Za-z0-9]{32,}$/.test(t) ? '@request.headers.x_kp_upload = "' + t + '"' : null
+        const c = e.app.findCollectionByNameOrId("kp_builds")
+        if (c.createRule !== rule) {
+            c.createRule = rule
+            e.app.save(c)
+        }
+        if (!rule) console.log("Kopilka: KP_UPLOAD_TOKEN не задан — загрузка сборок закрыта")
+    } catch (err) { console.log("Kopilka: не удалось обновить правило kp_builds:", err) }
+    return e.next()
+})

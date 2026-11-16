@@ -17,12 +17,18 @@ android {
         versionCode = buildNumber
         versionName = "1.0.$buildNumber"
     }
+    // The release key lives only in GitHub Secrets: CI decodes it to android/release.jks
+    // and passes the password through KOPILKA_KEYSTORE_PASSWORD.
+    val releaseKeystore = rootProject.file("release.jks")
+    val releasePassword = System.getenv("KOPILKA_KEYSTORE_PASSWORD")
     signingConfigs {
-        create("release") {
-            storeFile = file("../kopilka.keystore")
-            storePassword = "kopilka-android"
-            keyAlias = "kopilka"
-            keyPassword = "kopilka-android"
+        if (releaseKeystore.exists() && !releasePassword.isNullOrEmpty()) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = releasePassword
+                keyAlias = "kopilka"
+                keyPassword = releasePassword
+            }
         }
     }
     buildTypes {
@@ -30,9 +36,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.findByName("release")
         }
-        debug { signingConfig = signingConfigs.getByName("release") }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
