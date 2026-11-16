@@ -281,7 +281,7 @@ struct DurakBoard: View {
             VStack(spacing: 6) {
                 if table.isEmpty { Text(iAttack ? "Ходите любой картой" : "Ждите атаку").font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 110) }
                 else {
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    ScrollView(.horizontal) {
                         HStack(spacing: 12) {
                             ForEach(Array(stride(from: 0, to: table.count, by: 2)), id: \.self) { i in
                                 ZStack(alignment: .topLeading) {
@@ -293,7 +293,7 @@ struct DurakBoard: View {
                             }
                         }
                         .padding(.horizontal, 6)
-                    }
+                    }.scrollIndicators(.hidden)
                     .frame(height: 118)
                 }
             }
@@ -310,7 +310,7 @@ struct DurakBoard: View {
             }
 
             // рука
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(spacing: -10) {
                     ForEach(myHand, id: \.self) { c in
                         Button { if play.contains(c) { send(c) } } label: {
@@ -322,7 +322,7 @@ struct DurakBoard: View {
                 }
                 .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 6)
                 .containerRelativeFrame(.horizontal, alignment: .center)
-            }
+            }.scrollIndicators(.hidden)
             Text(m.turn == .me ? (iAttack ? (open == nil && !table.isEmpty ? "Подкиньте карту того же достоинства или нажмите «Бито»" : "Ваша атака") : "Побейте карту старше мастью или козырем — или возьмите") : "Ходит \(store.name(.partner))")
                 .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }

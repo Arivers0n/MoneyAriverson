@@ -582,7 +582,7 @@ struct StatusSheet: View {
                     .background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                     .onChange(of: customTitle) { _, v in if !v.isEmpty { select(customStatusKind) } }
             }
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(spacing: 8) {
                     ForEach(statusEmojis, id: \.self) { e in
                         Button { customEmoji = e; select(customStatusKind) } label: {
@@ -592,7 +592,7 @@ struct StatusSheet: View {
                         .buttonStyle(PressStyle())
                     }
                 }
-            }
+            }.scrollIndicators(.hidden)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -605,7 +605,7 @@ struct StatusSheet: View {
     private var recent: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Недавние").font(.footnote.weight(.medium)).foregroundStyle(.secondary)
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(spacing: 8) {
                     ForEach(store.recentCustomStatuses) { s in
                         Button {
@@ -619,7 +619,7 @@ struct StatusSheet: View {
                         .buttonStyle(PressStyle())
                     }
                 }
-            }
+            }.scrollIndicators(.hidden)
         }
     }
 

@@ -91,7 +91,7 @@ struct Jiggle: ViewModifier {
     let seed: Double
     func body(content: Content) -> some View {
         if on && !Motion.reduced {
-            TimelineView(.animation) { ctx in
+            TimelineView(.animation(minimumInterval: 1.0 / 30)) { ctx in
                 let t = ctx.date.timeIntervalSinceReferenceDate
                 content.rotationEffect(.degrees(sin(t * 19 + seed) * 1.7))
                     .offset(y: CGFloat(sin(t * 23 + seed * 1.7)) * 0.6)

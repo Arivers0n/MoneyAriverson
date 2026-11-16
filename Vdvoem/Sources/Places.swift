@@ -101,7 +101,7 @@ struct PinEditor: View {
             Form {
                 TextField("Название места", text: $title)
                 TextField("Заметка", text: $note, axis: .vertical)
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     HStack {
                         ForEach(emojis, id: \.self) { e in
                             Text(e).font(.title2).padding(8)
@@ -109,7 +109,7 @@ struct PinEditor: View {
                                 .onTapGesture { emoji = e }
                         }
                     }
-                }
+                }.scrollIndicators(.hidden)
             }
             .navigationTitle("Новая метка")
             .navigationBarTitleDisplayMode(.inline)

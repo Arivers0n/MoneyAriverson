@@ -22,7 +22,7 @@ struct SettingsView: View {
             }
 
             group("Цвета") {
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     HStack(spacing: 10) {
                         ForEach(colorPairs) { pair in
                             Button {
@@ -39,7 +39,7 @@ struct SettingsView: View {
                             }
                         }
                     }
-                }
+                }.scrollIndicators(.hidden)
                 Divider()
                 ColorPicker(store.name(.me), selection: Binding(
                     get: { Color(hex: store.p.myHex) }, set: { store.data.profile.myHex = $0.hex }), supportsOpacity: false)

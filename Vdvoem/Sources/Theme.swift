@@ -243,7 +243,7 @@ struct WallCanvas: View, Equatable {
             while y < size.height {
                 var x: CGFloat = row % 2 == 0 ? 16 : 40
                 while x < size.width {
-                    ctx.draw(Text("♥").font(.system(size: 15)).foregroundColor(ink.opacity(0.05)), at: CGPoint(x: x, y: y))
+                    ctx.draw(Text("♥").font(.system(size: 15)).foregroundStyle(ink.opacity(0.05)), at: CGPoint(x: x, y: y))
                     x += 48
                 }
                 y += 34
@@ -281,7 +281,7 @@ struct WallCanvas: View, Equatable {
             while y < size.height {
                 var x: CGFloat = row % 2 == 0 ? 14 : 44
                 while x < size.width {
-                    ctx.draw(Text("✦").font(.system(size: 11)).foregroundColor(ink.opacity(0.05)), at: CGPoint(x: x, y: y))
+                    ctx.draw(Text("✦").font(.system(size: 11)).foregroundStyle(ink.opacity(0.05)), at: CGPoint(x: x, y: y))
                     x += 56
                 }
                 y += 40
@@ -335,11 +335,11 @@ struct AppearanceView: View {
         ScrollView {
             VStack(spacing: 16) {
                 section("Предпросмотр тем") {
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    ScrollView(.horizontal) {
                         HStack(spacing: 14) { ForEach(ThemeDef.all) { t in ThemePreviewCard(def: t) } }
                             .scrollTargetLayout()
                             .padding(.vertical, 6)
-                    }
+                    }.scrollIndicators(.hidden)
                     .scrollTargetBehavior(.viewAligned)
                 }
                 LivePreview()
@@ -396,9 +396,9 @@ struct AppearanceView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 section("Обои чата") {
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    ScrollView(.horizontal) {
                         HStack(spacing: 10) { ForEach(WallpaperDef.all) { w in wallTile(w) } }.padding(.vertical, 4)
-                    }
+                    }.scrollIndicators(.hidden)
                     Picker("Пузыри", selection: $store.data.profile.bubbleStyle) {
                         Text("Круглые").tag(0)
                         Text("Мягкие").tag(1)

@@ -134,7 +134,7 @@ struct AddEventSheet: View {
                 if store.p.notifications { Toggle("Напомнить", isOn: $remind) }
             }
             Section("Значок") {
-                ScrollView(.horizontal, showsIndicators: false) {
+                ScrollView(.horizontal) {
                     HStack {
                         ForEach(emojis, id: \.self) { e in
                             Text(e).font(.title)
@@ -143,7 +143,7 @@ struct AddEventSheet: View {
                                 .onTapGesture { emoji = e }
                         }
                     }
-                }
+                }.scrollIndicators(.hidden)
             }
         }
     }

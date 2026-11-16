@@ -293,7 +293,7 @@ struct AddCardSheet: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Магазин (по желанию)").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                        ScrollView(.horizontal, showsIndicators: false) {
+                        ScrollView(.horizontal) {
                             HStack(spacing: 8) {
                                 ForEach(cardBrands, id: \.name) { b in
                                     Button {
@@ -308,7 +308,7 @@ struct AddCardSheet: View {
                                     .buttonStyle(PressStyle())
                                 }
                             }
-                        }
+                        }.scrollIndicators(.hidden)
                         TextField("Своё название", text: $name)
                             .padding(14).background(Pal.field, in: RoundedRectangle(cornerRadius: Theme.r(14), style: .continuous))
                         TextField("Заметка (скидка 5%, чья карта)", text: $note)
