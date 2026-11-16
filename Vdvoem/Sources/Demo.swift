@@ -60,6 +60,18 @@ extension Store {
             BatteryInfo(id: Who.me.rawValue, who: .me, level: 0.34, charging: false, updated: now),
             BatteryInfo(id: Who.partner.rawValue, who: .partner, level: 0.78, charging: true, updated: now)
         ]
+        d.jar = [
+            JarBall(who: .partner, mood: 1, date: now.addingTimeInterval(-7200)),
+            JarBall(who: .me, mood: 4, date: now.addingTimeInterval(-3000)),
+            JarBall(who: .partner, mood: 0, date: now.addingTimeInterval(-900))
+        ]
+        let today = now.dayKey
+        let cal = Calendar.current
+        if let bed = cal.date(bySettingHour: 23, minute: 40, second: 0, of: now.addingTimeInterval(-86400)),
+           let wake = cal.date(bySettingHour: 7, minute: 15, second: 0, of: now) {
+            d.sleeps = [SleepEntry(id: today + Who.me.rawValue, day: today, who: .me, bedtime: bed, wake: wake, quality: 4)]
+        }
+        d.events = [EventItem(title: "Годовщина знакомства", date: now.addingTimeInterval(86400 * 9))]
         data = d
         seedCountersIfNeeded()
     }

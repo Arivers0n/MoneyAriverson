@@ -83,14 +83,12 @@ jobs:
             done
           }
           shot root-lagoon           -demo root
-          shot root-cosmos           -demo root -theme cosmos
-          shot root-sunset           -demo root -theme sunset
-          shot today-both-espresso   -demo today-both -theme espresso
-          shot status-sheet          -demo status
-          shot more-icons1           -demo more -icons 1
-          shot appearance-themes     -demo appearance -scroll themes
-          shot appearance-glass      -demo appearance -scroll glass
-          shot appearance-appicons   -demo appearance -scroll icon
+          for th in espresso lagoon cosmos; do
+            shot today-stories-$th   -demo today-both -theme $th -layout 0
+            shot today-grid-$th      -demo today-both -theme $th -layout 1
+            shot today-pair-$th      -demo today-both -theme $th -layout 2
+          done
+          shot appearance-today      -demo appearance -scroll today
           ls -la shots
 
       - uses: actions/upload-artifact@v4

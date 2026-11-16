@@ -36,18 +36,22 @@ struct TodayView: View {
     @EnvironmentObject var sync: SyncEngine
     @State private var showStatus = false
     @State private var history = false
+    @AppStorage(TodayLayout.key) private var savedLayout = 0
+
+    /// Вид экрана: выбирается в «Оформлении»; для скриншотов в CI — аргументом `-layout N`.
+    private var layout: Int { Demo.value("-layout").flatMap(Int.init) ?? savedLayout }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                Color.clear.frame(height: 2)
-                pairHero
-                nowCard
-                statusCard
-                tiles
-                infoRow
-                historyBlock
+            Group {
+                switch layout {
+                case 1: TodayGrid(showStatus: $showStatus)
+                case 2: TodayPair(showStatus: $showStatus)
+                case 3: classic
+                default: TodayStories(showStatus: $showStatus)
+                }
             }
+            .id(layout)
             .padding(.horizontal, 16).padding(.bottom, 24).padding(.top, 4)
             .animation(Motion.spring, value: store.data.statuses)
             }
@@ -59,6 +63,19 @@ struct TodayView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showStatus) { StatusSheet().environmentObject(store) }
         .onAppear { store.location.refresh() }
+    }
+
+    /// Прежний вид — оставлен как вариант.
+    private var classic: some View {
+        VStack(spacing: 16) {
+            Color.clear.frame(height: 2)
+            pairHero
+            nowCard
+            statusCard
+            tiles
+            infoRow
+            historyBlock
+        }
     }
 
     // Шапка с аватарами

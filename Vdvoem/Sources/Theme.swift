@@ -329,6 +329,7 @@ struct AppIconDef: Identifiable, Hashable {
 struct AppearanceView: View {
     @EnvironmentObject var store: Store
     @State private var iconError: String?
+    @AppStorage(TodayLayout.key) private var todayLayout = 0
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -343,6 +344,15 @@ struct AppearanceView: View {
                     .scrollTargetBehavior(.viewAligned)
                 }
                 LivePreview()
+                section("Экран «Сегодня»") {
+                    choice(Array(zip(TodayLayout.titles, TodayLayout.symbols)), Binding(
+                        get: { todayLayout }, set: { v in withAnimation(Store.spring) { todayLayout = v } }))
+                    Text(["Кружки статусов сверху, крупный счётчик дней и только важное.",
+                          "Плитки разного размера, как виджеты на экране «Домой».",
+                          "Одна большая карточка вас двоих, остальное — списком.",
+                          "Вид, который был раньше."][min(max(todayLayout, 0), 3)])
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 section("Тема") {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 14) {
                         ForEach(ThemeDef.all) { t in themeTile(t) }
@@ -445,7 +455,7 @@ struct AppearanceView: View {
         .onAppear {
             // Только для скриншотов в CI: `-scroll glass` прокручивает экран к нужному блоку.
             guard let k = Demo.value("-scroll") else { return }
-            let map = ["themes": "Тема", "glass": "Стекло", "icon": "Значок приложения", "pairs": "Цвета пары"]
+            let map = ["today": "Экран «Сегодня»", "themes": "Тема", "glass": "Стекло", "icon": "Значок приложения", "pairs": "Цвета пары"]
             guard let id = map[k] else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { proxy.scrollTo(id, anchor: .top) }
         }
