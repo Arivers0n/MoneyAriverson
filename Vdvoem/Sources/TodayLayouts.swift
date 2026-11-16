@@ -401,10 +401,9 @@ struct TodayStories: View {
         var parts: [String] = []
         for w in Who.allCases {
             guard let m = store.lastMood(w) else { continue }
-            let who = w == .me ? "я" : store.name(w)
-            parts.append(who + " — " + moodOf(m.mood).title.lowercased())
+            parts.append(moodOf(m.mood).title)
         }
-        return parts.isEmpty ? "Как вы сегодня?" : parts.joined(separator: ", ")
+        return parts.isEmpty ? "Как вы сегодня?" : parts.joined(separator: " · ")
     }
 
     // Быстрые разделы: одинаковой высоты, пустое состояние — действие
@@ -503,7 +502,7 @@ struct TodayGrid: View {
     @ViewBuilder private func statusTile(_ who: Who) -> some View {
         let st = store.statusNow(who)
         let c = st.map { Color(hex: statusKind($0.kind).hex).boosted(minS: 0.5, minB: 0.8) } ?? store.color(who)
-        let tile = box(158, tint: c) {
+        let tile = box(172, tint: c) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 8) {
                     AvatarFace(who: who, size: 26)
@@ -515,8 +514,10 @@ struct TodayGrid: View {
                     StatusGlyph(status: st, size: 44)
                     Spacer(minLength: 6)
                     Text(st.title).font(.headline).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.8)
-                    Text([st.note, st.started.agoText].filter { !$0.isEmpty }.joined(separator: " · "))
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    if !st.note.isEmpty {
+                        Text(st.note).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Text(st.started.agoText).font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
                 } else if who == .me {
                     Image(systemName: "plus").font(.system(size: 18, weight: .semibold)).foregroundStyle(store.meColor)
                         .frame(width: 44, height: 44).background(store.meColor.opacity(0.14), in: Circle())
@@ -735,7 +736,7 @@ struct TodayPair: View {
             Text(st?.title ?? "Без статуса")
                 .font(.subheadline.weight(.semibold)).foregroundStyle(st == nil ? Color.secondary : Color.primary)
                 .lineLimit(1).minimumScaleFactor(0.8)
-            Text(st.map { [$0.note, $0.started.agoText].filter { !$0.isEmpty }.joined(separator: " · ") } ?? " ")
+            Text(st.map { $0.note.isEmpty ? $0.started.agoText : $0.note } ?? " ")
                 .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             HStack(spacing: 8) {
                 if let m {
@@ -765,7 +766,7 @@ struct TodayPair: View {
             Divider().padding(.leading, 62)
             link("Между вами", "location", "8EC5FF", store.distanceKm().map { $0.kmText } ?? (store.p.shareLocation ? "Ждём партнёра" : "Скрыто")) { ModuleView(module: .places) }
             Divider().padding(.leading, 62)
-            link("История статусов", "clock.arrow.circlepath", "C5A3FF", "Что вы делали и когда") { StatusFeedView() }
+            link("История статусов", "clock.arrow.circlepath", "C5A3FF", "") { StatusFeedView() }
         }
         .card()
     }
