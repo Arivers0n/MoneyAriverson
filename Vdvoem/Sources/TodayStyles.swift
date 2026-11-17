@@ -345,6 +345,8 @@ struct TaskCheckRow: View {
     var ink: Color
     var muted: Color
     var font: Font = .body
+    /// В узком месте «важное» — точкой, чтобы не обрезать название.
+    var compact = false
 
     var body: some View {
         Button {
@@ -360,7 +362,11 @@ struct TaskCheckRow: View {
                 Text(task.title).font(font).foregroundStyle(ink).strikethrough(task.done).lineLimit(1)
                 Spacer(minLength: 8)
                 if task.priority > 0 {
-                    Text("важное").font(.footnote.weight(.semibold)).foregroundStyle(accent)
+                    if compact {
+                        Circle().fill(Color(hex: "E2483D")).frame(width: 8, height: 8).accessibilityLabel("важное")
+                    } else {
+                        Text("важное").font(.footnote.weight(.semibold)).foregroundStyle(accent)
+                    }
                 }
             }
             .frame(minHeight: 46)

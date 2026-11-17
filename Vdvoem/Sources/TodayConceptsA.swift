@@ -73,7 +73,7 @@ struct TodayPismo: View {
         } else {
             t = t + Text(" А у тебя статуса нет.")
         }
-        return t.font(.system(size: 31, weight: .medium, design: .serif))
+        return t.font(.custom("Georgia", size: 30))
             .foregroundColor(ink).lineSpacing(5)
             .fixedSize(horizontal: false, vertical: true)
             .contentTransition(.opacity)
@@ -102,7 +102,7 @@ struct TodayPismo: View {
             slip {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("«\(m.kind == "voice" ? "Голосовое" : m.text)»")
-                        .font(.system(size: 19, design: .serif)).foregroundStyle(ink).lineLimit(3).multilineTextAlignment(.leading)
+                        .font(.custom("Georgia", size: 19)).foregroundStyle(ink).lineLimit(3).multilineTextAlignment(.leading)
                     Spacer(minLength: 6)
                     HStack {
                         Text("\(store.name(.partner)), \(m.date.agoText)").font(.footnote).foregroundStyle(muted).lineLimit(1)
@@ -209,13 +209,16 @@ struct TodayDvoe: View {
         let mood = store.lastMood(who)
         let shape = UnevenRoundedRectangle(topLeadingRadius: who == .me ? 30 : 14, bottomLeadingRadius: who == .me ? 30 : 14,
                                            bottomTrailingRadius: who == .me ? 14 : 30, topTrailingRadius: who == .me ? 14 : 30, style: .continuous)
-        let content = VStack(alignment: .leading, spacing: 0) {
+        let lead = who == .me
+        let content = VStack(alignment: lead ? .leading : .trailing, spacing: 0) {
             HStack(spacing: 10) {
                 AvatarFace(who: who, size: 52)
                     .overlay(Circle().stroke(Color(hex: "0E1730"), lineWidth: 3).padding(-3))
                     .overlay(Circle().stroke(c, lineWidth: 2).padding(-5))
                 Text(who == .me ? "Я" : store.name(who)).font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                    .layoutPriority(1)
             }
+            .environment(\.layoutDirection, lead ? .leftToRight : .rightToLeft)
             Spacer(minLength: 12)
             Group {
                 if let st, let e = st.emoji, !e.isEmpty {
@@ -230,9 +233,11 @@ struct TodayDvoe: View {
             .frame(height: 54)
             Text(st?.title ?? (who == .me ? "Поставить статус" : "Без статуса"))
                 .font(.system(size: 23, weight: .bold)).tracking(-0.3).lineLimit(2).minimumScaleFactor(0.75)
+                .multilineTextAlignment(lead ? .leading : .trailing)
                 .padding(.top, 14)
             if let st, !st.detailLine.isEmpty {
-                Text(st.detailLine).font(.subheadline).foregroundStyle(Color(hex: "C7CEDD")).lineLimit(2).padding(.top, 4)
+                Text(st.detailLine).font(.subheadline).foregroundStyle(Color(hex: "C7CEDD")).lineLimit(2)
+                    .multilineTextAlignment(lead ? .leading : .trailing).padding(.top, 4)
             }
             Spacer(minLength: 8)
             Text(st.map { $0.started.agoText } ?? " ").font(.footnote).foregroundStyle(muted)
@@ -248,7 +253,7 @@ struct TodayDvoe: View {
             .font(.caption).foregroundStyle(Color(hex: "C7CEDD")).padding(.top, 8)
         }
         .padding(.horizontal, 16).padding(.vertical, 18)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: lead ? .topLeading : .topTrailing)
         .background(LinearGradient(colors: [c.opacity(0.26), c.opacity(0.06)], startPoint: .top, endPoint: .bottom), in: shape)
         .overlay(shape.strokeBorder(c.opacity(0.25), lineWidth: 1))
         if who == .me {
@@ -271,7 +276,7 @@ struct TodayDvoe: View {
         .background(Color(hex: "0E1730"), in: Circle())
         .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 1.5))
         .shadow(color: .black.opacity(0.45), radius: 13, y: 10)
-        .offset(y: -40)
+        .offset(y: -32)
         .allowsHitTesting(false)
     }
 
@@ -357,7 +362,7 @@ struct TodayScena: View {
                 }
                 .stroke(Color.white.opacity(0.55), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, dash: [2, 7]))
 
-                bubble(.partner, light: true).position(x: min(you.x - 10, w - 96), y: you.y - 104)
+                bubble(.partner, light: true).position(x: min(you.x - 10, w - 108), y: you.y - 108)
                 person(.partner).position(you)
                 bubble(.me, light: false).position(x: max(me.x + 30, 100), y: me.y - 104)
                 person(.me).position(me)
@@ -397,11 +402,11 @@ struct TodayScena: View {
         let sub = st.map { $0.detailLine.isEmpty ? $0.started.agoText : $0.detailLine + ", " + $0.started.agoText } ?? ""
         return VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.body.weight(.semibold)).lineLimit(1)
-            if !sub.isEmpty { Text(sub).font(.caption).opacity(0.85).lineLimit(1) }
+            if !sub.isEmpty { Text(sub).font(.caption).opacity(0.85).lineLimit(2) }
         }
         .foregroundStyle(light ? ink : .white)
         .padding(.horizontal, 14).padding(.vertical, 10)
-        .frame(maxWidth: 176, alignment: .leading)
+        .frame(maxWidth: 200, alignment: .leading)
         .background(light ? AnyShapeStyle(Color.white.opacity(0.94)) : AnyShapeStyle(Color.white.opacity(0.2)),
                     in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .shadow(color: Color(hex: "141450").opacity(0.22), radius: 13, y: 10)
@@ -563,7 +568,7 @@ struct TodayFridge: View {
                 Text("Всё сделано").font(.subheadline).foregroundStyle(muted).padding(.horizontal, 14).padding(.vertical, 10)
             } else {
                 ForEach(tasks) { t in
-                    TaskCheckRow(task: t, accent: Color(hex: "2B5D4F"), ink: ink, muted: muted, font: .subheadline)
+                    TaskCheckRow(task: t, accent: Color(hex: "2B5D4F"), ink: ink, muted: muted, font: .subheadline, compact: true)
                         .padding(.horizontal, 12)
                 }
             }

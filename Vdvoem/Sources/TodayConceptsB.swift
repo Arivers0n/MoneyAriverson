@@ -41,9 +41,9 @@ struct TodayPogoda: View {
                 .buttonStyle(PressStyle())
                 module(title: "Вместе") {
                     Text(store.daysTogether.formatted(.number.locale(ruLocale)))
-                        .font(.system(size: 34, weight: .light)).tracking(-0.6).foregroundStyle(.white)
+                        .font(.system(size: 30, weight: .light)).tracking(-0.6).foregroundStyle(.white)
                     Spacer(minLength: 4)
-                    Text(store.nextEvent.map { $0.0.title.lowercased() + " " + inDaysText($0.1) } ?? daysWord(store.daysTogether) + " вместе")
+                    Text(store.nextEvent.map { $0.0.title + ", " + inDaysText($0.1) } ?? daysWord(store.daysTogether) + " вместе")
                         .font(.caption).foregroundStyle(muted).lineLimit(2)
                 }
             }
@@ -57,35 +57,41 @@ struct TodayPogoda: View {
         let st = store.statusNow(who)
         let battery = store.battery(who).map { ", заряд \(Int($0.level * 100))%" } ?? ""
         let mood = store.lastMood(who).map { moodOf($0.mood).title.lowercased() } ?? "настроение не отмечено"
-        let content = ZStack(alignment: .top) {
-            LinearGradient(colors: [Color(hex: w.top), Color(hex: w.bottom)], startPoint: .top, endPoint: .bottom)
-            if w.sunny {
-                Circle().fill(RadialGradient(colors: [Color(hex: "FFECAA").opacity(0.95), Color(hex: "FFD678").opacity(0.3), .clear],
-                                             center: .center, startRadius: 0, endRadius: 90))
-                    .frame(width: 180, height: 180).offset(x: who == .me ? -40 : 50, y: -20)
-            } else {
-                VStack(spacing: 70) {
-                    Capsule().fill(Color.white.opacity(0.18)).frame(width: 200, height: 64).blur(radius: 14).offset(x: -30)
-                    Capsule().fill(Color.white.opacity(0.14)).frame(width: 190, height: 56).blur(radius: 16).offset(x: 40)
-                    Capsule().fill(Color.white.opacity(0.16)).frame(width: 220, height: 70).blur(radius: 18).offset(x: -10)
-                }
-                .padding(.top, 70)
+        let content = VStack(spacing: 0) {
+            Text(who == .me ? "Я" : store.name(who)).font(.title3.weight(.medium)).lineLimit(1)
+            Text(w.word).font(.system(size: 44, weight: .thin)).tracking(-0.8).lineLimit(1).minimumScaleFactor(0.6).padding(.top, 4)
+            Text(st?.title ?? "Без статуса").font(.callout.weight(.semibold)).lineLimit(1).padding(.top, 8)
+            if let st, !st.detailLine.isEmpty {
+                Text(st.detailLine).font(.subheadline).opacity(0.88).lineLimit(1).padding(.top, 2)
             }
-            VStack(spacing: 0) {
-                Text(who == .me ? "Я" : store.name(who)).font(.title3.weight(.medium)).lineLimit(1)
-                Text(w.word).font(.system(size: 44, weight: .thin)).tracking(-0.8).lineLimit(1).minimumScaleFactor(0.7).padding(.top, 4)
-                Text(st?.title ?? "Без статуса").font(.callout.weight(.semibold)).lineLimit(1).padding(.top, 8)
-                if let st, !st.detailLine.isEmpty {
-                    Text(st.detailLine).font(.subheadline).opacity(0.88).lineLimit(1).padding(.top, 2)
-                }
-                Text(mood + battery).font(.footnote).opacity(0.85).multilineTextAlignment(.center).lineLimit(2).padding(.top, 10)
-            }
-            .foregroundStyle(.white)
-            .shadow(color: Color(hex: "142040").opacity(0.25), radius: 6, y: 1)
-            .padding(.horizontal, 10).padding(.top, 34)
+            Text(mood + battery).font(.footnote).opacity(0.85).multilineTextAlignment(.center).lineLimit(2).padding(.top, 10)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipped()
+        .foregroundStyle(.white)
+        .shadow(color: Color(hex: "142040").opacity(0.25), radius: 6, y: 1)
+        .padding(.horizontal, 10).padding(.top, 34)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background {
+            ZStack {
+                LinearGradient(colors: [Color(hex: w.top), Color(hex: w.bottom)], startPoint: .top, endPoint: .bottom)
+                GeometryReader { g in
+                    if w.sunny {
+                        Circle().fill(RadialGradient(colors: [Color(hex: "FFECAA").opacity(0.95), Color(hex: "FFD678").opacity(0.3), .clear],
+                                                     center: .center, startRadius: 0, endRadius: 90))
+                            .frame(width: 180, height: 180)
+                            .position(x: who == .me ? g.size.width * 0.2 : g.size.width * 0.85, y: 60)
+                    } else {
+                        Capsule().fill(Color.white.opacity(0.18)).frame(width: g.size.width * 1.1, height: 64).blur(radius: 14)
+                            .position(x: g.size.width * 0.35, y: 110)
+                        Capsule().fill(Color.white.opacity(0.14)).frame(width: g.size.width, height: 56).blur(radius: 16)
+                            .position(x: g.size.width * 0.7, y: 220)
+                        Capsule().fill(Color.white.opacity(0.16)).frame(width: g.size.width * 1.2, height: 70).blur(radius: 18)
+                            .position(x: g.size.width * 0.45, y: 330)
+                    }
+                }
+            }
+            .clipped()
+        }
+        .contentShape(Rectangle())
         if who == .me {
             Button { showStatus = true; store.tap() } label: { content }.buttonStyle(PressStyle())
         } else {
