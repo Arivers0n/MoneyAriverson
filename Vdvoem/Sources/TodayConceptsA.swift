@@ -73,7 +73,7 @@ struct TodayPismo: View {
         } else {
             t = t + Text(" А у тебя статуса нет.")
         }
-        return t.font(.custom("Georgia", size: 30))
+        return t.font(.custom("TimesNewRomanPSMT", size: 32))
             .foregroundColor(ink).lineSpacing(5)
             .fixedSize(horizontal: false, vertical: true)
             .contentTransition(.opacity)
@@ -102,7 +102,7 @@ struct TodayPismo: View {
             slip {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("«\(m.kind == "voice" ? "Голосовое" : m.text)»")
-                        .font(.custom("Georgia", size: 19)).foregroundStyle(ink).lineLimit(3).multilineTextAlignment(.leading)
+                        .font(.custom("TimesNewRomanPSMT", size: 20)).foregroundStyle(ink).lineLimit(3).multilineTextAlignment(.leading)
                     Spacer(minLength: 6)
                     HStack {
                         Text("\(store.name(.partner)), \(m.date.agoText)").font(.footnote).foregroundStyle(muted).lineLimit(1)

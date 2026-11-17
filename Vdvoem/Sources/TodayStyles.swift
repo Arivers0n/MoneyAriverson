@@ -359,7 +359,7 @@ struct TaskCheckRow: View {
                 Image(systemName: task.done ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22)).foregroundStyle(task.done ? accent : muted)
                     .contentTransition(.symbolEffect(.replace))
-                Text(task.title).font(font).foregroundStyle(ink).strikethrough(task.done).lineLimit(1)
+                Text(task.title).font(font).foregroundStyle(ink).strikethrough(task.done).lineLimit(compact ? 2 : 1)
                 Spacer(minLength: 8)
                 if task.priority > 0 {
                     if compact {
