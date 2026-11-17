@@ -321,13 +321,7 @@ struct TodayJournal: View {
         return NavigationLink { StatusFeedView() } label: {
             VStack(alignment: .leading, spacing: 8) {
                 Text("ГЛАВНОЕ").font(.system(size: 12, weight: .bold)).tracking(1.6).foregroundStyle(pal.partnerText)
-                Group {
-                    if let st {
-                        Text(store.name(.partner) + ": «" + st.title + "»" + (st.emoji.map { $0.isEmpty ? "" : " " + $0 } ?? ""))
-                    } else {
-                        Text(store.name(.partner) + " пока молчит")
-                    }
-                }
+                Text(coverTitle(st))
                 .font(.custom(serif, size: 38)).tracking(-0.8).lineSpacing(-2)
                 .foregroundStyle(pal.ink).multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
@@ -339,6 +333,12 @@ struct TodayJournal: View {
         }
         .buttonStyle(PressStyle())
         .dialMenu(signalKinds.map { DialItem(id: $0.id, emoji: $0.emoji, title: $0.title) }) { store.sendSignal($0.id) }
+    }
+
+    private func coverTitle(_ st: StatusItem?) -> String {
+        guard let st else { return store.name(.partner) + " пока молчит" }
+        let emoji: String = (st.emoji ?? "").isEmpty ? "" : " " + (st.emoji ?? "")
+        return "\(store.name(.partner)): «\(st.title)»\(emoji)"
     }
 
     private func coverDeck(_ st: StatusItem?) -> String {

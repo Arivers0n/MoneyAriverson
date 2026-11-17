@@ -70,7 +70,7 @@ struct TodayPalette {
     /// Мягкая заливка цветом поверх фона (для пятен, островов, записок).
     func wash(_ c: Color, _ amount: Double) -> Color { HSB.mix(dark ? bg : .white, c, amount) }
 
-    static func make(_ store: Store, _ scheme: ColorScheme) -> TodayPalette {
+    @MainActor static func make(_ store: Store, _ scheme: ColorScheme) -> TodayPalette {
         TodayPalette(scheme: scheme, me: store.meColor, partner: store.partnerColor)
     }
 }
