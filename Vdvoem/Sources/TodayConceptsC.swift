@@ -6,8 +6,10 @@ struct TodayOkna: View {
     @EnvironmentObject var store: Store
     @Binding var showStatus: Bool
     @AppStorage("seenPartnerStatus") private var seen = ""
-    private let muted = Color(hex: "B3B8D3")
-    private let amber = Color(hex: "FFC46B")
+    @Environment(\.todayPalette) private var pal
+    private var muted: Color { pal.muted }
+    /// Свет нового в окне — тёплый, в цвет партнёра.
+    private var amber: Color { pal.dark ? HSB.mix(store.partnerColor, Color(hex: "FFC46B"), 0.35) : store.partnerColor }
 
     private var isNew: Bool {
         guard let s = store.statusNow(.partner) else { return false }
@@ -24,13 +26,13 @@ struct TodayOkna: View {
 
             HStack(spacing: 10) {
                 NavigationLink { ModuleView(module: .chat) } label: {
-                    Text("Ответить").font(.body.weight(.semibold)).foregroundStyle(Color(hex: "2A1A05"))
+                    Text("Ответить").font(.body.weight(.semibold)).foregroundStyle(amber.onAccent)
                         .frame(maxWidth: .infinity).frame(height: 48).background(amber, in: Capsule())
                 }
                 .buttonStyle(PressStyle())
                 Button { store.hug() } label: {
-                    Text("Обнять").font(.body.weight(.semibold)).foregroundStyle(Color(hex: "FFD796"))
-                        .frame(maxWidth: .infinity).frame(height: 48).background(amber.opacity(0.16), in: Capsule())
+                    Text("Обнять").font(.body.weight(.semibold)).foregroundStyle(pal.partnerText)
+                        .frame(maxWidth: .infinity).frame(height: 48).background(amber.opacity(pal.dark ? 0.2 : 0.13), in: Capsule())
                 }
                 .buttonStyle(PressStyle())
             }
@@ -40,7 +42,7 @@ struct TodayOkna: View {
                     NavigationLink { ModuleView(module: .chat) } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(m.kind == "voice" ? "Голосовое сообщение" : m.text).font(.body).foregroundStyle(.white).lineLimit(1)
+                                Text(m.kind == "voice" ? "Голосовое сообщение" : m.text).font(.body).foregroundStyle(pal.ink).lineLimit(1)
                                 Text("\(store.name(.partner)), \(m.date.agoText)").font(.footnote).foregroundStyle(muted)
                             }
                             Spacer(minLength: 0)
@@ -48,16 +50,16 @@ struct TodayOkna: View {
                         .padding(.horizontal, 16).frame(minHeight: 58).contentShape(Rectangle())
                     }
                     .buttonStyle(PressStyle())
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Rectangle().fill(pal.line).frame(height: 1)
                 }
                 ForEach(store.openTasks.prefix(2)) { t in
-                    TaskCheckRow(task: t, accent: amber, ink: .white, muted: muted).padding(.horizontal, 16)
-                    Divider().overlay(Color.white.opacity(0.08))
+                    TaskCheckRow(task: t, accent: pal.partnerText, ink: pal.ink, muted: pal.faint).padding(.horizontal, 16)
+                    Rectangle().fill(pal.line).frame(height: 1)
                 }
                 if let (e, d) = store.nextEvent {
                     NavigationLink { ModuleView(module: .calendar) } label: {
                         HStack {
-                            Text(e.title).font(.body).foregroundStyle(.white).lineLimit(1)
+                            Text(e.title).font(.body).foregroundStyle(pal.ink).lineLimit(1)
                             Spacer(minLength: 8)
                             Text(inDaysText(d)).font(.subheadline).foregroundStyle(muted)
                         }
@@ -66,7 +68,7 @@ struct TodayOkna: View {
                     .buttonStyle(PressStyle())
                 }
             }
-            .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(pal.card.opacity(pal.dark ? 0.45 : 0.8), in: RoundedRectangle(cornerRadius: Theme.r(16), style: .continuous))
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 24)
@@ -75,9 +77,10 @@ struct TodayOkna: View {
     @ViewBuilder private func window(_ who: Who) -> some View {
         let st = store.statusNow(who)
         let mood = store.lastMood(who)
-        let light = mood.map { Color(hex: moodOf($0.mood).hex) } ?? Color(hex: "4A5079")
+        let light = mood.map { Color(hex: moodOf($0.mood).hex) } ?? (pal.dark ? pal.deep.hsb(dB: 0.1) : pal.field)
         let glow = who == .partner && isNew
-        let frameColor = Color(hex: "2E3560")
+        // Рама: ночью — тёмное дерево в тон темы, днём — белая.
+        let frameColor = pal.dark ? pal.deep.hsb(dB: 0.06) : pal.card
         let shape = UnevenRoundedRectangle(topLeadingRadius: 10, bottomLeadingRadius: 4, bottomTrailingRadius: 4, topTrailingRadius: 10, style: .continuous)
         let content = VStack(alignment: .leading, spacing: 10) {
             ZStack {
@@ -93,14 +96,15 @@ struct TodayOkna: View {
                         Image(systemName: statusKind(st.kind).symbol).font(.system(size: 50, weight: .light))
                             .foregroundStyle(light.hsb(dS: 0.2, dB: -0.6))
                     } else {
-                        Image(systemName: "moon.zzz").font(.system(size: 40, weight: .light)).foregroundStyle(.white.opacity(0.5))
+                        Image(systemName: pal.dark ? "moon.zzz" : "sun.haze").font(.system(size: 40, weight: .light)).foregroundStyle(pal.faint)
                     }
                 }
             }
             .frame(height: 214)
             .clipShape(shape)
             .overlay(shape.strokeBorder(frameColor, lineWidth: 7))
-            .overlay(shape.strokeBorder(Color(hex: "11152B"), lineWidth: 2).padding(-1))
+            .overlay(shape.strokeBorder(pal.dark ? Color.black.opacity(0.45) : pal.line, lineWidth: 2).padding(-1))
+            .shadow(color: pal.shadow, radius: 10, y: 8)
             .shadow(color: glow ? amber.opacity(0.55) : .clear, radius: 18)
             .overlay(shape.stroke(amber.opacity(glow ? 0.6 : 0), lineWidth: 3).padding(-4))
             .animation(Motion.spring, value: glow)
@@ -108,7 +112,7 @@ struct TodayOkna: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(st?.title ?? (who == .me ? "Поставить статус" : "Свет не горит"))
-                        .font(.body.weight(.semibold)).foregroundStyle(.white).lineLimit(1)
+                        .font(.body.weight(.semibold)).foregroundStyle(pal.ink).lineLimit(1)
                     if glow { Circle().fill(amber).frame(width: 8, height: 8).accessibilityLabel("новое") }
                 }
                 Text(caption(who, st: st, mood: mood)).font(.subheadline).foregroundStyle(muted).lineLimit(2)
@@ -141,9 +145,11 @@ struct TodayRacia: View {
     @StateObject private var voice = VoiceRecorder()
     @State private var holding = false
     @State private var sending = false
-    private let ink = Color(hex: "161C2B")
-    private let muted = Color(hex: "535C70")
-    private let orange = Color(hex: "E2551B")
+    @Environment(\.todayPalette) private var pal
+    private var ink: Color { pal.ink }
+    private var muted: Color { pal.muted }
+    /// Кнопка рации — твой цвет: говоришь ты.
+    private var orange: Color { store.meColor }
 
     var body: some View {
         VStack(spacing: 14) {
@@ -170,11 +176,11 @@ struct TodayRacia: View {
 
     private var partnerCard: some View {
         let st = store.statusNow(.partner)
-        let mood = store.lastMood(.partner).map { ", ей " + moodOf($0.mood).title.lowercased() } ?? ""
+        let mood = store.lastMood(.partner).map { ", настроение: " + moodOf($0.mood).title.lowercased() } ?? ""
         return NavigationLink { StatusFeedView() } label: {
             HStack(spacing: 14) {
                 AvatarFace(who: .partner, size: 56)
-                    .overlay(Circle().stroke(Color.white, lineWidth: 3).padding(-3))
+                    .overlay(Circle().stroke(pal.card, lineWidth: 3).padding(-3))
                     .overlay(Circle().stroke(store.partnerColor, lineWidth: 2).padding(-5))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(store.name(.partner) + (st.map { ": " + $0.title.lowercased() } ?? ""))
@@ -185,7 +191,8 @@ struct TodayRacia: View {
                 Spacer(minLength: 0)
             }
             .padding(14)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(pal.card, in: RoundedRectangle(cornerRadius: Theme.r(20), style: .continuous))
+            .shadow(color: pal.shadow, radius: 10, y: 6)
         }
         .buttonStyle(PressStyle())
     }
@@ -199,15 +206,15 @@ struct TodayRacia: View {
                     .scaleEffect(holding ? 1 + 0.07 * voice.level : 1)
                 VStack(spacing: 6) {
                     if sending {
-                        ProgressView().tint(.white)
+                        ProgressView().tint(orange.onAccent)
                     } else {
                         Image(systemName: "mic.fill").font(.system(size: 32, weight: .semibold))
                         Text(holding ? mmss(voice.seconds) : "Удерживай").font(.callout.weight(.semibold)).monospacedDigit()
                     }
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(orange.onAccent)
                 .frame(width: 156, height: 156)
-                .background(RadialGradient(colors: [Color(hex: "FF8A55"), orange], center: UnitPoint(x: 0.4, y: 0.32), startRadius: 0, endRadius: 90), in: Circle())
+                .background(RadialGradient(colors: [orange.hsb(dS: -0.15, dB: 0.15), orange], center: UnitPoint(x: 0.4, y: 0.32), startRadius: 0, endRadius: 90), in: Circle())
                 .shadow(color: orange.opacity(0.38), radius: 17, y: 16)
                 .scaleEffect(holding ? 0.94 : 1)
                 .animation(Motion.press, value: holding)
@@ -265,7 +272,8 @@ struct TodayRacia: View {
     private func chip(_ t: String) -> some View {
         Text(t).font(.subheadline.weight(.semibold)).foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.8)
             .frame(maxWidth: .infinity).frame(height: 46)
-            .background(Color.white, in: Capsule())
+            .background(pal.card, in: Capsule())
+            .overlay(Capsule().strokeBorder(pal.line, lineWidth: pal.dark ? 1 : 0))
     }
 }
 
@@ -301,8 +309,12 @@ private struct LobePartner: Shape {
 
 struct TodayOstrova: View {
     @EnvironmentObject var store: Store
+    @Environment(\.todayPalette) private var pal
     @Binding var showStatus: Bool
-    private let ink = Color(hex: "2C2E2A")
+    private var ink: Color { pal.ink }
+    /// Острова — цвета пары, смягчённые под фон темы.
+    private var meLand: Color { pal.dark ? HSB.mix(pal.bg, store.meColor, 0.62) : HSB.mix(.white, store.meColor, 0.55) }
+    private var partnerLand: Color { pal.dark ? HSB.mix(pal.bg, store.partnerColor, 0.62) : HSB.mix(.white, store.partnerColor, 0.5) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -310,11 +322,11 @@ struct TodayOstrova: View {
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
                     NavigationLink { ModuleView(module: .chat) } label: {
-                        capsule("Ответить", fill: Color(hex: "2BA0FF"), text: Color(hex: "10202E"))
+                        capsule("Ответить", fill: store.meColor, text: store.meColor.onAccent)
                     }
                     .buttonStyle(PressStyle())
                     Button { store.hug() } label: {
-                        capsule("Обнять", fill: Color(hex: "FF705D"), text: Color(hex: "2A0E08"))
+                        capsule("Обнять", fill: store.partnerColor, text: store.partnerColor.onAccent)
                     }
                     .buttonStyle(PressStyle())
                 }
@@ -342,8 +354,8 @@ struct TodayOstrova: View {
 
     private var map: some View {
         ZStack(alignment: .topLeading) {
-            LobeMe().fill(Color(hex: "8ED462"))
-            LobePartner().fill(Color(hex: "EBC1FF"))
+            LobeMe().fill(meLand)
+            LobePartner().fill(partnerLand)
             island(.me)
                 .frame(maxWidth: 200, alignment: .leading)
                 .padding(.leading, 20).padding(.top, 14)
@@ -354,13 +366,13 @@ struct TodayOstrova: View {
             HStack(spacing: 8) {
                 Text("\(store.daysTogether.formatted(.number.locale(ruLocale))) \(daysWord(store.daysTogether))")
                     .font(.subheadline.weight(.semibold))
-                Circle().fill(ink).frame(width: 24, height: 24)
-                    .overlay(Image(systemName: "heart.fill").font(.system(size: 10)).foregroundStyle(Color(hex: "F5E211")))
+                Circle().fill(pal.bg).frame(width: 24, height: 24)
+                    .overlay(Image(systemName: "heart.fill").font(.system(size: 10)).foregroundStyle(store.partnerColor))
             }
-            .foregroundStyle(ink)
+            .foregroundStyle(pal.bg)
             .padding(.leading, 14).padding(.trailing, 6).frame(height: 36)
-            .background(Color(hex: "F5E211"), in: Capsule())
-            .shadow(color: ink.opacity(0.15), radius: 7, y: 6)
+            .background(ink, in: Capsule())
+            .shadow(color: pal.shadow, radius: 7, y: 6)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .offset(x: -40, y: 50)
         }
@@ -380,7 +392,7 @@ struct TodayOstrova: View {
                 .multilineTextAlignment(who == .me ? .leading : .trailing)
             if !bottom.isEmpty { Text(bottom).font(.subheadline.weight(.semibold)).lineLimit(2).multilineTextAlignment(who == .me ? .leading : .trailing) }
         }
-        .foregroundStyle(ink)
+        .foregroundStyle(pal.text(on: who == .me ? meLand : partnerLand))
         if who == .me {
             Button { showStatus = true; store.tap() } label: { label }.buttonStyle(PressStyle())
         } else {
@@ -398,10 +410,10 @@ struct TodayOstrova: View {
         HStack(spacing: 8) {
             Text(title).font(.body).foregroundStyle(ink).lineLimit(1)
             Spacer(minLength: 8)
-            Text(detail).font(.subheadline).foregroundStyle(ink).lineLimit(1)
+            Text(detail).font(.subheadline).foregroundStyle(pal.muted).lineLimit(1)
         }
         .frame(minHeight: 48)
-        .overlay(alignment: .bottom) { if !last { Rectangle().fill(ink).frame(height: 1.5) } }
+        .overlay(alignment: .bottom) { if !last { Rectangle().fill(ink.opacity(0.75)).frame(height: 1.5) } }
         .contentShape(Rectangle())
     }
 }

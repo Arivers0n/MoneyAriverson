@@ -54,6 +54,7 @@ struct RootView: View {
     @State private var selected = ""
     @EnvironmentObject var sync: SyncEngine
     @State private var gate = false
+    @AppStorage(TodayStyle.key) private var todayStyleRaw = TodayStyle.pismo.rawValue
 
     private var tabs: [AppTab] {
         store.bar.map { AppTab(id: $0.rawValue, title: $0.title, symbol: $0.icon, hex: $0.hex) }
@@ -74,11 +75,17 @@ struct RootView: View {
         ZStack(alignment: .bottom) {
             ZStack {
                 ThemeBackground(animated: true)
+                // На «Сегодня» под доком и у нижнего края — тот же фон, что у выбранного варианта экрана.
+                if current == Module.today.rawValue && dock.todayOnTop && !dock.hidden {
+                    TodayStyleBackground(style: TodayStyle(rawValue: Demo.value("-layout") ?? todayStyleRaw) ?? .pismo).transition(.opacity)
+                }
                 // В чате обои лежат под всем экраном, включая области статус-бара и индикатора «домой».
                 if dock.hidden { WallpaperView(id: store.p.wallpaper).transition(.opacity) }
             }
             .ignoresSafeArea()
             .animation(Motion.enter, value: dock.hidden)
+            .animation(Motion.enter, value: current)
+            .animation(Motion.enter, value: dock.todayOnTop)
             VStack(spacing: 0) {
                 ZStack {
                     ForEach(tabs) { t in

@@ -1,19 +1,28 @@
 import SwiftUI
 
 // MARK: - Варианты оформления экрана «Сегодня»
-// Каждый вариант — свой мир: палитра, шрифт и один главный приём. Навигация и элементы — родные iOS.
+// Каждый вариант — свой приём и своя раскладка. Цвета у всех общие: их даёт выбранная тема
+// (см. TodayPalette), поэтому любой вариант подстраивается под тему, светлый и тёмный режим.
 
 enum TodayStyle: String, CaseIterable, Identifiable {
-    case pismo, dvoe, scena, fridge, pogoda, foto, bilet, kasseta, okna, racia, ostrova, classic
+    case pismo, dvoe, scena, widgets, journal, lenta, fridge, pogoda, foto, bilet, kasseta, okna, racia, ostrova, classic
 
     static let key = "todayStyle"
     var id: String { rawValue }
+
+    /// Сохранённый вариант (для скриншотов в CI — аргумент `-layout <имя>`).
+    static var stored: TodayStyle {
+        TodayStyle(rawValue: Demo.value("-layout") ?? UserDefaults.standard.string(forKey: key) ?? "") ?? .pismo
+    }
 
     var title: String {
         switch self {
         case .pismo: return "Письмо"
         case .dvoe: return "Двое"
         case .scena: return "Сцена"
+        case .widgets: return "Виджеты"
+        case .journal: return "Журнал"
+        case .lenta: return "Лента дня"
         case .fridge: return "Холодильник"
         case .pogoda: return "Погода"
         case .foto: return "Фотобудка"
@@ -31,114 +40,122 @@ enum TodayStyle: String, CaseIterable, Identifiable {
         case .pismo: return "Одна фраза о том, как вы сейчас, крупным шрифтом с засечками."
         case .dvoe: return "Две зеркальные половины: вы и партнёр. Ответить можно прямо отсюда."
         case .scena: return "Вы двое на живом фоне, статусы облачками, снизу шторка с главным."
+        case .widgets: return "Плитки как на экране «Домой»: партнёр, вы, дни вместе, настроение, сон, дела."
+        case .journal: return "Обложка журнала о вас двоих: главная новость дня и анонсы."
+        case .lenta: return "День обоих на одной линии времени: слева вы, справа партнёр."
         case .fridge: return "Статусы — записки на магнитах, дела — список покупок."
         case .pogoda: return "Настроение каждого — погода на его половине неба."
         case .foto: return "Ваш день — две фотополоски из статусов и настроений."
         case .bilet: return "Билет с расстоянием и датой следующей встречи."
         case .kasseta: return "Сторона А и Б: день каждого как список треков."
-        case .okna: return "Два окна ночью: свет — настроение, новое светится, пока не увидишь."
+        case .okna: return "Два окна: свет — настроение, новое светится, пока не увидишь."
         case .racia: return "Большая кнопка: удерживай и скажи голосом."
-        case .ostrova: return "Два цветных острова и крупные статусы."
-        case .classic: return "Вид, который был раньше, в цветах вашей темы."
+        case .ostrova: return "Два острова в цветах пары и крупные статусы."
+        case .classic: return "Вид, который был раньше."
         }
     }
 
-    /// Цвета для плитки выбора.
-    var swatch: (String, String) {
-        switch self {
-        case .pismo: return ("F1F2EE", "1C2433")
-        case .dvoe: return ("0E1730", "FF8A3D")
-        case .scena: return ("1B2672", "F6B5CC")
-        case .fridge: return ("D6E5DC", "FFD9E6")
-        case .pogoda: return ("5FA5E6", "8E9AB0")
-        case .foto: return ("6A1E30", "FAF8F4")
-        case .bilet: return ("EDF1F5", "E2483D")
-        case .kasseta: return ("F3F4F7", "2A4BA0")
-        case .okna: return ("1A2040", "FFC46B")
-        case .racia: return ("EEF1F6", "E2551B")
-        case .ostrova: return ("8ED462", "EBC1FF")
-        case .classic: return ("9AA5B8", "D7DCE5")
-        }
-    }
-
-    var dark: Bool { [.dvoe, .scena, .pogoda, .foto, .okna].contains(self) }
-    var bigTitle: Bool { ![.scena, .ostrova].contains(self) }
-
-    /// Цвет текста шапки.
-    var ink: Color {
-        switch self {
-        case .pismo: return Color(hex: "1C2433")
-        case .fridge: return Color(hex: "1F2B26")
-        case .bilet: return Color(hex: "142033")
-        case .kasseta: return Color(hex: "1A2340")
-        case .racia: return Color(hex: "161C2B")
-        case .ostrova: return Color(hex: "2C2E2A")
-        case .classic: return .primary
-        default: return .white
-        }
-    }
+    /// Крупный заголовок «Сегодня» в шапке.
+    var bigTitle: Bool { ![.scena, .ostrova, .journal].contains(self) }
 }
 
 // MARK: - Фон каждого варианта (неподвижный, за прокруткой)
 
 struct TodayStyleBackground: View {
     @EnvironmentObject var store: Store
+    @Environment(\.colorScheme) private var scheme
     let style: TodayStyle
 
     var body: some View {
+        let pal = TodayPalette.make(store, scheme)
+        Group {
+            switch style {
+            case .classic, .widgets:
+                ThemeBackground()
+            default:
+                ZStack {
+                    pal.bg
+                    motif(pal)
+                }
+            }
+        }
+        .id(store.p.themeID + "\(store.p.myHex)\(store.p.partnerHex)")
+        .transition(.opacity)
+        .allowsHitTesting(false)
+    }
+
+    /// Мягкий тон темы сверху.
+    private func topTone(_ pal: TodayPalette, _ share: CGFloat = 0.45) -> some View {
+        GeometryReader { g in
+            LinearGradient(colors: [pal.top, pal.top.opacity(0)], startPoint: .top, endPoint: .bottom)
+                .frame(height: g.size.height * share)
+        }
+    }
+
+    @ViewBuilder private func motif(_ pal: TodayPalette) -> some View {
         switch style {
         case .pismo:
-            ZStack {
-                Color(hex: "F1F2EE")
-                GrainDots(color: Color(hex: "1C2433").opacity(0.05))
-            }
+            topTone(pal, 0.35)
+            GrainDots(color: pal.ink.opacity(pal.dark ? 0.05 : 0.045))
         case .dvoe:
-            ZStack {
-                Color(hex: "0E1730")
-                RadialGradient(colors: [store.meColor.opacity(0.30), .clear], center: .topLeading, startRadius: 0, endRadius: 320)
-                RadialGradient(colors: [store.partnerColor.opacity(0.26), .clear], center: .topTrailing, startRadius: 0, endRadius: 320)
-            }
+            RadialGradient(colors: [pal.me.opacity(pal.dark ? 0.32 : 0.20), .clear], center: .topLeading, startRadius: 0, endRadius: 340)
+            RadialGradient(colors: [pal.partner.opacity(pal.dark ? 0.28 : 0.18), .clear], center: .topTrailing, startRadius: 0, endRadius: 340)
         case .scena:
-            ZStack {
-                Color(hex: "1B2672")
-                RadialGradient(colors: [store.partnerColor.opacity(0.75), .clear], center: UnitPoint(x: 0.85, y: 0.05), startRadius: 0, endRadius: 380)
-                RadialGradient(colors: [store.meColor.opacity(0.65), .clear], center: UnitPoint(x: 0, y: 0.42), startRadius: 0, endRadius: 330)
-                RadialGradient(colors: [Color(hex: "406EE6").opacity(0.5), .clear], center: UnitPoint(x: 0.6, y: 0.6), startRadius: 0, endRadius: 300)
-                GrainDots(color: .white.opacity(0.06))
+            // Сцена сверху, ниже — цвет шторки: если шторку потянуть, под ней не будет «дыры».
+            GeometryReader { g in
+                VStack(spacing: 0) {
+                    stage(pal).frame(height: g.size.height * 0.72)
+                    pal.card
+                }
             }
+        case .journal:
+            GrainDots(color: pal.ink.opacity(0.04))
+        case .lenta, .kasseta, .racia:
+            topTone(pal, 0.4)
         case .fridge:
             ZStack(alignment: .trailing) {
-                LinearGradient(colors: [Color(hex: "D3E3DA"), Color(hex: "DFECE4"), Color(hex: "D6E5DC"), Color(hex: "C9DACF")],
+                LinearGradient(colors: [pal.field, HSB.mix(pal.field, pal.dark ? pal.card : .white, 0.35), pal.field, pal.field.hsb(dB: -0.03)],
                                startPoint: .leading, endPoint: .trailing)
-                BrushedLines()
-                LinearGradient(colors: [.black.opacity(0.06), .white.opacity(0.5), .black.opacity(0.08)], startPoint: .leading, endPoint: .trailing)
+                BrushedLines(opacity: pal.dark ? 0.035 : 0.10)
+                LinearGradient(colors: [.black.opacity(0.06), .white.opacity(pal.dark ? 0.12 : 0.5), .black.opacity(0.08)], startPoint: .leading, endPoint: .trailing)
                     .frame(width: 14)
             }
         case .pogoda:
-            LinearGradient(colors: [Color(hex: "34486F"), Color(hex: "26365A")], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [pal.dark ? pal.deep : pal.top, pal.bg], startPoint: .top, endPoint: .bottom)
         case .foto:
+            let base = pal.dark ? pal.deep : pal.top
             ZStack {
                 HStack(spacing: 0) {
                     ForEach(0..<12, id: \.self) { _ in
-                        LinearGradient(colors: [Color(hex: "5A1627"), Color(hex: "7A2337"), Color(hex: "5A1627")], startPoint: .leading, endPoint: .trailing)
+                        LinearGradient(colors: [base.hsb(dB: -0.07), base.hsb(dB: 0.05), base.hsb(dB: -0.07)], startPoint: .leading, endPoint: .trailing)
                     }
                 }
-                RadialGradient(colors: [Color(hex: "FFDCC8").opacity(0.18), .clear], center: UnitPoint(x: 0.5, y: 0.38), startRadius: 0, endRadius: 360)
-                LinearGradient(colors: [.black.opacity(0.25), .clear, .black.opacity(0.35)], startPoint: .top, endPoint: .bottom)
+                RadialGradient(colors: [Color.white.opacity(pal.dark ? 0.14 : 0.35), .clear], center: UnitPoint(x: 0.5, y: 0.36), startRadius: 0, endRadius: 360)
+                LinearGradient(colors: [.black.opacity(pal.dark ? 0.25 : 0.04), .clear, .black.opacity(pal.dark ? 0.35 : 0.06)], startPoint: .top, endPoint: .bottom)
             }
-        case .bilet: Color(hex: "EDF1F5")
-        case .kasseta: Color(hex: "F3F4F7")
         case .okna:
-            LinearGradient(colors: [Color(hex: "151A33"), Color(hex: "232A4E"), Color(hex: "1A2040")], startPoint: .top, endPoint: .bottom)
-        case .racia: Color(hex: "EEF1F6")
-        case .ostrova: Color(hex: "F5F1E4")
-        case .classic: ThemeBackground()
+            LinearGradient(colors: pal.dark ? [pal.deep.hsb(dB: -0.06), pal.bg] : [pal.top, pal.bg], startPoint: .top, endPoint: .bottom)
+            GrainDots(color: pal.ink.opacity(0.035))
+        case .ostrova:
+            GrainDots(color: pal.ink.opacity(0.03))
+        default:
+            EmptyView()
+        }
+    }
+
+    private func stage(_ pal: TodayPalette) -> some View {
+        ZStack {
+            LinearGradient(colors: pal.dark ? [pal.deep, HSB.mix(pal.deep, pal.bg, 0.5)] : [pal.top, HSB.mix(pal.top, pal.bg, 0.5)],
+                           startPoint: .top, endPoint: .bottom)
+            RadialGradient(colors: [pal.partner.opacity(pal.dark ? 0.62 : 0.42), .clear], center: UnitPoint(x: 0.85, y: 0.05), startRadius: 0, endRadius: 380)
+            RadialGradient(colors: [pal.me.opacity(pal.dark ? 0.55 : 0.36), .clear], center: UnitPoint(x: 0, y: 0.5), startRadius: 0, endRadius: 330)
+            GrainDots(color: (pal.dark ? Color.white : pal.ink).opacity(0.05))
         }
     }
 }
 
 /// Лёгкое зерно из точек. Рисуется один раз, без анимации.
-struct GrainDots: View {
+struct GrainDots: View, Equatable {
     let color: Color
     var body: some View {
         Canvas { ctx, size in
@@ -159,11 +176,12 @@ struct GrainDots: View {
 
 /// Шлифованная эмаль: тонкие вертикальные полосы.
 struct BrushedLines: View {
+    var opacity: Double = 0.10
     var body: some View {
         Canvas { ctx, size in
             var x: CGFloat = 0
             while x < size.width {
-                ctx.fill(Path(CGRect(x: x, y: 0, width: 1, height: size.height)), with: .color(.white.opacity(0.10)))
+                ctx.fill(Path(CGRect(x: x, y: 0, width: 1, height: size.height)), with: .color(.white.opacity(opacity)))
                 x += 4
             }
         }
@@ -175,6 +193,7 @@ struct BrushedLines: View {
 
 struct TodayStyleHeader: View {
     @EnvironmentObject var store: Store
+    @Environment(\.todayPalette) private var pal
     let style: TodayStyle
     let subtitle: String
     let unread: Bool
@@ -187,26 +206,26 @@ struct TodayStyleHeader: View {
                 }
                 Text(subtitle)
                     .font(style.bigTitle ? .body : .headline)
-                    .foregroundStyle(style.ink.opacity(style.bigTitle ? 0.68 : 0.9))
+                    .foregroundStyle(style.bigTitle ? pal.muted : pal.ink)
                     .lineLimit(1).minimumScaleFactor(0.8)
             }
             Spacer(minLength: 8)
             NavigationLink { ModuleView(module: .chat) } label: {
                 Image(systemName: "bubble.left.and.bubble.right.fill").font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(style == .classic ? store.meColor : style.ink)
+                    .foregroundStyle(pal.meText)
                     .frame(width: 44, height: 44)
-                    .glass(Circle(), tint: style == .classic ? store.glassTint : nil, interactive: true)
+                    .glass(Circle(), tint: store.glassTint, interactive: true)
                     .overlay(alignment: .topTrailing) {
                         if unread {
                             Circle().fill(store.partnerColor).frame(width: 11, height: 11)
-                                .overlay(Circle().stroke(Color.white, lineWidth: 2)).offset(x: 1, y: -1)
+                                .overlay(Circle().stroke(pal.bg, lineWidth: 2)).offset(x: 1, y: -1)
                         }
                     }
             }
             .buttonStyle(PressStyle())
             .accessibilityLabel(unread ? "Чат, есть новое сообщение" : "Чат")
         }
-        .foregroundStyle(style.ink)
+        .foregroundStyle(pal.ink)
         .padding(.top, 4)
     }
 }
@@ -363,7 +382,7 @@ struct TaskCheckRow: View {
                 Spacer(minLength: 8)
                 if task.priority > 0 {
                     if compact {
-                        Circle().fill(Color(hex: "E2483D")).frame(width: 8, height: 8).accessibilityLabel("важное")
+                        Circle().fill(accent).frame(width: 8, height: 8).accessibilityLabel("важное")
                     } else {
                         Text("важное").font(.footnote.weight(.semibold)).foregroundStyle(accent)
                     }
@@ -406,6 +425,7 @@ struct MeetingSheet: View {
     }
 }
 
+
 // MARK: - Плитки выбора в «Оформлении»
 
 struct TodayStylePicker: View {
@@ -414,15 +434,20 @@ struct TodayStylePicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ScrollView(.horizontal) {
-                HStack(spacing: 12) {
-                    ForEach(TodayStyle.allCases) { s in tile(s) }
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal) {
+                    HStack(spacing: 12) {
+                        ForEach(TodayStyle.allCases) { s in tile(s).id(s.rawValue) }
+                    }
+                    .padding(.vertical, 4)
                 }
-                .padding(.vertical, 4)
+                .scrollIndicators(.hidden)
+                .onAppear { proxy.scrollTo(selection, anchor: .center) }
             }
-            .scrollIndicators(.hidden)
             Text((TodayStyle(rawValue: selection) ?? .pismo).about)
                 .font(.caption).foregroundStyle(.secondary)
+                .contentTransition(.opacity)
+                .animation(Motion.curve(0.2), value: selection)
         }
     }
 
@@ -436,12 +461,10 @@ struct TodayStylePicker: View {
             store.sfx(.pop)
         } label: {
             VStack(spacing: 8) {
-                ZStack(alignment: .bottomTrailing) {
-                    shape.fill(Color(hex: s.swatch.0))
-                    Circle().fill(Color(hex: s.swatch.1)).frame(width: 30, height: 30).padding(10)
-                }
-                .frame(width: 76, height: 96)
-                .overlay(shape.strokeBorder(on ? store.meColor : Color.primary.opacity(0.12), lineWidth: on ? 2.5 : 1))
+                TodayStyleThumb(style: s)
+                    .frame(width: 76, height: 104)
+                    .clipShape(shape)
+                    .overlay(shape.strokeBorder(on ? store.meColor : Color.primary.opacity(0.12), lineWidth: on ? 2.5 : 1))
                 Text(s.title).font(.caption.weight(on ? .semibold : .regular)).foregroundStyle(.primary).lineLimit(1)
             }
             .frame(width: 84)
@@ -449,5 +472,185 @@ struct TodayStylePicker: View {
         .buttonStyle(PressStyle())
         .accessibilityLabel(s.title)
         .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
+/// Миниатюра варианта в цветах текущей темы: видно, как он будет выглядеть, ещё до выбора.
+struct TodayStyleThumb: View {
+    @EnvironmentObject var store: Store
+    @Environment(\.colorScheme) private var scheme
+    let style: TodayStyle
+
+    var body: some View {
+        let p = TodayPalette.make(store, scheme)
+        ZStack(alignment: .topLeading) {
+            backdrop(p)
+            sketch(p).padding(8)
+        }
+        .frame(width: 76, height: 104)
+        .environment(\.todayPalette, p)
+    }
+
+    @ViewBuilder private func backdrop(_ p: TodayPalette) -> some View {
+        switch style {
+        case .scena:
+            VStack(spacing: 0) {
+                ZStack {
+                    p.dark ? p.deep : p.top
+                    RadialGradient(colors: [p.partner.opacity(0.6), .clear], center: .topTrailing, startRadius: 0, endRadius: 60)
+                    RadialGradient(colors: [p.me.opacity(0.5), .clear], center: .leading, startRadius: 0, endRadius: 50)
+                }
+                .frame(height: 62)
+                p.card
+            }
+        case .fridge: p.field
+        case .foto: p.dark ? p.deep : p.top
+        case .pogoda, .okna: LinearGradient(colors: [p.dark ? p.deep : p.top, p.bg], startPoint: .top, endPoint: .bottom)
+        case .widgets, .classic: LinearGradient(colors: [p.top, p.bg], startPoint: .top, endPoint: .center)
+        default: p.bg
+        }
+    }
+
+    private func bar(_ c: Color, _ w: CGFloat, _ h: CGFloat = 4) -> some View {
+        Capsule().fill(c).frame(width: w, height: h)
+    }
+
+    @ViewBuilder private func sketch(_ p: TodayPalette) -> some View {
+        switch style {
+        case .pismo:
+            VStack(alignment: .leading, spacing: 5) {
+                bar(p.ink, 54, 6); bar(p.ink, 44, 6); bar(p.ink, 50, 6)
+                bar(p.muted.opacity(0.6), 40).padding(.top, 4)
+                HStack(spacing: 4) { bar(p.ink, 26, 9); bar(p.card, 22, 9) }.padding(.top, 4)
+                HStack(spacing: 4) { RoundedRectangle(cornerRadius: 4).fill(p.card).frame(width: 28, height: 22); RoundedRectangle(cornerRadius: 4).fill(p.card).frame(width: 28, height: 22) }
+            }
+        case .dvoe:
+            HStack(spacing: 3) {
+                RoundedRectangle(cornerRadius: 7).fill(LinearGradient(colors: [p.me.opacity(0.4), p.me.opacity(0.08)], startPoint: .top, endPoint: .bottom))
+                RoundedRectangle(cornerRadius: 7).fill(LinearGradient(colors: [p.partner.opacity(0.4), p.partner.opacity(0.08)], startPoint: .top, endPoint: .bottom))
+            }
+            .frame(height: 58)
+            .overlay(Circle().fill(p.card).frame(width: 18).overlay(Image(systemName: "heart.fill").font(.system(size: 7)).foregroundStyle(p.partner)))
+            .overlay(alignment: .bottom) { RoundedRectangle(cornerRadius: 6).fill(p.card.opacity(0.7)).frame(height: 18).offset(y: 26) }
+        case .scena:
+            ZStack(alignment: .topLeading) {
+                Circle().fill(p.me).frame(width: 18).overlay(Circle().stroke(p.card, lineWidth: 2)).offset(x: 6, y: 30)
+                Circle().fill(p.partner).frame(width: 18).overlay(Circle().stroke(p.card, lineWidth: 2)).offset(x: 38, y: 18)
+                RoundedRectangle(cornerRadius: 5).fill(p.card.opacity(0.9)).frame(width: 30, height: 10).offset(x: 28, y: 2)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 3) { bar(p.ink, 18, 7); bar(p.ink.opacity(0.1), 18, 7); bar(p.partner.opacity(0.25), 16, 7) }
+                    bar(p.muted.opacity(0.5), 46); bar(p.muted.opacity(0.5), 40)
+                }
+                .offset(y: 60)
+            }
+        case .widgets:
+            VStack(spacing: 4) {
+                RoundedRectangle(cornerRadius: 7).fill(p.card).frame(height: 26)
+                    .overlay(alignment: .leading) { Circle().fill(p.partner).frame(width: 14).padding(.leading, 5) }
+                HStack(spacing: 4) {
+                    RoundedRectangle(cornerRadius: 7).fill(p.card).overlay(Circle().fill(p.me).frame(width: 10))
+                    RoundedRectangle(cornerRadius: 7).fill(p.card).overlay(Image(systemName: "heart.fill").font(.system(size: 8)).foregroundStyle(p.partner))
+                }
+                .frame(height: 26)
+                RoundedRectangle(cornerRadius: 7).fill(p.card).frame(height: 22)
+            }
+        case .journal:
+            VStack(alignment: .leading, spacing: 4) {
+                Text("ВДВОЁМ").font(.custom("Georgia-Bold", size: 13)).foregroundStyle(p.ink).lineLimit(1).minimumScaleFactor(0.5)
+                Rectangle().fill(p.ink).frame(height: 1)
+                bar(p.partnerText, 48, 6); bar(p.partnerText, 36, 6)
+                bar(p.muted.opacity(0.6), 46).padding(.top, 2)
+                ForEach(0..<3, id: \.self) { _ in HStack(spacing: 3) { bar(p.meText, 6, 6); bar(p.ink.opacity(0.5), 38) } }
+            }
+        case .lenta:
+            ZStack(alignment: .top) {
+                Rectangle().fill(p.faint).frame(width: 1.5, height: 80).frame(maxWidth: .infinity)
+                VStack(spacing: 10) {
+                    ForEach(0..<4, id: \.self) { i in
+                        HStack(spacing: 3) {
+                            if i % 2 == 0 { bar(p.me.opacity(0.5), 18, 6) } else { Spacer().frame(width: 18) }
+                            Circle().fill(i % 2 == 0 ? p.me : p.partner).frame(width: 7)
+                            if i % 2 == 1 { bar(p.partner.opacity(0.5), 18, 6) } else { Spacer().frame(width: 18) }
+                        }
+                    }
+                }
+                .padding(.top, 6)
+            }
+        case .fridge:
+            ZStack(alignment: .topLeading) {
+                Rectangle().fill(p.paper).frame(width: 26, height: 32).rotationEffect(.degrees(-4)).offset(x: 2, y: 6)
+                Rectangle().fill(p.wash(p.partner, 0.3)).frame(width: 26, height: 22).rotationEffect(.degrees(3)).offset(x: 32, y: 4)
+                Rectangle().fill(p.wash(p.me, 0.3)).frame(width: 26, height: 22).rotationEffect(.degrees(-2)).offset(x: 32, y: 32)
+                Rectangle().fill(p.paper).frame(width: 30, height: 30).rotationEffect(.degrees(2)).offset(x: 2, y: 48)
+                Circle().fill(p.partner).frame(width: 7).offset(x: 42, y: 1)
+            }
+        case .pogoda:
+            HStack(spacing: 1) {
+                LinearGradient(colors: [Color(hex: "2F7FD6"), Color(hex: "F3C27F")], startPoint: .top, endPoint: .bottom)
+                LinearGradient(colors: [Color(hex: "46597D"), Color(hex: "8E9AB0")], startPoint: .top, endPoint: .bottom)
+            }
+            .frame(height: 60).clipShape(RoundedRectangle(cornerRadius: 8))
+        case .foto:
+            HStack(alignment: .top, spacing: 6) {
+                ForEach(0..<2, id: \.self) { k in
+                    VStack(spacing: 2) {
+                        ForEach(0..<3, id: \.self) { _ in Rectangle().fill(k == 0 ? p.me.opacity(0.7) : p.partner.opacity(0.7)).frame(height: 16) }
+                    }
+                    .padding(2).padding(.bottom, 5).background(Color(hex: "FAF8F4"))
+                    .rotationEffect(.degrees(k == 0 ? -3 : 3))
+                }
+            }
+            .padding(.horizontal, 4).padding(.top, 4)
+        case .bilet:
+            VStack(spacing: 0) {
+                HStack { bar(p.meText, 14, 5); Spacer(); bar(p.partnerText, 14, 5) }.padding(6)
+                Rectangle().fill(p.line).frame(height: 1)
+                bar(p.ink, 34, 7).frame(maxWidth: .infinity, alignment: .leading).padding(6)
+            }
+            .background(p.card, in: RoundedRectangle(cornerRadius: 7))
+            .padding(.top, 6)
+        case .kasseta:
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 0) { p.partner; HSB.mix(p.me, p.partner, 0.5); p.me }.frame(height: 4)
+                VStack(alignment: .leading, spacing: 4) {
+                    bar(p.meText, 36, 6)
+                    ForEach(0..<3, id: \.self) { _ in bar(p.faint.opacity(0.6), 44, 3) }
+                }
+                .padding(6)
+            }
+            .background(p.card, in: RoundedRectangle(cornerRadius: 7))
+            .clipShape(RoundedRectangle(cornerRadius: 7))
+            .padding(.top, 12)
+        case .okna:
+            HStack(spacing: 6) {
+                ForEach(0..<2, id: \.self) { k in
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(RadialGradient(colors: [Color(hex: k == 0 ? "B9A7F5" : "FFC46B").opacity(0.9), Color(hex: k == 0 ? "6E5BD0" : "E8902E")], center: .bottom, startRadius: 0, endRadius: 40))
+                        .overlay(Rectangle().fill(p.dark ? p.deep : p.card).frame(width: 2))
+                        .overlay(RoundedRectangle(cornerRadius: 3).stroke(p.dark ? p.deep.hsb(dB: 0.08) : p.card, lineWidth: 3))
+                        .frame(height: 50)
+                }
+            }
+            .padding(.top, 8)
+        case .racia:
+            VStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 6).fill(p.card).frame(height: 18)
+                Circle().fill(RadialGradient(colors: [p.me.hsb(dS: -0.15, dB: 0.15), p.me], center: .center, startRadius: 0, endRadius: 22))
+                    .frame(width: 40).overlay(Circle().stroke(p.me.opacity(0.25), lineWidth: 1).padding(-6))
+                    .frame(maxWidth: .infinity)
+            }
+        case .ostrova:
+            ZStack(alignment: .topLeading) {
+                Ellipse().fill(p.wash(p.me, 0.6)).frame(width: 70, height: 56).offset(x: -26, y: -20)
+                Ellipse().fill(p.wash(p.partner, 0.55)).frame(width: 70, height: 60).offset(x: 20, y: 34)
+                bar(p.ink, 28, 7).offset(y: 6)
+                bar(p.ink, 28, 7).offset(x: 32, y: 66)
+            }
+        case .classic:
+            VStack(spacing: 5) {
+                ForEach(0..<4, id: \.self) { _ in RoundedRectangle(cornerRadius: 6).fill(p.card.opacity(0.85)).frame(height: 16) }
+            }
+            .padding(.top, 8)
+        }
     }
 }

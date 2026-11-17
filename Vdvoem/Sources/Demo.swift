@@ -38,7 +38,7 @@ extension Store {
         let now = Date()
         d.statuses = [StatusItem(who: .partner, kind: "cook", title: "Готовлю", note: "паста", place: "Дома",
                                  started: now.addingTimeInterval(-600))]
-        if Demo.screen == "today-both" {
+        if Demo.screen == "today-both" || Demo.screen == "today-root" {
             var mine = StatusItem(who: .me, kind: "custom", title: "Грущу", note: "тяжёлый день", place: "",
                                   started: now.addingTimeInterval(-1200))
             mine.emoji = "😔"
@@ -112,6 +112,8 @@ struct DemoRoot: View {
     @ViewBuilder private var content: some View {
         switch Demo.screen ?? "root" {
         case "root": RootView()
+        // «Сегодня» вместе с доком и фоном под ним — как в настоящем приложении.
+        case "today-root": RootView().onAppear { UserDefaults.standard.set(true, forKey: "vd.skipConnect") }
         case "appearance": NavigationStack { AppearanceView() }
         case "more": NavigationStack { MoreView().navigationTitle("Ещё") }
         case "chat": NavigationStack { ModuleView(module: .chat) }

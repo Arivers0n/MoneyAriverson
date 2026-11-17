@@ -82,11 +82,28 @@ jobs:
               echo "$name: кадр пустой, попытка $try"
             done
           }
-          shot root-lagoon           -demo root
-          for st in pismo dvoe scena fridge pogoda foto bilet kasseta okna racia ostrova classic; do
-            shot today-$st           -demo today-both -layout $st
-          done
-          shot appearance-today      -demo appearance -scroll today
+          # Каждый вариант «Сегодня» — в светлой и тёмной теме, вместе с доком (как в приложении).
+          while read -u 3 st light dark; do
+            shot "$st-1-$light"  -demo today-root -layout $st -theme $light -scheme light
+            shot "$st-2-$dark"   -demo today-root -layout $st -theme $dark -scheme dark
+          done 3<<'LIST'
+          pismo paper lagoon
+          dvoe cherry cosmos
+          scena sunset lagoon
+          widgets lilac aurora
+          journal mocha espresso
+          lenta ocean neon
+          fridge pistachio amber
+          pogoda rose cosmos
+          foto lagoon cherry
+          bilet retro lilac
+          kasseta toy ocean
+          okna malachite grainient
+          racia grainient malachite
+          ostrova lagoon rose
+          classic lagoon lagoon
+          LIST
+          shot appearance-today      -demo appearance -scroll today -theme cherry
           ls -la shots
 
       - uses: actions/upload-artifact@v4

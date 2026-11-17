@@ -37,6 +37,7 @@ struct TodayView: View {
     @State private var showStatus = false
     @State private var history = false
     @Environment(\.colorScheme) private var scheme
+    @EnvironmentObject var dock: DockState
     @AppStorage(TodayStyle.key) private var savedStyle = TodayStyle.pismo.rawValue
 
     /// Вид экрана: выбирается в «Оформлении»; для скриншотов в CI — аргументом `-layout <имя>`.
@@ -52,6 +53,13 @@ struct TodayView: View {
         case .foto:
             let n = store.daysTogether
             return "\(n.formatted(.number.locale(ruLocale)))-й день вместе"
+        case .journal:
+            switch store.dayPart {
+            case "утро": return "Утренний выпуск"
+            case "день": return "Дневной выпуск"
+            case "вечер": return "Вечерний выпуск"
+            default: return "Ночной выпуск"
+            }
         default:
             return dateTitle
         }
@@ -65,6 +73,9 @@ struct TodayView: View {
                 case .pismo: TodayPismo(showStatus: $showStatus)
                 case .dvoe: TodayDvoe(showStatus: $showStatus)
                 case .scena: TodayScena(showStatus: $showStatus)
+                case .widgets: TodayWidgets(showStatus: $showStatus)
+                case .journal: TodayJournal(showStatus: $showStatus)
+                case .lenta: TodayLenta(showStatus: $showStatus)
                 case .fridge: TodayFridge(showStatus: $showStatus)
                 case .pogoda: TodayPogoda(showStatus: $showStatus)
                 case .foto: TodayFoto(showStatus: $showStatus)
@@ -83,13 +94,16 @@ struct TodayView: View {
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .dockScroll()
-        .floatingHeader { TodayStyleHeader(style: st, subtitle: subtitle, unread: hasUnread).padding(.horizontal, st == .ostrova ? 20 : 16) }
+        .floatingHeader { TodayStyleHeader(style: st, subtitle: subtitle, unread: hasUnread).padding(.horizontal, st == .ostrova || st == .journal ? 22 : 16) }
         .background(TodayStyleBackground(style: st).ignoresSafeArea())
-        .environment(\.colorScheme, st == .classic ? scheme : (st.dark ? .dark : .light))
+        // Цвета всех вариантов выводятся из темы и режима: ничего не «выбивается» при смене темы.
+        .environment(\.todayPalette, TodayPalette.make(store, scheme))
+        .animation(Motion.curve(0.35), value: store.p.themeID)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showStatus) { StatusSheet().environmentObject(store) }
-        .onAppear { store.location.refresh() }
+        .onAppear { store.location.refresh(); dock.todayOnTop = true }
+        .onDisappear { dock.todayOnTop = false }
     }
 
     /// Прежний вид — оставлен как вариант.

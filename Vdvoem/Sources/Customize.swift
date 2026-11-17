@@ -375,6 +375,8 @@ final class DockState: ObservableObject {
     @Published var collapsed = false
     @Published var hidden = false
     @Published var editing = false
+    /// Корень экрана «Сегодня» на виду: фон под доком рисуется в его оформлении, без полосы другого цвета.
+    @Published var todayOnTop = false
     private var last = Date.distantPast
     private static let gen = UIImpactFeedbackGenerator(style: .soft)
 
