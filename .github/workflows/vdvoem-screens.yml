@@ -5,6 +5,10 @@ name: Скриншоты Вдвоём (симулятор)
 # Запускается только вручную (Actions → Run workflow): macOS-серверы дефицитны, на каждый пуш не тратим.
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Mac-сервер (если обычные заняты — macos-15-intel)'
+        default: 'macos-15'
 
 permissions:
   contents: write
@@ -15,7 +19,7 @@ concurrency:
 
 jobs:
   shots:
-    runs-on: macos-15
+    runs-on: ${{ inputs.runner || 'macos-15' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4

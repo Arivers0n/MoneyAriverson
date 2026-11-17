@@ -6,6 +6,10 @@ on:
     branches: [vdvoem]
     paths: ['Vdvoem/**', '.github/workflows/vdvoem.yml']
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Mac-сервер (если обычные заняты — macos-15-intel)'
+        default: 'macos-15'
 
 permissions:
   contents: write
@@ -16,7 +20,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: ${{ inputs.runner || 'macos-15' }}
     timeout-minutes: 40
     defaults:
       run:
